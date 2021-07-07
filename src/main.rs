@@ -187,7 +187,11 @@ async fn send_message_to_first_available_channel(
                 .map(|(_, channel)| channel.clone())
                 .collect();
             for channel in channels {
-                match channel.id.say(&ctx.http, msg.author.mention().to_string() + " " + message).await {
+                match channel
+                    .id
+                    .say(&ctx.http, msg.author.mention().to_string() + " " + message)
+                    .await
+                {
                     Ok(_) => break,
                     Err(_) => continue,
                 }
@@ -209,7 +213,13 @@ async fn normal_message(ctx: &Context, msg: &Message) {
         let listener_blacklisted_users_lock = get_listener_blacklisted_users_lock(ctx).await;
         let listener_blacklisted_users = listener_blacklisted_users_lock.read().await;
         for (listener, response) in listener_response.iter() {
-            if msg.content.to_lowercase().contains(listener)
+            if msg
+                .content
+                .to_lowercase()
+                .split(' ')
+                .map(|s| s.to_string())
+                .collect::<Vec<String>>()
+                .contains(&listener)
                 && !listener_blacklisted_users.contains(&msg.author.id.0)
             {
                 send_message_to_first_available_channel(
