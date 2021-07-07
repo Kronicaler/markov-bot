@@ -4,6 +4,7 @@ use std::{
     sync::Arc,
 };
 
+use regex::Regex;
 use serenity::{
     client::Context,
     model::{
@@ -95,6 +96,15 @@ pub async fn set_listener_command(
 
     if let ApplicationCommandInteractionDataOptionValue::String(listener) = listener {
         if let ApplicationCommandInteractionDataOptionValue::String(response) = response {
+            let user_regex = Regex::new(r"<@!?(\d+)>").unwrap();
+            if user_regex.is_match(response)
+                || user_regex.is_match(listener)
+                || response.contains("@everyone")
+                || response.contains("@here")
+            {
+                return "can't add a mention".to_string();
+            }
+            
             let listener_response_lock = get_listener_response_lock(ctx).await;
 
             let mut listener_response = listener_response_lock.write().await;
