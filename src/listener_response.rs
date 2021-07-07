@@ -1,6 +1,20 @@
-use std::{collections::{HashMap, HashSet}, fs, sync::Arc};
+use std::{
+    collections::{HashMap, HashSet},
+    fs,
+    sync::Arc,
+};
 
-use serenity::{client::Context, model::{interactions::{ApplicationCommandInteractionData, ApplicationCommandInteractionDataOptionValue}, prelude::User}, prelude::{RwLock, TypeMapKey}};
+use serenity::{
+    client::Context,
+    model::{
+        interactions::{
+            ApplicationCommandInteractionData, ApplicationCommandInteractionDataOptionValue,
+            ApplicationCommandOptionType,
+        },
+        prelude::User,
+    },
+    prelude::{RwLock, TypeMapKey},
+};
 
 pub const LISTENER_RESPONSE_PATH: &str = "data/action response.json";
 pub const USER_LISTENER_BLACKLIST_PATH: &str = "data/user listener blacklist.json";
@@ -11,7 +25,7 @@ impl TypeMapKey for ListenerResponse {
 }
 
 pub struct UsersBlacklistedFromListener;
-impl TypeMapKey for UsersBlacklistedFromListener{
+impl TypeMapKey for UsersBlacklistedFromListener {
     type Value = Arc<RwLock<HashSet<u64>>>;
 }
 
@@ -70,7 +84,10 @@ pub async fn remove_listener_command(
     return "Something went wrong".to_string();
 }
 
-pub async fn set_listener_command(ctx: &Context, data: &ApplicationCommandInteractionData) -> String {
+pub async fn set_listener_command(
+    ctx: &Context,
+    data: &ApplicationCommandInteractionData,
+) -> String {
     let listener = data
         .options
         .get(0)
@@ -117,15 +134,21 @@ pub fn save_listener_response_to_file(action_response: HashMap<String, String>) 
 }
 
 pub async fn blacklist_user_from_listener(ctx: &Context, user: &User) -> String {
-    let users_blacklisted_from_listener_lock = ctx.data.read().await.get::<UsersBlacklistedFromListener>().unwrap().clone();
+    let users_blacklisted_from_listener_lock = ctx
+        .data
+        .read()
+        .await
+        .get::<UsersBlacklistedFromListener>()
+        .unwrap()
+        .clone();
 
     let mut users_blacklisted_from_listener = users_blacklisted_from_listener_lock.write().await;
 
-    if !users_blacklisted_from_listener.contains(&user.id.0){
+    if !users_blacklisted_from_listener.contains(&user.id.0) {
         users_blacklisted_from_listener.insert(user.id.0);
         save_user_listener_blacklist_to_file(users_blacklisted_from_listener.clone());
         return "Added user to the blacklist".to_string();
-    }else{
+    } else {
         users_blacklisted_from_listener.remove(&user.id.0);
         save_user_listener_blacklist_to_file(users_blacklisted_from_listener.clone());
         return "Removed user from the blacklist".to_string();
@@ -138,4 +161,33 @@ pub fn save_user_listener_blacklist_to_file(blacklist: HashSet<u64>) {
         serde_json::to_string(&blacklist).unwrap(),
     )
     .unwrap();
+}
+
+pub fn create_listener_commands(
+    commands: &mut serenity::builder::CreateApplicationCommands,
+) -> &mut serenity::builder::CreateApplicationCommands {
+    commands.create_application_command(|command| {
+            command.name("setlistener").description(
+                "Start a listener for a word or list of words and a response whenever someone says that word",
+            )
+            .create_option(|option|{
+                option.name("listenedword").description("What word to listen for").kind(ApplicationCommandOptionType::String).required(true)
+            })
+            .create_option(|option|{
+                option.name("response").description("What the response should be when the listened word is said")
+                .kind(ApplicationCommandOptionType::String)
+                .required(true)
+            })
+        })
+        .create_application_command(|command| {
+            command.name("removelistener").description("Remove a listener from a word").create_option(|option|{
+                option.name("listenedword").description("The word to remove").kind(ApplicationCommandOptionType::String).required(true)
+            })
+        })
+        .create_application_command(|command|{
+            command.name("listeners").description("List all of the listeners")
+        })
+        .create_application_command(|command|{
+            command.name("blacklistlistener").description("The bot won't respond to your messages if you trip off a listener")
+        })
 }

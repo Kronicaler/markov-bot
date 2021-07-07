@@ -120,39 +120,16 @@ async fn create_global_commands(ctx: &Context) {
                     })
             })
             .create_application_command(|command| {
-                command
-                    .name("blacklistedmarkov")
-                    .description("Get the list of blacklisted users from the markov learning program")
+                command.name("blacklistedmarkov").description(
+                    "Get the list of blacklisted users from the markov learning program",
+                )
             })
             .create_application_command(|command| {
                 command.name("blacklistmarkov").description(
                     "Blacklist yourself if you don't want me to save and learn from your messages",
                 )
-            })
-            .create_application_command(|command| {
-                command.name("setlistener").description(
-                    "Start a listener for a word or list of words and a response whenever someone says that word",
-                )
-                .create_option(|option|{
-                    option.name("listenedword").description("What word to listen for").kind(ApplicationCommandOptionType::String).required(true)
-                })
-                .create_option(|option|{
-                    option.name("response").description("What the response should be when the listened word is said")
-                    .kind(ApplicationCommandOptionType::String)
-                    .required(true)
-                })
-            })
-            .create_application_command(|command| {
-                command.name("removelistener").description("Remove a listener from a word").create_option(|option|{
-                    option.name("listenedword").description("The word to remove").kind(ApplicationCommandOptionType::String).required(true)
-                })
-            })
-            .create_application_command(|command|{
-                command.name("listeners").description("List all of the listeners")
-            })
-            .create_application_command(|command|{
-                command.name("blacklistlistener").description("The bot won't respond to your messages if you trip off a listener")
-            })
+            });
+        create_listener_commands(commands)
     })
     .await
     .unwrap();
