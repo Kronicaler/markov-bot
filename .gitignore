@@ -1,0 +1,6 @@
+/target
+/data
+doki_bot.exe
+.gitignore
+markov data set backup.txt
+.env
