@@ -11,30 +11,11 @@ use listener_response::*;
 use markov_chain_funcs::*;
 use markov_strings::{self, InputData, Markov};
 use regex::Captures;
-use serenity::{
-    async_trait,
-    framework::{
+use serenity::{async_trait, framework::{
         standard::macros::{group, hook},
         StandardFramework,
-    },
-    http::Http,
-    model::{
-        channel::Message,
-        gateway::Ready,
-        id::{GuildId, UserId},
-        interactions::*,
-        prelude::{Activity, User},
-    },
-    prelude::*,
-};
-use std::{
-    collections::HashSet,
-    env,
-    fs::{self, OpenOptions},
-    io::Write,
-    path::Path,
-    sync::Arc,
-};
+    }, http::Http, model::{channel::{GuildChannel, Message}, gateway::Ready, guild::Guild, id::{GuildId, UserId}, interactions::*, prelude::{Activity, User}}, prelude::*};
+use std::{collections::HashSet, env, fs::{self, OpenOptions}, io::Write, path::Path, sync::Arc};
 
 
 
@@ -173,6 +154,16 @@ fn create_file_if_missing<'a>(path: &'a str, contents: &str) -> &'a str {
     return path;
 }
 
+async fn send_message_to_first_available_channel(ctx: &Context, guild:&Guild, message:&str){
+    let channels: Vec<GuildChannel> = guild.channels.iter().map(|(_,channel)|{channel.clone()}).collect();
+    for channel in channels {
+        match channel.id.say(&ctx.http, message.to_string()).await {
+            Ok(_) => break,
+            Err(_) => continue,
+        }
+    }
+}
+
 #[group]
 #[commands(ping)]
 struct General;
@@ -189,7 +180,7 @@ async fn normal_message(ctx: &Context, msg: &Message) {
             if msg.content.to_lowercase().contains(listener)
                 && !listener_blacklisted_users.contains(&msg.author.id.0)
             {
-                msg.channel_id.say(&ctx.http, response).await.unwrap();
+                send_message_to_first_available_channel(ctx, &msg.guild(&ctx.cache).await.unwrap(), response).await;
                 return;
             }
         }
