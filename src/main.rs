@@ -207,19 +207,20 @@ struct General;
 #[hook]
 async fn normal_message(ctx: &Context, msg: &Message) {
     should_add_message_to_markov_file(&msg, &ctx).await;
+    let words_in_message = msg
+        .content
+        .to_lowercase()
+        .split(' ')
+        .map(|s| s.to_string())
+        .collect::<Vec<String>>();
     {
         let listener_response_lock = get_listener_response_lock(ctx).await;
         let listener_response = listener_response_lock.read().await;
         let listener_blacklisted_users_lock = get_listener_blacklisted_users_lock(ctx).await;
         let listener_blacklisted_users = listener_blacklisted_users_lock.read().await;
+
         for (listener, response) in listener_response.iter() {
-            if msg
-                .content
-                .to_lowercase()
-                .split(' ')
-                .map(|s| s.to_string())
-                .collect::<Vec<String>>()
-                .contains(&listener)
+            if words_in_message.contains(&listener)
                 && !listener_blacklisted_users.contains(&msg.author.id.0)
             {
                 send_message_to_first_available_channel(
@@ -235,13 +236,6 @@ async fn normal_message(ctx: &Context, msg: &Message) {
     }
 
     if msg.mentions_me(&ctx.http).await.unwrap() && !msg.author.bot {
-        let words_in_message = msg
-            .content
-            .to_lowercase()
-            .split(' ')
-            .map(|s| s.to_string())
-            .collect::<Vec<String>>();
-
         if words_in_message.contains(&"stfu".to_string())
             || msg.content.to_lowercase().contains("shut up")
             || msg.content.to_lowercase().contains("shut the fuck up")
