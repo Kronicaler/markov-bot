@@ -1,10 +1,12 @@
 #![windows_subsystem = "windows"]
 mod commands;
+mod global_data;
 mod listener_response;
 mod markov_chain_funcs;
 mod unit_tests;
 
 use commands::example::*;
+use global_data::*;
 use listener_response::*;
 use markov_chain_funcs::*;
 use markov_strings::{self, InputData, Markov};
@@ -26,13 +28,15 @@ use serenity::{
     prelude::*,
 };
 use std::{
-    collections::{HashMap, HashSet},
+    collections::HashSet,
     env,
     fs::{self, OpenOptions},
     io::Write,
     path::Path,
     sync::Arc,
 };
+
+
 
 const KRONI_ID: u64 = 594772815283093524;
 
@@ -176,27 +180,14 @@ struct General;
 #[hook]
 async fn normal_message(ctx: &Context, msg: &Message) {
     should_add_message_to_markov_file(&msg, &ctx).await;
-
-    let action_response_lock = ctx
-        .data
-        .read()
-        .await
-        .get::<ListenerResponse>()
-        .expect("Expected ListenerResponse in TypeMap.")
-        .clone();
-    let user_listener_blacklist_lock = ctx
-        .data
-        .read()
-        .await
-        .get::<UsersBlacklistedFromListener>()
-        .expect("Expected UsersBlacklistedFromListener in TypeMap.")
-        .clone();
     {
-        let action_response = action_response_lock.read().await;
-        let user_listener_blacklist = user_listener_blacklist_lock.read().await;
-        for (action, response) in action_response.iter() {
-            if msg.content.to_lowercase().contains(action)
-                && !user_listener_blacklist.contains(&msg.author.id.0)
+        let listener_response_lock = get_listener_response_lock(ctx).await;
+        let listener_response = listener_response_lock.read().await;
+        let listener_blacklisted_users_lock = get_listener_blacklisted_users_lock(ctx).await;
+        let listener_blacklisted_users = listener_blacklisted_users_lock.read().await;
+        for (listener, response) in listener_response.iter() {
+            if msg.content.to_lowercase().contains(listener)
+                && !listener_blacklisted_users.contains(&msg.author.id.0)
             {
                 msg.channel_id.say(&ctx.http, response).await.unwrap();
                 return;
@@ -249,45 +240,6 @@ async fn normal_message(ctx: &Context, msg: &Message) {
 
         send_markov_text(ctx, msg).await;
     }
-}
-
-async fn init_global_data_for_client(client: &Client) {
-    let mut data = client.data.write().await;
-
-    let markov;
-    if cfg!(debug_assertions) {
-        println!("Debugging enabled");
-        markov = init_markov_debug();
-    } else {
-        println!("Debugging disabled");
-        markov = init_markov();
-    }
-
-    let blacklisted_channels_in_file: HashSet<u64> = serde_json::from_str(
-        &fs::read_to_string(create_file_if_missing(BLACKLISTED_CHANNELS_PATH, "[]"))
-            .expect("couldn't read file"),
-    )
-    .unwrap();
-    let blacklisted_users_in_file: HashSet<u64> = serde_json::from_str(
-        &fs::read_to_string(create_file_if_missing(BLACKLISTED_USERS_PATH, "[]"))
-            .expect("couldn't read file"),
-    )
-    .unwrap();
-    let action_response: HashMap<String, String> = serde_json::from_str(
-        &fs::read_to_string(create_file_if_missing(LISTENER_RESPONSE_PATH, "{}")).unwrap(),
-    )
-    .unwrap();
-    let user_listener_blacklist: HashSet<u64> = serde_json::from_str(
-        &fs::read_to_string(create_file_if_missing(USER_LISTENER_BLACKLIST_PATH, "[]"))
-            .expect("couldn't read file"),
-    )
-    .unwrap();
-
-    data.insert::<MarkovChain>(Arc::new(RwLock::new(markov)));
-    data.insert::<BlacklistedChannels>(Arc::new(RwLock::new(blacklisted_channels_in_file)));
-    data.insert::<BlacklistedUsers>(Arc::new(RwLock::new(blacklisted_users_in_file)));
-    data.insert::<ListenerResponse>(Arc::new(RwLock::new(action_response)));
-    data.insert::<UsersBlacklistedFromListener>(Arc::new(RwLock::new(user_listener_blacklist)));
 }
 
 #[tokio::main]

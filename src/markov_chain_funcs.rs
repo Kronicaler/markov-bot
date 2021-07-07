@@ -10,14 +10,14 @@ pub const BLACKLISTED_CHANNELS_PATH: &str = "data/markov data/blacklisted channe
 pub const BLACKLISTED_USERS_PATH: &str = "data/markov data/blacklisted users.json";
 
 ///user Ids that the bot will not learn from
-pub struct BlacklistedUsers;
-impl TypeMapKey for BlacklistedUsers {
+pub struct MarkovBlacklistedUsers;
+impl TypeMapKey for MarkovBlacklistedUsers {
     type Value = Arc<RwLock<HashSet<u64>>>;
 }
 
 ///channel Ids that the bot will not learn from
-pub struct BlacklistedChannels;
-impl TypeMapKey for BlacklistedChannels {
+pub struct MarkovBlacklistedChannels;
+impl TypeMapKey for MarkovBlacklistedChannels {
     type Value = Arc<RwLock<HashSet<u64>>>;
 }
 
@@ -29,26 +29,14 @@ impl TypeMapKey for MarkovChain {
 pub async fn should_add_message_to_markov_file(msg: &Message, ctx: &Context) {
     if let Some(_) = msg.channel_id.to_channel(&ctx.http).await.unwrap().guild() {
         {
-            let blacklisted_users_lock = {
-                let data_read = ctx.data.read().await;
-                data_read
-                    .get::<BlacklistedUsers>()
-                    .expect("Expected BlacklistedUsers in TypeMap.")
-                    .clone()
-            };
-            let blacklisted_channels_lock = {
-                let data_read = ctx.data.read().await;
-                data_read
-                    .get::<BlacklistedChannels>()
-                    .expect("Expected BlacklistedUsers in TypeMap.")
-                    .clone()
-            };
+            let markov_blacklisted_users_lock = get_markov_blacklisted_users_lock(ctx).await;
+            let markov_blacklisted_channels_lock = get_markov_blacklisted_channels_lock(ctx).await;
 
-            if !blacklisted_channels_lock
+            if !markov_blacklisted_channels_lock
                 .read()
                 .await
                 .contains(&msg.channel_id.0)
-                && !blacklisted_users_lock
+                && !markov_blacklisted_users_lock
                     .read()
                     .await
                     .contains(&msg.author.id.0)
@@ -82,13 +70,7 @@ fn clean_markov_file(msg: Message) {
 }
 
 pub async fn send_markov_text(ctx: &Context, msg: &Message) {
-    let markov_lock = {
-        let data_read = ctx.data.read().await;
-        data_read
-            .get::<MarkovChain>()
-            .expect("Expected MarkovChain in TypeMap.")
-            .clone()
-    };
+    let markov_lock = get_markov_chain_lock(ctx).await;
 
     let markov_chain = markov_lock.read().await;
 
@@ -234,13 +216,7 @@ fn filter_message_for_markov_file(str: String, msg: &Message) -> String {
 }
 
 pub async fn add_or_remove_user_from_blacklist(user: &User, ctx: &Context) -> String {
-    let blacklisted_users_lock = {
-        let data_read = ctx.data.read().await;
-        data_read
-            .get::<BlacklistedUsers>()
-            .expect("Expected BlacklistedUsers in TypeMap.")
-            .clone()
-    };
+    let blacklisted_users_lock = get_markov_blacklisted_users_lock(ctx).await;
     let mut blacklisted_users = blacklisted_users_lock.write().await;
 
     match !blacklisted_users.contains(&user.id.0) {
@@ -295,13 +271,7 @@ pub async fn blacklist_user_command(msg: &Message, ctx: &Context) -> String {
 
 pub async fn blacklisted_command(ctx: &Context) -> String {
     let mut blacklisted_users = Vec::new();
-    let blacklisted_users_lock = {
-        let data_read = ctx.data.read().await;
-        data_read
-            .get::<BlacklistedUsers>()
-            .expect("Expected BlacklistedUsers in TypeMap.")
-            .clone()
-    };
+    let blacklisted_users_lock = get_markov_blacklisted_users_lock(ctx).await;
 
     for user_id in blacklisted_users_lock.read().await.iter() {
         blacklisted_users.push(ctx.http.get_user(user_id.clone()).await.unwrap().name);

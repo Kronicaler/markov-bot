@@ -16,6 +16,8 @@ use serenity::{
     prelude::{RwLock, TypeMapKey},
 };
 
+use crate::global_data::*;
+
 pub const LISTENER_RESPONSE_PATH: &str = "data/action response.json";
 pub const USER_LISTENER_BLACKLIST_PATH: &str = "data/user listener blacklist.json";
 
@@ -24,24 +26,18 @@ impl TypeMapKey for ListenerResponse {
     type Value = Arc<RwLock<HashMap<String, String>>>;
 }
 
-pub struct UsersBlacklistedFromListener;
-impl TypeMapKey for UsersBlacklistedFromListener {
+pub struct ListenerBlacklistedUsers;
+impl TypeMapKey for ListenerBlacklistedUsers {
     type Value = Arc<RwLock<HashSet<u64>>>;
 }
 
 pub async fn list_listeners(ctx: &Context) -> String {
-    let action_response_lock = ctx
-        .data
-        .read()
-        .await
-        .get::<ListenerResponse>()
-        .unwrap()
-        .clone();
-    let action_response = action_response_lock.read().await;
+    let listener_response_lock = get_listener_response_lock(ctx).await;
+    let listener_response = listener_response_lock.read().await;
 
     let mut message = String::new();
 
-    for (listener, _) in action_response.iter() {
+    for (listener, _) in listener_response.iter() {
         message += &format!("{}, ", listener);
     }
     message.pop();
@@ -61,20 +57,14 @@ pub async fn remove_listener_command(
         .resolved
         .as_ref()
         .unwrap();
-    let action_response_lock = ctx
-        .data
-        .write()
-        .await
-        .get::<ListenerResponse>()
-        .expect("expected ListenerResponse in TypeMap")
-        .clone();
+    let listener_response_lock = get_listener_response_lock(ctx).await;
 
-    let mut action_response = action_response_lock.write().await;
+    let mut listener_response = listener_response_lock.write().await;
 
     if let ApplicationCommandInteractionDataOptionValue::String(listener) = listener {
-        if action_response.contains_key(listener) {
-            action_response.remove(listener);
-            save_listener_response_to_file(action_response.clone());
+        if listener_response.contains_key(listener) {
+            listener_response.remove(listener);
+            save_listener_response_to_file(listener_response.clone());
             return "Successfully removed the listener".to_string();
         } else {
             return "That listener doesn't exist".to_string();
@@ -105,44 +95,32 @@ pub async fn set_listener_command(
 
     if let ApplicationCommandInteractionDataOptionValue::String(listener) = listener {
         if let ApplicationCommandInteractionDataOptionValue::String(response) = response {
-            let action_response_lock = ctx
-                .data
-                .write()
-                .await
-                .get::<ListenerResponse>()
-                .expect("expected ListenerResponse in TypeMap")
-                .clone();
+            let listener_response_lock = get_listener_response_lock(ctx).await;
 
-            let mut action_response = action_response_lock.write().await;
-            action_response.insert(
+            let mut listener_response = listener_response_lock.write().await;
+            listener_response.insert(
                 listener.to_lowercase().trim().to_string(),
                 response.trim().to_string(),
             );
-            save_listener_response_to_file(action_response.clone());
+            save_listener_response_to_file(listener_response.clone());
             return "Set listener".to_string();
         }
     }
     return "Couldn't set listener".to_string();
 }
 
-pub fn save_listener_response_to_file(action_response: HashMap<String, String>) {
+pub fn save_listener_response_to_file(listener_response: HashMap<String, String>) {
     fs::write(
         LISTENER_RESPONSE_PATH,
-        serde_json::to_string(&action_response).unwrap(),
+        serde_json::to_string(&listener_response).unwrap(),
     )
     .unwrap();
 }
 
 pub async fn blacklist_user_from_listener(ctx: &Context, user: &User) -> String {
-    let users_blacklisted_from_listener_lock = ctx
-        .data
-        .read()
-        .await
-        .get::<UsersBlacklistedFromListener>()
-        .unwrap()
-        .clone();
+    let listener_blacklisted_users_lock = get_listener_blacklisted_users_lock(ctx).await;
 
-    let mut users_blacklisted_from_listener = users_blacklisted_from_listener_lock.write().await;
+    let mut users_blacklisted_from_listener = listener_blacklisted_users_lock.write().await;
 
     if !users_blacklisted_from_listener.contains(&user.id.0) {
         users_blacklisted_from_listener.insert(user.id.0);
