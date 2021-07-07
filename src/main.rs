@@ -187,7 +187,7 @@ async fn send_message_to_first_available_channel(
                 .map(|(_, channel)| channel.clone())
                 .collect();
             for channel in channels {
-                match channel.id.say(&ctx.http, msg.author.mention().to_string() + message).await {
+                match channel.id.say(&ctx.http, msg.author.mention().to_string() + " " + message).await {
                     Ok(_) => break,
                     Err(_) => continue,
                 }
