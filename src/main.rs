@@ -3,9 +3,11 @@ mod commands;
 mod global_data;
 mod listener_response;
 mod markov_chain_funcs;
+mod slash_commands;
 mod unit_tests;
 
 use commands::example::*;
+use doki_bot::*;
 use global_data::*;
 use listener_response::*;
 use markov_chain_funcs::*;
@@ -19,22 +21,20 @@ use serenity::{
     },
     http::Http,
     model::{
-        channel::{GuildChannel, Message},
+        channel::Message,
         gateway::Ready,
-        guild::Guild,
         id::{GuildId, UserId},
         interactions::*,
         prelude::{Activity, User},
     },
     prelude::*,
 };
+use slash_commands::*;
 use std::{
     collections::HashSet,
     env,
     fs::{self, OpenOptions},
     io::Write,
-    path::Path,
-    sync::Arc,
 };
 
 const KRONI_ID: u64 = 594772815283093524;
@@ -71,135 +71,6 @@ impl EventHandler for Handler {
     }
 }
 
-async fn command_responses(
-    data: &ApplicationCommandInteractionData,
-    ctx: Context,
-    interaction: &Interaction,
-) {
-    let content = match data.name.as_str() {
-        "ping" => "Hey, I'm alive!".to_string(),
-        "id" => id_command(data),
-        "blacklistedmarkov" => blacklisted_command(&ctx).await,
-        "blacklistmarkov" => {
-            add_or_remove_user_from_blacklist(&interaction.clone().member.unwrap().user, &ctx).await
-        }
-        "test-command" => "here be future tests".to_string(),
-        "setlistener" => set_listener_command(&ctx, data).await,
-        "removelistener" => remove_listener_command(&ctx, data).await,
-        "listeners" => list_listeners(&ctx).await,
-        "blacklistlistener" => {
-            blacklist_user_from_listener(&ctx, &interaction.member.clone().unwrap().user).await
-        }
-        _ => "not implemented :(".to_string(),
-    };
-    if let Err(why) = interaction
-        .create_interaction_response(&ctx.http, |response| {
-            response
-                .kind(InteractionResponseType::ChannelMessageWithSource)
-                .interaction_response_data(|message| message.content(content))
-        })
-        .await
-    {
-        println!("Cannot respond to slash command: {}", why);
-    }
-}
-
-async fn create_global_commands(ctx: &Context) {
-    ApplicationCommand::create_global_application_commands(&ctx.http, |commands| {
-        commands
-            .create_application_command(|command| {
-                command.name("ping").description("A ping command")
-            })
-            .create_application_command(|command| {
-                command
-                    .name("id")
-                    .description("Get a user id")
-                    .create_option(|option| {
-                        option
-                            .name("id")
-                            .description("The user to lookup")
-                            .kind(ApplicationCommandOptionType::User)
-                            .required(true)
-                    })
-            })
-            .create_application_command(|command| {
-                command.name("blacklistedmarkov").description(
-                    "Get the list of blacklisted users from the markov learning program",
-                )
-            })
-            .create_application_command(|command| {
-                command.name("blacklistmarkov").description(
-                    "Blacklist yourself if you don't want me to save and learn from your messages",
-                )
-            });
-        create_listener_commands(commands)
-    })
-    .await
-    .unwrap();
-}
-
-fn id_command(data: &ApplicationCommandInteractionData) -> String {
-    let options = data
-        .options
-        .get(0)
-        .expect("Expected user option")
-        .resolved
-        .as_ref()
-        .expect("Expected user object");
-    if let ApplicationCommandInteractionDataOptionValue::User(user, _member) = options {
-        format!("{}'s id is {}", user, user.id)
-    } else {
-        "Please provide a valid user".to_string()
-    }
-}
-
-fn get_first_mentioned_user(msg: &Message) -> Option<&User> {
-    for user in &msg.mentions {
-        if user.bot {
-            continue;
-        }
-        return Option::Some(user);
-    }
-    return None;
-}
-
-///checks if a file exists and if it doesn't it initializes it
-///otherwise it just returns the path back
-fn create_file_if_missing<'a>(path: &'a str, contents: &str) -> &'a str {
-    if !Path::new(path).exists() {
-        fs::write(path, contents).unwrap();
-    }
-    return path;
-}
-
-async fn send_message_to_first_available_channel(
-    ctx: &Context,
-    guild: &Guild,
-    message: &str,
-    msg: &Message,
-) {
-    match msg.reply_ping(&ctx.http, message).await {
-        Ok(_) => return,
-        Err(_) => {
-            let channels: Vec<GuildChannel> = guild
-                .channels
-                .iter()
-                .map(|(_, channel)| channel.clone())
-                .collect();
-            for channel in channels {
-                match channel
-                    .id
-                    .say(&ctx.http, msg.author.mention().to_string() + " " + message)
-                    .await
-                {
-                    Ok(_) => break,
-                    Err(_) => continue,
-                }
-            }
-        }
-    }
-}
-
 #[group]
 #[commands(ping)]
 struct General;
@@ -213,26 +84,10 @@ async fn normal_message(ctx: &Context, msg: &Message) {
         .split(' ')
         .map(|s| s.to_string())
         .collect::<Vec<String>>();
-    {
-        let listener_response_lock = get_listener_response_lock(ctx).await;
-        let listener_response = listener_response_lock.read().await;
-        let listener_blacklisted_users_lock = get_listener_blacklisted_users_lock(ctx).await;
-        let listener_blacklisted_users = listener_blacklisted_users_lock.read().await;
 
-        for (listener, response) in listener_response.iter() {
-            if words_in_message.contains(&listener)
-                && !listener_blacklisted_users.contains(&msg.author.id.0)
-            {
-                send_message_to_first_available_channel(
-                    ctx,
-                    &msg.guild(&ctx.cache).await.unwrap(),
-                    response,
-                    msg,
-                )
-                .await;
-                return;
-            }
-        }
+    if let Some(response) = check_for_listened_words(ctx, &words_in_message, &msg.author.id).await {
+        send_message_to_first_available_channel(ctx, msg, &response).await;
+        return;
     }
 
     if msg.mentions_me(&ctx.http).await.unwrap() && !msg.author.bot {
@@ -265,7 +120,10 @@ async fn normal_message(ctx: &Context, msg: &Message) {
             return;
         }
 
-        if msg.author.id == KRONI_ID && msg.content.to_lowercase().contains("blacklist user") {
+        if msg.author.id == KRONI_ID
+            && msg.content.to_lowercase().contains("blacklist user")
+            && msg.content.to_lowercase().contains("markov")
+        {
             let message = blacklist_user_command(&msg, &ctx).await;
             msg.channel_id.say(&ctx.http, message).await.unwrap();
             return;

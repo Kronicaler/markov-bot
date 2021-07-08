@@ -1,36 +1,22 @@
 use std::{
     collections::{HashMap, HashSet},
     fs,
-    sync::Arc,
 };
 
 use regex::Regex;
 use serenity::{
     client::Context,
     model::{
+        id::UserId,
         interactions::{
             ApplicationCommandInteractionData, ApplicationCommandInteractionDataOptionValue,
             ApplicationCommandOptionType,
         },
         prelude::User,
     },
-    prelude::{RwLock, TypeMapKey},
 };
 
 use crate::global_data::*;
-
-pub const LISTENER_RESPONSE_PATH: &str = "data/action response.json";
-pub const USER_LISTENER_BLACKLIST_PATH: &str = "data/user listener blacklist.json";
-
-pub struct ListenerResponse;
-impl TypeMapKey for ListenerResponse {
-    type Value = Arc<RwLock<HashMap<String, String>>>;
-}
-
-pub struct ListenerBlacklistedUsers;
-impl TypeMapKey for ListenerBlacklistedUsers {
-    type Value = Arc<RwLock<HashSet<u64>>>;
-}
 
 pub async fn list_listeners(ctx: &Context) -> String {
     let listener_response_lock = get_listener_response_lock(ctx).await;
@@ -104,7 +90,7 @@ pub async fn set_listener_command(
             {
                 return "can't add a mention".to_string();
             }
-            
+
             let listener_response_lock = get_listener_response_lock(ctx).await;
 
             let mut listener_response = listener_response_lock.write().await;
@@ -149,6 +135,27 @@ pub fn save_user_listener_blacklist_to_file(blacklist: HashSet<u64>) {
         serde_json::to_string(&blacklist).unwrap(),
     )
     .unwrap();
+}
+
+///Checks for all the listened words in the message
+///
+///If a listened word is found it returns the response
+pub async fn check_for_listened_words(
+    ctx: &Context,
+    words_in_message: &Vec<String>,
+    user_id: &UserId,
+) -> Option<String> {
+    let listener_response_lock = get_listener_response_lock(ctx).await;
+    let listener_response = listener_response_lock.read().await;
+    let listener_blacklisted_users_lock = get_listener_blacklisted_users_lock(ctx).await;
+    let listener_blacklisted_users = listener_blacklisted_users_lock.read().await;
+    for (listener, response) in listener_response.iter() {
+        if words_in_message.contains(&listener) && !listener_blacklisted_users.contains(&user_id.0)
+        {
+            return Some(response.to_string());
+        }
+    }
+    return None;
 }
 
 pub fn create_listener_commands(
