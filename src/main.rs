@@ -6,6 +6,7 @@ mod markov_chain_funcs;
 mod unit_tests;
 
 use commands::example::*;
+use doki_bot::*;
 use global_data::*;
 use listener_response::*;
 use markov_chain_funcs::*;
@@ -19,9 +20,8 @@ use serenity::{
     },
     http::Http,
     model::{
-        channel::{GuildChannel, Message},
+        channel::Message,
         gateway::Ready,
-        guild::Guild,
         id::{GuildId, UserId},
         interactions::*,
         prelude::{Activity, User},
@@ -33,8 +33,6 @@ use std::{
     env,
     fs::{self, OpenOptions},
     io::Write,
-    path::Path,
-    sync::Arc,
 };
 
 const KRONI_ID: u64 = 594772815283093524;
@@ -137,69 +135,6 @@ async fn create_global_commands(ctx: &Context) {
     .await
     .unwrap();
 }
-
-fn id_command(data: &ApplicationCommandInteractionData) -> String {
-    let options = data
-        .options
-        .get(0)
-        .expect("Expected user option")
-        .resolved
-        .as_ref()
-        .expect("Expected user object");
-    if let ApplicationCommandInteractionDataOptionValue::User(user, _member) = options {
-        format!("{}'s id is {}", user, user.id)
-    } else {
-        "Please provide a valid user".to_string()
-    }
-}
-
-fn get_first_mentioned_user(msg: &Message) -> Option<&User> {
-    for user in &msg.mentions {
-        if user.bot {
-            continue;
-        }
-        return Option::Some(user);
-    }
-    return None;
-}
-
-///checks if a file exists and if it doesn't it initializes it
-///otherwise it just returns the path back
-fn create_file_if_missing<'a>(path: &'a str, contents: &str) -> &'a str {
-    if !Path::new(path).exists() {
-        fs::write(path, contents).unwrap();
-    }
-    return path;
-}
-
-async fn send_message_to_first_available_channel(
-    ctx: &Context,
-    guild: &Guild,
-    message: &str,
-    msg: &Message,
-) {
-    match msg.channel_id.say(&ctx.http, message).await {
-        Ok(_) => return,
-        Err(_) => {
-            let channels: Vec<GuildChannel> = guild
-                .channels
-                .iter()
-                .map(|(_, channel)| channel.clone())
-                .collect();
-            for channel in channels {
-                match channel
-                    .id
-                    .say(&ctx.http, msg.author.mention().to_string() + " " + message)
-                    .await
-                {
-                    Ok(_) => break,
-                    Err(_) => continue,
-                }
-            }
-        }
-    }
-}
-
 #[group]
 #[commands(ping)]
 struct General;
@@ -213,26 +148,10 @@ async fn normal_message(ctx: &Context, msg: &Message) {
         .split(' ')
         .map(|s| s.to_string())
         .collect::<Vec<String>>();
-    {
-        let listener_response_lock = get_listener_response_lock(ctx).await;
-        let listener_response = listener_response_lock.read().await;
-        let listener_blacklisted_users_lock = get_listener_blacklisted_users_lock(ctx).await;
-        let listener_blacklisted_users = listener_blacklisted_users_lock.read().await;
 
-        for (listener, response) in listener_response.iter() {
-            if words_in_message.contains(&listener)
-                && !listener_blacklisted_users.contains(&msg.author.id.0)
-            {
-                send_message_to_first_available_channel(
-                    ctx,
-                    &msg.guild(&ctx.cache).await.unwrap(),
-                    response,
-                    msg,
-                )
-                .await;
-                return;
-            }
-        }
+    if let Some(response) = check_for_listened_words(ctx, &words_in_message, &msg.author.id).await {
+        send_message_to_first_available_channel(ctx, msg, &response).await;
+        return;
     }
 
     if msg.mentions_me(&ctx.http).await.unwrap() && !msg.author.bot {
@@ -265,7 +184,10 @@ async fn normal_message(ctx: &Context, msg: &Message) {
             return;
         }
 
-        if msg.author.id == KRONI_ID && msg.content.to_lowercase().contains("blacklist user") {
+        if msg.author.id == KRONI_ID
+            && msg.content.to_lowercase().contains("blacklist user")
+            && msg.content.to_lowercase().contains("markov")
+        {
             let message = blacklist_user_command(&msg, &ctx).await;
             msg.channel_id.say(&ctx.http, message).await.unwrap();
             return;
