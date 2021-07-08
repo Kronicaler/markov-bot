@@ -1,4 +1,4 @@
-//#![windows_subsystem = "windows"]
+#![windows_subsystem = "windows"]
 mod commands;
 mod global_data;
 mod listener_response;
@@ -178,7 +178,7 @@ async fn send_message_to_first_available_channel(
     message: &str,
     msg: &Message,
 ) {
-    match msg.channel_id.say(&ctx.http, message).await {
+    match msg.reply_ping(&ctx.http, message).await {
         Ok(_) => return,
         Err(_) => {
             let channels: Vec<GuildChannel> = guild
