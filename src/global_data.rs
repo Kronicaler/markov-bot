@@ -5,32 +5,38 @@ use serenity::{client::Context, prelude::RwLock};
 
 use super::*;
 
+pub struct MarkovChain;
+impl TypeMapKey for MarkovChain {
+    type Value = Arc<RwLock<Markov>>;
+}
+pub const MARKOV_DATA_SET_PATH: &str = "data/markov data/markov data set.txt";
+pub const MARKOV_EXPORT_PATH: &str = "data/markov data/markov export.json";
+
 ///user Ids that the bot will not learn from
 pub struct MarkovBlacklistedUsers;
 impl TypeMapKey for MarkovBlacklistedUsers {
     type Value = Arc<RwLock<HashSet<u64>>>;
 }
+pub const BLACKLISTED_USERS_PATH: &str = "data/markov data/blacklisted users.json";
 
 ///channel Ids that the bot will not learn from
 pub struct MarkovBlacklistedChannels;
 impl TypeMapKey for MarkovBlacklistedChannels {
     type Value = Arc<RwLock<HashSet<u64>>>;
 }
-
-pub struct MarkovChain;
-impl TypeMapKey for MarkovChain {
-    type Value = Arc<RwLock<Markov>>;
-}
+pub const BLACKLISTED_CHANNELS_PATH: &str = "data/markov data/blacklisted channels.json";
 
 pub struct ListenerResponse;
 impl TypeMapKey for ListenerResponse {
     type Value = Arc<RwLock<HashMap<String, String>>>;
 }
+pub const LISTENER_RESPONSE_PATH: &str = "data/action response.json";
 
 pub struct ListenerBlacklistedUsers;
 impl TypeMapKey for ListenerBlacklistedUsers {
     type Value = Arc<RwLock<HashSet<u64>>>;
 }
+pub const USER_LISTENER_BLACKLIST_PATH: &str = "data/user listener blacklist.json";
 
 pub async fn init_global_data_for_client(client: &Client) {
     let mut data = client.data.write().await;

@@ -18,9 +18,6 @@ use serenity::{
 
 use crate::global_data::*;
 
-pub const LISTENER_RESPONSE_PATH: &str = "data/action response.json";
-pub const USER_LISTENER_BLACKLIST_PATH: &str = "data/user listener blacklist.json";
-
 pub async fn list_listeners(ctx: &Context) -> String {
     let listener_response_lock = get_listener_response_lock(ctx).await;
     let listener_response = listener_response_lock.read().await;

@@ -4,10 +4,6 @@ use serenity::{client::Context, model::channel::Message};
 
 use crate::*;
 
-pub const MARKOV_EXPORT_PATH: &str = "data/markov data/markov export.json";
-pub const MARKOV_DATA_SET_PATH: &str = "data/markov data/markov data set.txt";
-pub const BLACKLISTED_CHANNELS_PATH: &str = "data/markov data/blacklisted channels.json";
-pub const BLACKLISTED_USERS_PATH: &str = "data/markov data/blacklisted users.json";
 
 pub async fn should_add_message_to_markov_file(msg: &Message, ctx: &Context) {
     if let Some(_) = msg.channel_id.to_channel(&ctx.http).await.unwrap().guild() {
