@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use markov_strings::ImportExport;
 use regex::Regex;
 use serenity::{client::Context, model::channel::Message};
@@ -10,23 +8,6 @@ pub const MARKOV_EXPORT_PATH: &str = "data/markov data/markov export.json";
 pub const MARKOV_DATA_SET_PATH: &str = "data/markov data/markov data set.txt";
 pub const BLACKLISTED_CHANNELS_PATH: &str = "data/markov data/blacklisted channels.json";
 pub const BLACKLISTED_USERS_PATH: &str = "data/markov data/blacklisted users.json";
-
-///user Ids that the bot will not learn from
-pub struct MarkovBlacklistedUsers;
-impl TypeMapKey for MarkovBlacklistedUsers {
-    type Value = Arc<RwLock<HashSet<u64>>>;
-}
-
-///channel Ids that the bot will not learn from
-pub struct MarkovBlacklistedChannels;
-impl TypeMapKey for MarkovBlacklistedChannels {
-    type Value = Arc<RwLock<HashSet<u64>>>;
-}
-
-pub struct MarkovChain;
-impl TypeMapKey for MarkovChain {
-    type Value = Arc<RwLock<Markov>>;
-}
 
 pub async fn should_add_message_to_markov_file(msg: &Message, ctx: &Context) {
     if let Some(_) = msg.channel_id.to_channel(&ctx.http).await.unwrap().guild() {

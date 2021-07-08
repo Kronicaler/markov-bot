@@ -5,6 +5,33 @@ use serenity::{client::Context, prelude::RwLock};
 
 use super::*;
 
+///user Ids that the bot will not learn from
+pub struct MarkovBlacklistedUsers;
+impl TypeMapKey for MarkovBlacklistedUsers {
+    type Value = Arc<RwLock<HashSet<u64>>>;
+}
+
+///channel Ids that the bot will not learn from
+pub struct MarkovBlacklistedChannels;
+impl TypeMapKey for MarkovBlacklistedChannels {
+    type Value = Arc<RwLock<HashSet<u64>>>;
+}
+
+pub struct MarkovChain;
+impl TypeMapKey for MarkovChain {
+    type Value = Arc<RwLock<Markov>>;
+}
+
+pub struct ListenerResponse;
+impl TypeMapKey for ListenerResponse {
+    type Value = Arc<RwLock<HashMap<String, String>>>;
+}
+
+pub struct ListenerBlacklistedUsers;
+impl TypeMapKey for ListenerBlacklistedUsers {
+    type Value = Arc<RwLock<HashSet<u64>>>;
+}
+
 pub async fn init_global_data_for_client(client: &Client) {
     let mut data = client.data.write().await;
 

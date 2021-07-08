@@ -1,7 +1,6 @@
 use std::{
     collections::{HashMap, HashSet},
     fs,
-    sync::Arc,
 };
 
 use regex::Regex;
@@ -15,23 +14,12 @@ use serenity::{
         },
         prelude::User,
     },
-    prelude::{RwLock, TypeMapKey},
 };
 
 use crate::global_data::*;
 
 pub const LISTENER_RESPONSE_PATH: &str = "data/action response.json";
 pub const USER_LISTENER_BLACKLIST_PATH: &str = "data/user listener blacklist.json";
-
-pub struct ListenerResponse;
-impl TypeMapKey for ListenerResponse {
-    type Value = Arc<RwLock<HashMap<String, String>>>;
-}
-
-pub struct ListenerBlacklistedUsers;
-impl TypeMapKey for ListenerBlacklistedUsers {
-    type Value = Arc<RwLock<HashSet<u64>>>;
-}
 
 pub async fn list_listeners(ctx: &Context) -> String {
     let listener_response_lock = get_listener_response_lock(ctx).await;
