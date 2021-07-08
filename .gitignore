@@ -2,6 +2,5 @@
 /data
 /.vscode
 doki_bot.exe
-.gitignore
 markov data set backup.txt
 .env
