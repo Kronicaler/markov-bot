@@ -1,9 +1,7 @@
 #![allow(dead_code)]
-use std::{collections::HashMap, sync::Arc};
-
+use crate::*;
 use serenity::{client::Context, prelude::RwLock};
-
-use super::*;
+use std::{collections::HashMap, sync::Arc};
 
 pub struct MarkovChain;
 impl TypeMapKey for MarkovChain {
@@ -17,14 +15,14 @@ pub struct MarkovBlacklistedUsers;
 impl TypeMapKey for MarkovBlacklistedUsers {
     type Value = Arc<RwLock<HashSet<u64>>>;
 }
-pub const BLACKLISTED_USERS_PATH: &str = "data/markov data/blacklisted users.json";
+pub const MARKOV_BLACKLISTED_USERS_PATH: &str = "data/markov data/blacklisted users.json";
 
 ///channel Ids that the bot will not learn from
 pub struct MarkovBlacklistedChannels;
 impl TypeMapKey for MarkovBlacklistedChannels {
     type Value = Arc<RwLock<HashSet<u64>>>;
 }
-pub const BLACKLISTED_CHANNELS_PATH: &str = "data/markov data/blacklisted channels.json";
+pub const MARKOV_BLACKLISTED_CHANNELS_PATH: &str = "data/markov data/blacklisted channels.json";
 
 pub struct ListenerResponse;
 impl TypeMapKey for ListenerResponse {
@@ -36,7 +34,7 @@ pub struct ListenerBlacklistedUsers;
 impl TypeMapKey for ListenerBlacklistedUsers {
     type Value = Arc<RwLock<HashSet<u64>>>;
 }
-pub const USER_LISTENER_BLACKLIST_PATH: &str = "data/user listener blacklist.json";
+pub const LISTENER_BLACKLISTED_USERS_PATH: &str = "data/user listener blacklist.json";
 
 pub async fn init_global_data_for_client(client: &Client) {
     let mut data = client.data.write().await;
@@ -51,12 +49,12 @@ pub async fn init_global_data_for_client(client: &Client) {
     }
 
     let blacklisted_channels_in_file: HashSet<u64> = serde_json::from_str(
-        &fs::read_to_string(create_file_if_missing(BLACKLISTED_CHANNELS_PATH, "[]"))
+        &fs::read_to_string(create_file_if_missing(MARKOV_BLACKLISTED_CHANNELS_PATH, "[]"))
             .expect("couldn't read file"),
     )
     .unwrap();
     let blacklisted_users_in_file: HashSet<u64> = serde_json::from_str(
-        &fs::read_to_string(create_file_if_missing(BLACKLISTED_USERS_PATH, "[]"))
+        &fs::read_to_string(create_file_if_missing(MARKOV_BLACKLISTED_USERS_PATH, "[]"))
             .expect("couldn't read file"),
     )
     .unwrap();
@@ -65,7 +63,10 @@ pub async fn init_global_data_for_client(client: &Client) {
     )
     .unwrap();
     let user_listener_blacklist: HashSet<u64> = serde_json::from_str(
-        &fs::read_to_string(create_file_if_missing(USER_LISTENER_BLACKLIST_PATH, "[]"))
+        &fs::read_to_string(create_file_if_missing(LISTENER_BLACKLISTED_USERS_PATH, "[]"))
+            .expect("couldn't read file"),
+    )
+    .unwrap();
             .expect("couldn't read file"),
     )
     .unwrap();

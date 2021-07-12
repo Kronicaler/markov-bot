@@ -1,5 +1,6 @@
 //#![windows_subsystem = "windows"]
 mod commands;
+mod file_operations;
 mod global_data;
 mod listener_response;
 mod markov_chain_funcs;
@@ -8,11 +9,11 @@ mod unit_tests;
 
 use commands::example::*;
 use doki_bot::*;
+use file_operations::*;
 use global_data::*;
 use listener_response::*;
 use markov_chain_funcs::*;
-use markov_strings::{self, InputData, Markov};
-use regex::Captures;
+use markov_strings::Markov;
 use serenity::{
     async_trait,
     framework::{
@@ -25,17 +26,12 @@ use serenity::{
         gateway::Ready,
         id::{GuildId, UserId},
         interactions::*,
-        prelude::{Activity, User},
+        prelude::Activity,
     },
     prelude::*,
 };
 use slash_commands::*;
-use std::{
-    collections::HashSet,
-    env,
-    fs::{self, OpenOptions},
-    io::Write,
-};
+use std::{collections::HashSet, env, fs};
 
 const KRONI_ID: u64 = 594772815283093524;
 

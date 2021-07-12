@@ -1,9 +1,8 @@
+use crate::*;
 use serenity::{
     client::Context,
     model::interactions::{ApplicationCommandInteractionData, Interaction},
 };
-
-use crate::*;
 
 pub async fn command_responses(
     data: &ApplicationCommandInteractionData,
@@ -15,7 +14,7 @@ pub async fn command_responses(
         "id" => id_command(data),
         "blacklistedmarkov" => blacklisted_command(&ctx).await,
         "blacklistmarkov" => {
-            add_or_remove_user_from_blacklist(&interaction.clone().member.unwrap().user, &ctx).await
+            add_or_remove_user_from_markov_blacklist(&interaction.clone().member.unwrap().user, &ctx).await
         }
         "test-command" => "here be future tests".to_string(),
         "setlistener" => set_listener_command(&ctx, data).await,

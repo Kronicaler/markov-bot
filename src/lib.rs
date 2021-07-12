@@ -1,6 +1,3 @@
-
-use std::{fs, path::Path};
-
 use serenity::{
     client::Context,
     model::{
@@ -38,21 +35,8 @@ pub fn get_first_mentioned_user(msg: &Message) -> Option<&User> {
     return None;
 }
 
-///checks if a file exists and if it doesn't it initializes it
-///otherwise it just returns the path back
-pub fn create_file_if_missing<'a>(path: &'a str, contents: &str) -> &'a str {
-    if !Path::new(path).exists() {
-        fs::write(path, contents).unwrap();
-    }
-    return path;
-}
-
 ///iterates through every channel in the guild starting with the one from which the message came from until it finds one it can send a message in
-pub async fn send_message_to_first_available_channel(
-    ctx: &Context,
-    msg: &Message,
-    message: &str,
-) {
+pub async fn send_message_to_first_available_channel(ctx: &Context, msg: &Message, message: &str) {
     match msg.channel_id.say(&ctx.http, message).await {
         Ok(_) => return,
         Err(_) => {
