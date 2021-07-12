@@ -70,6 +70,11 @@ pub async fn create_global_commands(ctx: &Context) {
                 command.name("blacklistmarkov").description(
                     "Blacklist yourself if you don't want me to save and learn from your messages",
                 )
+            })
+            .create_application_command(|command| {
+                command.name("setbotchannel").description(
+                    "Set this channel as the channel where the bot will send messages in",
+                )
             });
         create_listener_commands(commands)
     })

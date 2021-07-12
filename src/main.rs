@@ -81,11 +81,6 @@ impl EventHandler for Handler {
                                     })
                             })
                     })
-                    .create_application_command(|command| {
-                        command.name("setbotchannel").description(
-                            "Set this channel as the channel where the bot will send messages in",
-                        )
-                    })
             })
             .await
             .unwrap();
