@@ -2,15 +2,16 @@
 mod commands;
 mod file_operations;
 mod global_data;
+mod helper_funcs;
 mod listener_response;
 mod markov_chain_funcs;
 mod slash_commands;
 mod unit_tests;
 
 use commands::example::*;
-use doki_bot::*;
 use file_operations::*;
 use global_data::*;
+use helper_funcs::*;
 use listener_response::*;
 use markov_chain_funcs::*;
 use markov_strings::Markov;
@@ -61,7 +62,31 @@ impl EventHandler for Handler {
         create_global_commands(&ctx).await;
 
         GuildId(724690339054486107)
-            .create_application_commands(ctx.http, |commands| commands)
+            .create_application_commands(ctx.http, |commands| {
+                commands
+                    .create_application_command(|command| {
+                        command
+                            .name("command")
+                            .description("this is a command")
+                            .create_option(|option| {
+                                option
+                                    .name("option")
+                                    .description("this is an option")
+                                    .kind(ApplicationCommandOptionType::SubCommand)
+                                    .create_sub_option(|suboption| {
+                                        suboption
+                                            .name("suboption")
+                                            .description("this is a suboption")
+                                            .kind(ApplicationCommandOptionType::Boolean)
+                                    })
+                            })
+                    })
+                    .create_application_command(|command| {
+                        command.name("setbotchannel").description(
+                            "Set this channel as the channel where the bot will send messages in",
+                        )
+                    })
+            })
             .await
             .unwrap();
     }

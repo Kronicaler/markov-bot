@@ -36,6 +36,13 @@ impl TypeMapKey for ListenerBlacklistedUsers {
 }
 pub const LISTENER_BLACKLISTED_USERS_PATH: &str = "data/user listener blacklist.json";
 
+///Server, Channel
+pub struct BotChannelIds;
+impl TypeMapKey for BotChannelIds {
+    type Value = Arc<RwLock<HashMap<u64, u64>>>;
+}
+pub const BOT_CHANNEL_PATH: &str = "data/bot channel.json";
+
 pub async fn init_global_data_for_client(client: &Client) {
     let mut data = client.data.write().await;
 
@@ -67,6 +74,8 @@ pub async fn init_global_data_for_client(client: &Client) {
             .expect("couldn't read file"),
     )
     .unwrap();
+    let bot_channel: HashMap<u64, u64> = serde_json::from_str(
+        &fs::read_to_string(create_file_if_missing(BOT_CHANNEL_PATH, "{}"))
             .expect("couldn't read file"),
     )
     .unwrap();
@@ -76,6 +85,7 @@ pub async fn init_global_data_for_client(client: &Client) {
     data.insert::<MarkovBlacklistedUsers>(Arc::new(RwLock::new(blacklisted_users_in_file)));
     data.insert::<ListenerResponse>(Arc::new(RwLock::new(action_response)));
     data.insert::<ListenerBlacklistedUsers>(Arc::new(RwLock::new(user_listener_blacklist)));
+    data.insert::<BotChannelIds>(Arc::new(RwLock::new(bot_channel)));
 }
 
 pub async fn get_listener_response_lock(ctx: &Context) -> Arc<RwLock<HashMap<String, String>>> {
@@ -131,4 +141,15 @@ pub async fn get_markov_chain_lock(ctx: &Context) -> Arc<RwLock<Markov>> {
         .expect("expected MarkovChain in TypeMap")
         .clone();
     markov_chain_lock
+}
+
+pub async fn get_bot_channel_id_lock(ctx: &Context) -> Arc<RwLock<HashMap<u64, u64>>> {
+    let bot_channel_ids_lock = ctx
+        .data
+        .read()
+        .await
+        .get::<BotChannelIds>()
+        .expect("expected MarkovChain in TypeMap")
+        .clone();
+    bot_channel_ids_lock
 }

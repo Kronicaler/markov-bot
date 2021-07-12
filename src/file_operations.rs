@@ -90,3 +90,10 @@ pub fn save_markov_blacklisted_users(
         serde_json::to_string(blacklisted_users).unwrap(),
     )
 }
+
+pub fn save_bot_channel(bot_channels:&HashMap<u64,u64>) -> Result<(),std::io::Error>{
+    fs::write(
+        BOT_CHANNEL_PATH,
+        serde_json::to_string(bot_channels).unwrap(),
+    )
+}

@@ -14,7 +14,11 @@ pub async fn command_responses(
         "id" => id_command(data),
         "blacklistedmarkov" => blacklisted_command(&ctx).await,
         "blacklistmarkov" => {
-            add_or_remove_user_from_markov_blacklist(&interaction.clone().member.unwrap().user, &ctx).await
+            add_or_remove_user_from_markov_blacklist(
+                &interaction.clone().member.unwrap().user,
+                &ctx,
+            )
+            .await
         }
         "test-command" => "here be future tests".to_string(),
         "setlistener" => set_listener_command(&ctx, data).await,
@@ -23,6 +27,7 @@ pub async fn command_responses(
         "blacklistlistener" => {
             blacklist_user_from_listener(&ctx, &interaction.member.clone().unwrap().user).await
         }
+        "setbotchannel" => set_bot_channel(&ctx, interaction).await,
         _ => "not implemented :(".to_string(),
     };
     if let Err(why) = interaction
