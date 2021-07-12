@@ -28,6 +28,7 @@ pub async fn command_responses(
             blacklist_user_from_listener(&ctx, &interaction.member.clone().unwrap().user).await
         }
         "setbotchannel" => set_bot_channel(&ctx, interaction).await,
+        "command" => "command".to_string(),
         _ => "not implemented :(".to_string(),
     };
     if let Err(why) = interaction

@@ -1,8 +1,11 @@
 use crate::*;
 use markov_strings::Markov;
 use regex::{Captures, Regex};
-use serenity::{client::Context, model::{channel::Message, prelude::User}};
-use std::fs;
+use serenity::{
+    client::Context,
+    model::{channel::Message, prelude::User},
+};
+use std::{fs, u64};
 
 pub async fn should_add_message_to_markov_file(msg: &Message, ctx: &Context) {
     if let Some(_) = msg.channel_id.to_channel(&ctx.http).await.unwrap().guild() {
@@ -103,6 +106,7 @@ pub fn filter_message_for_markov_file(str: String, msg: &Message) -> String {
     regexes_to_replace_with_whitespace.push(Regex::new(r"^(\d{18})$").unwrap()); //remaining numbers from users regex
     regexes_to_replace_with_whitespace.push(Regex::new(r"\n").unwrap()); //line feed regex
     regexes_to_replace_with_whitespace.push(Regex::new(r"[ ]{3}|[ ]{2}").unwrap()); //double and triple whitespace regex
+    regexes_to_replace_with_whitespace.push(Regex::new(r"<@&(\d+)>").unwrap()); // role regex
 
     let upper_case_regex = Regex::new(r"[A-Z][a-z0-9_-]{1,}").unwrap();
 
@@ -114,11 +118,18 @@ pub fn filter_message_for_markov_file(str: String, msg: &Message) -> String {
 
             filtered_message = user_regex
                 .replace(&filtered_message, |caps: &Captures| {
-                    let user_id = &caps[0][2..20];
+                    let mut user_id = String::new();
+
+                    for char in caps[0].chars() {
+                        if char.is_digit(10) {
+                            user_id += &char.to_string();
+                        }
+                    }
+                    let user_id = user_id.parse::<u64>().unwrap();
                     let user = &msg
                         .mentions
                         .iter()
-                        .find(|&user| user.id.0.to_string() == user_id)
+                        .find(|&user| user.id.0 == user_id)
                         .unwrap()
                         .name;
                     return " ".to_owned() + user + " ";
