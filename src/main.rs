@@ -1,18 +1,20 @@
 #![windows_subsystem = "windows"]
 mod commands;
+mod file_operations;
 mod global_data;
+mod helper_funcs;
 mod listener_response;
 mod markov_chain_funcs;
 mod slash_commands;
 mod unit_tests;
 
 use commands::example::*;
-use doki_bot::*;
+use file_operations::*;
 use global_data::*;
+use helper_funcs::*;
 use listener_response::*;
 use markov_chain_funcs::*;
-use markov_strings::{self, InputData, Markov};
-use regex::Captures;
+use markov_strings::Markov;
 use serenity::{
     async_trait,
     framework::{
@@ -25,17 +27,12 @@ use serenity::{
         gateway::Ready,
         id::{GuildId, UserId},
         interactions::*,
-        prelude::{Activity, User},
+        prelude::Activity,
     },
     prelude::*,
 };
 use slash_commands::*;
-use std::{
-    collections::HashSet,
-    env,
-    fs::{self, OpenOptions},
-    io::Write,
-};
+use std::{collections::HashSet, env, fs};
 
 const KRONI_ID: u64 = 594772815283093524;
 
@@ -65,7 +62,43 @@ impl EventHandler for Handler {
         create_global_commands(&ctx).await;
 
         GuildId(724690339054486107)
-            .create_application_commands(ctx.http, |commands| commands)
+            .create_application_commands(ctx.http, |commands| {
+                commands
+                    .create_application_command(|command| {
+                        command
+                            .name("command")
+                            .description("this is a command")
+                            .create_option(|option| {
+                                option
+                                    .name("option")
+                                    .description("this is an option")
+                                    .kind(ApplicationCommandOptionType::SubCommand)
+                                    .create_sub_option(|suboption| {
+                                        suboption
+                                            .name("suboption")
+                                            .description("this is a suboption")
+                                            .kind(ApplicationCommandOptionType::Boolean)
+                                    }).create_sub_option(|suboption| {
+                                        suboption
+                                            .name("suboption2")
+                                            .description("this is a suboption")
+                                            .kind(ApplicationCommandOptionType::Boolean)
+                                    })
+                            })
+                            .create_option(|option| {
+                                option
+                                    .name("option2")
+                                    .description("this is an option")
+                                    .kind(ApplicationCommandOptionType::SubCommand)
+                                    .create_sub_option(|suboption| {
+                                        suboption
+                                            .name("suboption3")
+                                            .description("this is a suboption")
+                                            .kind(ApplicationCommandOptionType::Boolean)
+                                    })
+                            })
+                    })
+            })
             .await
             .unwrap();
     }

@@ -1,9 +1,11 @@
-use markov_strings::ImportExport;
-use regex::Regex;
-use serenity::{client::Context, model::channel::Message};
-
 use crate::*;
-
+use markov_strings::Markov;
+use regex::{Captures, Regex};
+use serenity::{
+    client::Context,
+    model::{channel::Message, prelude::User},
+};
+use std::{fs, u64};
 
 pub async fn should_add_message_to_markov_file(msg: &Message, ctx: &Context) {
     if let Some(_) = msg.channel_id.to_channel(&ctx.http).await.unwrap().guild() {
@@ -34,19 +36,6 @@ pub async fn should_add_message_to_markov_file(msg: &Message, ctx: &Context) {
         }
     }
 }
-/// If the message filter changes it's helpful to call this function when the bot starts so the filtering is consistent across the file.
-#[allow(dead_code)]
-fn clean_markov_file(msg: Message) {
-    let file = fs::read_to_string(MARKOV_DATA_SET_PATH).unwrap();
-    let messages = file
-        .split("\n\n")
-        .map(|s| s.to_string())
-        .collect::<Vec<String>>();
-    fs::write(MARKOV_DATA_SET_PATH, "").unwrap();
-    for message in messages {
-        append_to_markov_file(filter_message_for_markov_file(message, &msg))
-    }
-}
 
 pub async fn send_markov_text(ctx: &Context, msg: &Message) {
     let markov_lock = get_markov_chain_lock(ctx).await;
@@ -67,39 +56,6 @@ pub async fn send_markov_text(ctx: &Context, msg: &Message) {
                 .unwrap();
         }
     };
-}
-
-pub fn append_to_markov_file(str: String) -> () {
-    if !str.is_empty() && str.split(' ').collect::<Vec<&str>>().len() >= 5 {
-        let mut file = OpenOptions::new()
-            .write(true)
-            .append(true)
-            .open(MARKOV_DATA_SET_PATH)
-            .unwrap();
-
-        if let Err(e) = writeln!(file, "{}\n", str) {
-            eprintln!("Couldn't write to file: {}", e);
-        }
-    }
-}
-#[allow(dead_code)]
-pub fn export_to_markov_file(export: ImportExport) {
-    fs::write(MARKOV_EXPORT_PATH, serde_json::to_string(&export).unwrap()).unwrap();
-}
-
-fn import_chain_from_file() -> Vec<InputData> {
-    let text_from_file =
-        fs::read_to_string(create_file_if_missing(MARKOV_DATA_SET_PATH, "")).unwrap();
-    let text_array = text_from_file.split("\n\n");
-    let mut input_data: Vec<InputData> = Vec::new();
-    for message in text_array {
-        let input = InputData {
-            text: message.to_string(),
-            meta: None,
-        };
-        input_data.push(input);
-    }
-    return input_data;
 }
 
 pub fn init_markov_debug() -> Markov {
@@ -137,7 +93,7 @@ pub fn init_markov() -> Markov {
     markov_chain
 }
 
-fn filter_message_for_markov_file(str: String, msg: &Message) -> String {
+pub fn filter_message_for_markov_file(str: String, msg: &Message) -> String {
     let mut filtered_message = str.clone();
     //THIS IS GONNA BE A PAIN IN THE ASS
     let user_regex = Regex::new(r"<@!?(\d+)>").unwrap();
@@ -150,6 +106,7 @@ fn filter_message_for_markov_file(str: String, msg: &Message) -> String {
     regexes_to_replace_with_whitespace.push(Regex::new(r"^(\d{18})$").unwrap()); //remaining numbers from users regex
     regexes_to_replace_with_whitespace.push(Regex::new(r"\n").unwrap()); //line feed regex
     regexes_to_replace_with_whitespace.push(Regex::new(r"[ ]{3}|[ ]{2}").unwrap()); //double and triple whitespace regex
+    regexes_to_replace_with_whitespace.push(Regex::new(r"<@&(\d+)>").unwrap()); // role regex
 
     let upper_case_regex = Regex::new(r"[A-Z][a-z0-9_-]{1,}").unwrap();
 
@@ -161,11 +118,18 @@ fn filter_message_for_markov_file(str: String, msg: &Message) -> String {
 
             filtered_message = user_regex
                 .replace(&filtered_message, |caps: &Captures| {
-                    let user_id = &caps[0][2..20];
+                    let mut user_id = String::new();
+
+                    for char in caps[0].chars() {
+                        if char.is_digit(10) {
+                            user_id += &char.to_string();
+                        }
+                    }
+                    let user_id = user_id.parse::<u64>().unwrap();
                     let user = &msg
                         .mentions
                         .iter()
-                        .find(|&user| user.id.0.to_string() == user_id)
+                        .find(|&user| user.id.0 == user_id)
                         .unwrap()
                         .name;
                     return " ".to_owned() + user + " ";
@@ -194,50 +158,6 @@ fn filter_message_for_markov_file(str: String, msg: &Message) -> String {
     return filtered_message.trim().to_string();
 }
 
-pub async fn add_or_remove_user_from_blacklist(user: &User, ctx: &Context) -> String {
-    let blacklisted_users_lock = get_markov_blacklisted_users_lock(ctx).await;
-    let mut blacklisted_users = blacklisted_users_lock.write().await;
-
-    match !blacklisted_users.contains(&user.id.0) {
-        true => {
-            {
-                blacklisted_users.insert(user.id.0);
-            }
-            match fs::write(
-                BLACKLISTED_USERS_PATH,
-                serde_json::to_string(&*blacklisted_users).unwrap(),
-            ) {
-                Ok(_) => {
-                    let message =
-                        "Added ".to_owned() + &user.name + " to the list of blacklisted users";
-                    return message;
-                }
-                Err(_) => {
-                    return "Couldn't add the user to the file".to_string();
-                }
-            };
-        }
-        false => {
-            {
-                blacklisted_users.remove(&user.id.0);
-            }
-            match fs::write(
-                BLACKLISTED_USERS_PATH,
-                serde_json::to_string(&*blacklisted_users).unwrap(),
-            ) {
-                Ok(_) => {
-                    let message =
-                        "Removed ".to_owned() + &user.name + " from the list of blacklisted users";
-                    return message;
-                }
-                Err(_) => {
-                    return "Couldn't remove the user from the file".to_string();
-                }
-            };
-        }
-    };
-}
-
 pub async fn blacklist_user_command(msg: &Message, ctx: &Context) -> String {
     let user = match get_first_mentioned_user(msg) {
         Some(returned_user) => returned_user,
@@ -245,7 +165,7 @@ pub async fn blacklist_user_command(msg: &Message, ctx: &Context) -> String {
             return "Please specify a user".to_string();
         }
     };
-    add_or_remove_user_from_blacklist(user, ctx).await
+    add_or_remove_user_from_markov_blacklist(user, ctx).await
 }
 
 pub async fn blacklisted_command(ctx: &Context) -> String {
@@ -267,4 +187,42 @@ pub async fn blacklisted_command(ctx: &Context) -> String {
     message.pop();
     message.pop();
     return message;
+}
+
+pub async fn add_or_remove_user_from_markov_blacklist(user: &User, ctx: &Context) -> String {
+    let blacklisted_users_lock = get_markov_blacklisted_users_lock(ctx).await;
+    let mut blacklisted_users = blacklisted_users_lock.write().await;
+
+    match !blacklisted_users.contains(&user.id.0) {
+        true => {
+            {
+                blacklisted_users.insert(user.id.0);
+            }
+            match save_markov_blacklisted_users(&*blacklisted_users) {
+                Ok(_) => {
+                    let message =
+                        "Added ".to_owned() + &user.name + " to the list of blacklisted users";
+                    return message;
+                }
+                Err(_) => {
+                    return "Couldn't add the user to the file".to_string();
+                }
+            };
+        }
+        false => {
+            {
+                blacklisted_users.remove(&user.id.0);
+            }
+            match save_markov_blacklisted_users(&*blacklisted_users) {
+                Ok(_) => {
+                    let message =
+                        "Removed ".to_owned() + &user.name + " from the list of blacklisted users";
+                    return message;
+                }
+                Err(_) => {
+                    return "Couldn't remove the user from the file".to_string();
+                }
+            };
+        }
+    };
 }

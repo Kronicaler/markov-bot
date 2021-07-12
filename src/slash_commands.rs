@@ -1,9 +1,8 @@
+use crate::*;
 use serenity::{
     client::Context,
     model::interactions::{ApplicationCommandInteractionData, Interaction},
 };
-
-use crate::*;
 
 pub async fn command_responses(
     data: &ApplicationCommandInteractionData,
@@ -15,7 +14,11 @@ pub async fn command_responses(
         "id" => id_command(data),
         "blacklistedmarkov" => blacklisted_command(&ctx).await,
         "blacklistmarkov" => {
-            add_or_remove_user_from_blacklist(&interaction.clone().member.unwrap().user, &ctx).await
+            add_or_remove_user_from_markov_blacklist(
+                &interaction.clone().member.unwrap().user,
+                &ctx,
+            )
+            .await
         }
         "test-command" => "here be future tests".to_string(),
         "setlistener" => set_listener_command(&ctx, data).await,
@@ -24,6 +27,8 @@ pub async fn command_responses(
         "blacklistlistener" => {
             blacklist_user_from_listener(&ctx, &interaction.member.clone().unwrap().user).await
         }
+        "setbotchannel" => set_bot_channel(&ctx, interaction).await,
+        "command" => "command".to_string(),
         _ => "not implemented :(".to_string(),
     };
     if let Err(why) = interaction
@@ -64,6 +69,11 @@ pub async fn create_global_commands(ctx: &Context) {
             .create_application_command(|command| {
                 command.name("blacklistmarkov").description(
                     "Blacklist yourself if you don't want me to save and learn from your messages",
+                )
+            })
+            .create_application_command(|command| {
+                command.name("setbotchannel").description(
+                    "Set this channel as the channel where the bot will send messages in",
                 )
             });
         create_listener_commands(commands)

@@ -1,8 +1,4 @@
-use std::{
-    collections::{HashMap, HashSet},
-    fs,
-};
-
+use crate::*;
 use regex::Regex;
 use serenity::{
     client::Context,
@@ -15,8 +11,6 @@ use serenity::{
         prelude::User,
     },
 };
-
-use crate::global_data::*;
 
 pub async fn list_listeners(ctx: &Context) -> String {
     let listener_response_lock = get_listener_response_lock(ctx).await;
@@ -105,14 +99,6 @@ pub async fn set_listener_command(
     return "Couldn't set listener".to_string();
 }
 
-pub fn save_listener_response_to_file(listener_response: HashMap<String, String>) {
-    fs::write(
-        LISTENER_RESPONSE_PATH,
-        serde_json::to_string(&listener_response).unwrap(),
-    )
-    .unwrap();
-}
-
 pub async fn blacklist_user_from_listener(ctx: &Context, user: &User) -> String {
     let listener_blacklisted_users_lock = get_listener_blacklisted_users_lock(ctx).await;
 
@@ -127,14 +113,6 @@ pub async fn blacklist_user_from_listener(ctx: &Context, user: &User) -> String 
         save_user_listener_blacklist_to_file(users_blacklisted_from_listener.clone());
         return "Removed user from the blacklist".to_string();
     }
-}
-
-pub fn save_user_listener_blacklist_to_file(blacklist: HashSet<u64>) {
-    fs::write(
-        USER_LISTENER_BLACKLIST_PATH,
-        serde_json::to_string(&blacklist).unwrap(),
-    )
-    .unwrap();
 }
 
 ///Checks for all the listened words in the message
