@@ -78,6 +78,23 @@ impl EventHandler for Handler {
                                             .name("suboption")
                                             .description("this is a suboption")
                                             .kind(ApplicationCommandOptionType::Boolean)
+                                    }).create_sub_option(|suboption| {
+                                        suboption
+                                            .name("suboption2")
+                                            .description("this is a suboption")
+                                            .kind(ApplicationCommandOptionType::Boolean)
+                                    })
+                            })
+                            .create_option(|option| {
+                                option
+                                    .name("option2")
+                                    .description("this is an option")
+                                    .kind(ApplicationCommandOptionType::SubCommand)
+                                    .create_sub_option(|suboption| {
+                                        suboption
+                                            .name("suboption3")
+                                            .description("this is a suboption")
+                                            .kind(ApplicationCommandOptionType::Boolean)
                                     })
                             })
                     })
