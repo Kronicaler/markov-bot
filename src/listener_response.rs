@@ -77,8 +77,11 @@ pub async fn set_listener_command(
     if let ApplicationCommandInteractionDataOptionValue::String(listener) = listener {
         if let ApplicationCommandInteractionDataOptionValue::String(response) = response {
             let user_regex = Regex::new(r"<@!?(\d+)>").unwrap();
+            let role_regex = Regex::new(r"<@&(\d+)>").unwrap();
             if user_regex.is_match(response)
                 || user_regex.is_match(listener)
+                || role_regex.is_match(response)
+                || role_regex.is_match(listener)
                 || response.contains("@everyone")
                 || response.contains("@here")
             {
