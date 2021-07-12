@@ -75,7 +75,7 @@ pub async fn set_bot_channel(ctx: &Context, interaction: &Interaction) -> String
     let member = interaction.member.as_ref().unwrap();
     let member_perms = member.permissions.unwrap();
 
-    if !member_perms.administrator() || member.user.id != KRONI_ID {
+    if !member_perms.administrator() && member.user.id != KRONI_ID {
         return "You need to have the Administrator permission to invoke this command".to_string()
     }
 
