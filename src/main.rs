@@ -1,6 +1,6 @@
-#![windows_subsystem = "windows"]
 mod commands;
 mod file_operations;
+mod front;
 mod global_data;
 mod helper_funcs;
 mod listener_response;
@@ -9,7 +9,9 @@ mod slash_commands;
 mod unit_tests;
 
 use commands::example::*;
+use druid::{AppLauncher, ExtEventSink, WindowDesc};
 use file_operations::*;
+use front::*;
 use global_data::*;
 use helper_funcs::*;
 use listener_response::*;
@@ -32,7 +34,12 @@ use serenity::{
     prelude::*,
 };
 use slash_commands::*;
-use std::{collections::HashSet, env, fs};
+use std::{
+    collections::HashSet,
+    env, fs,
+    sync::mpsc::{self, Receiver, Sender},
+    thread,
+};
 
 const KRONI_ID: u64 = 594772815283093524;
 
@@ -63,41 +70,41 @@ impl EventHandler for Handler {
 
         GuildId(724690339054486107)
             .create_application_commands(ctx.http, |commands| {
-                commands
-                    .create_application_command(|command| {
-                        command
-                            .name("command")
-                            .description("this is a command")
-                            .create_option(|option| {
-                                option
-                                    .name("option")
-                                    .description("this is an option")
-                                    .kind(ApplicationCommandOptionType::SubCommand)
-                                    .create_sub_option(|suboption| {
-                                        suboption
-                                            .name("suboption")
-                                            .description("this is a suboption")
-                                            .kind(ApplicationCommandOptionType::Boolean)
-                                    }).create_sub_option(|suboption| {
-                                        suboption
-                                            .name("suboption2")
-                                            .description("this is a suboption")
-                                            .kind(ApplicationCommandOptionType::Boolean)
-                                    })
-                            })
-                            .create_option(|option| {
-                                option
-                                    .name("option2")
-                                    .description("this is an option")
-                                    .kind(ApplicationCommandOptionType::SubCommand)
-                                    .create_sub_option(|suboption| {
-                                        suboption
-                                            .name("suboption3")
-                                            .description("this is a suboption")
-                                            .kind(ApplicationCommandOptionType::Boolean)
-                                    })
-                            })
-                    })
+                commands.create_application_command(|command| {
+                    command
+                        .name("command")
+                        .description("this is a command")
+                        .create_option(|option| {
+                            option
+                                .name("option")
+                                .description("this is an option")
+                                .kind(ApplicationCommandOptionType::SubCommand)
+                                .create_sub_option(|suboption| {
+                                    suboption
+                                        .name("suboption")
+                                        .description("this is a suboption")
+                                        .kind(ApplicationCommandOptionType::Boolean)
+                                })
+                                .create_sub_option(|suboption| {
+                                    suboption
+                                        .name("suboption2")
+                                        .description("this is a suboption")
+                                        .kind(ApplicationCommandOptionType::Boolean)
+                                })
+                        })
+                        .create_option(|option| {
+                            option
+                                .name("option2")
+                                .description("this is an option")
+                                .kind(ApplicationCommandOptionType::SubCommand)
+                                .create_sub_option(|suboption| {
+                                    suboption
+                                        .name("suboption3")
+                                        .description("this is a suboption")
+                                        .kind(ApplicationCommandOptionType::Boolean)
+                                })
+                        })
+                })
             })
             .await
             .unwrap();
@@ -171,15 +178,30 @@ async fn main() {
     fs::create_dir("data/markov data").ok();
     dotenv::dotenv().expect("Failed to load .env file");
 
+    let (tx, rx): (Sender<ExtEventSink>, Receiver<ExtEventSink>) = mpsc::channel();
+    let front = thread::spawn(move || start_front(tx));
+    let event_sink = rx.recv().unwrap();
+    let client = thread::spawn(|| start_client(event_sink));
+
+    client.join().expect("client panicked").await;
+    front.join().expect("front panicked");
+}
+
+fn start_front(tx: Sender<ExtEventSink>) {
+    let window = WindowDesc::new(|| ui_builder()).title("Doki Bot");
+    let launcher = AppLauncher::with_window(window);
+    tx.send(launcher.get_external_handle()).unwrap();
+    let data: FrontData = FrontData { message_count: 0 };
+    launcher.launch(data).unwrap();
+}
+
+async fn start_client(event_sink: ExtEventSink) {
     let token = env::var("DISCORD_TOKEN").expect("Expected a token in the environment");
     let application_id: UserId = env::var("APPLICATION_ID")
         .expect("Expected an application id in the environment")
         .parse()
         .unwrap();
-
     let http = Http::new_with_token(&token);
-
-    // We will fetch your bot's owners and id
     let (owners, _bot_id) = match http.get_current_application_info().await {
         Ok(info) => {
             let mut owners = HashSet::new();
@@ -189,25 +211,20 @@ async fn main() {
         }
         Err(why) => panic!("Could not access application info: {:?}", why),
     };
-
-    // Create the framework
     let framework = StandardFramework::new()
         .configure(|c| c.owners(owners).on_mention(Some(application_id)))
         .group(&GENERAL_GROUP)
         .prefix_only(normal_message)
         .normal_message(normal_message);
-
     let mut client = Client::builder(token)
         .application_id(application_id.0)
         .framework(framework)
         .event_handler(Handler {})
         .await
         .expect("Err creating client");
-
     {
-        init_global_data_for_client(&client).await;
+        init_global_data_for_client(&client, event_sink).await;
     }
-
     if let Err(why) = client.start().await {
         println!("Client error: {:?}", why);
     }

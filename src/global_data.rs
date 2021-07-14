@@ -1,7 +1,8 @@
 #![allow(dead_code)]
 use crate::*;
+use druid::Target;
 use serenity::{client::Context, prelude::RwLock};
-use std::{collections::HashMap, sync::Arc};
+use std::{collections::HashMap, sync::Arc, usize};
 
 pub struct MarkovChain;
 impl TypeMapKey for MarkovChain {
@@ -43,21 +44,44 @@ impl TypeMapKey for BotChannelIds {
 }
 pub const BOT_CHANNEL_PATH: &str = "data/bot channel.json";
 
-pub async fn init_global_data_for_client(client: &Client) {
+pub struct MessageCount;
+impl TypeMapKey for MessageCount {
+    type Value = Arc<RwLock<usize>>;
+}
+
+pub struct EventSink;
+impl TypeMapKey for EventSink {
+    type Value = Arc<RwLock<ExtEventSink>>;
+}
+
+pub async fn init_global_data_for_client(client: &Client, event_sink: ExtEventSink) {
     let mut data = client.data.write().await;
 
     let markov;
+    let mut num_of_messages = 10;
     if cfg!(debug_assertions) {
         println!("Debugging enabled");
         markov = init_markov_debug();
     } else {
         println!("Debugging disabled");
-        markov = init_markov();
+        let init = init_markov();
+        markov = init.0;
+        num_of_messages = init.1;
     }
+    event_sink
+        .submit_command(
+            SET_MESSAGE_COUNT,
+            num_of_messages,
+            Target::Widget(ID_MESSAGE_COUNT),
+        )
+        .unwrap();
 
     let blacklisted_channels_in_file: HashSet<u64> = serde_json::from_str(
-        &fs::read_to_string(create_file_if_missing(MARKOV_BLACKLISTED_CHANNELS_PATH, "[]"))
-            .expect("couldn't read file"),
+        &fs::read_to_string(create_file_if_missing(
+            MARKOV_BLACKLISTED_CHANNELS_PATH,
+            "[]",
+        ))
+        .expect("couldn't read file"),
     )
     .unwrap();
     let blacklisted_users_in_file: HashSet<u64> = serde_json::from_str(
@@ -70,8 +94,11 @@ pub async fn init_global_data_for_client(client: &Client) {
     )
     .unwrap();
     let user_listener_blacklist: HashSet<u64> = serde_json::from_str(
-        &fs::read_to_string(create_file_if_missing(LISTENER_BLACKLISTED_USERS_PATH, "[]"))
-            .expect("couldn't read file"),
+        &fs::read_to_string(create_file_if_missing(
+            LISTENER_BLACKLISTED_USERS_PATH,
+            "[]",
+        ))
+        .expect("couldn't read file"),
     )
     .unwrap();
     let bot_channel: HashMap<u64, u64> = serde_json::from_str(
@@ -86,6 +113,8 @@ pub async fn init_global_data_for_client(client: &Client) {
     data.insert::<ListenerResponse>(Arc::new(RwLock::new(action_response)));
     data.insert::<ListenerBlacklistedUsers>(Arc::new(RwLock::new(user_listener_blacklist)));
     data.insert::<BotChannelIds>(Arc::new(RwLock::new(bot_channel)));
+    data.insert::<MessageCount>(Arc::new(RwLock::new(num_of_messages)));
+    data.insert::<EventSink>(Arc::new(RwLock::new(event_sink)));
 }
 
 pub async fn get_listener_response_lock(ctx: &Context) -> Arc<RwLock<HashMap<String, String>>> {
@@ -152,4 +181,26 @@ pub async fn get_bot_channel_id_lock(ctx: &Context) -> Arc<RwLock<HashMap<u64, u
         .expect("expected MarkovChain in TypeMap")
         .clone();
     bot_channel_ids_lock
+}
+
+pub async fn get_message_count_lock(ctx: &Context) -> Arc<RwLock<usize>> {
+    let message_count_lock = ctx
+        .data
+        .read()
+        .await
+        .get::<MessageCount>()
+        .expect("expected MessageCount in TypeMap")
+        .clone();
+    message_count_lock
+}
+
+pub async fn get_event_sink_lock(ctx: &Context) -> Arc<RwLock<ExtEventSink>> {
+    let event_sink_lock = ctx
+        .data
+        .read()
+        .await
+        .get::<EventSink>()
+        .expect("expected EventSink in TypeMap")
+        .clone();
+    event_sink_lock
 }

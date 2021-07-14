@@ -1,11 +1,12 @@
 use crate::*;
+use druid::Target;
 use markov_strings::Markov;
 use regex::{Captures, Regex};
 use serenity::{
     client::Context,
     model::{channel::Message, prelude::User},
 };
-use std::{fs, u64};
+use std::{fs, u64, usize};
 
 pub async fn should_add_message_to_markov_file(msg: &Message, ctx: &Context) {
     if let Some(_) = msg.channel_id.to_channel(&ctx.http).await.unwrap().guild() {
@@ -32,6 +33,18 @@ pub async fn should_add_message_to_markov_file(msg: &Message, ctx: &Context) {
                 let filtered_message = filter_message_for_markov_file(str, msg);
                 //msg.reply(&ctx.http, &filtered_message).await.unwrap();
                 append_to_markov_file(filtered_message);
+                let message_count_lock = get_message_count_lock(ctx).await;
+                let mut message_count = message_count_lock.write().await;
+                *message_count = message_count.checked_add(1).unwrap();
+                let event_sink_lock = get_event_sink_lock(ctx).await;
+                let event_sink = event_sink_lock.read().await;
+                event_sink
+                    .submit_command(
+                        SET_MESSAGE_COUNT,
+                        *message_count,
+                        Target::Widget(ID_MESSAGE_COUNT),
+                    )
+                    .unwrap();
             }
         }
     }
@@ -78,7 +91,7 @@ pub fn init_markov_debug() -> Markov {
     return markov;
 }
 
-pub fn init_markov() -> Markov {
+pub fn init_markov() -> (Markov, usize) {
     let mut markov_chain = Markov::new();
     markov_chain.set_state_size(2).unwrap();
     markov_chain.set_max_tries(200);
@@ -89,8 +102,10 @@ pub fn init_markov() -> Markov {
         }
         return false;
     });
-    markov_chain.add_to_corpus(import_chain_from_file());
-    markov_chain
+    let input_data = import_chain_from_file();
+    let num_of_messages = input_data.len();
+    markov_chain.add_to_corpus(input_data);
+    (markov_chain, num_of_messages)
 }
 
 pub fn filter_message_for_markov_file(str: String, msg: &Message) -> String {
