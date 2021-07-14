@@ -1,3 +1,4 @@
+//#![windows_subsystem = "windows"]
 mod commands;
 mod file_operations;
 mod front;
