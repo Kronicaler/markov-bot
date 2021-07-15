@@ -20,6 +20,7 @@ use markov_chain_funcs::*;
 use markov_strings::Markov;
 use serenity::{
     async_trait,
+    client::{Context, EventHandler},
     framework::{
         standard::macros::{group, hook},
         StandardFramework,
@@ -33,19 +34,34 @@ use serenity::{
         interactions::*,
         prelude::Activity,
     },
-    prelude::*,
+    Client,
 };
 use slash_commands::*;
 use std::{
     collections::HashSet,
-    env, fs,
-    sync::mpsc::{self, Receiver, Sender},
-    thread,
+    env, fs, panic,
+    sync::{
+        mpsc::{self, Receiver, Sender},
+        Arc, Mutex,
+    },
+    time::Duration,
 };
 
 const KRONI_ID: u64 = 594772815283093524;
 
 struct Handler {}
+
+async fn listener(should_quit_lock: Arc<Mutex<bool>>) {
+    loop {
+        {
+            let should_quit = should_quit_lock.lock().unwrap();
+            if *should_quit {
+                return;
+            }
+        }
+        tokio::time::sleep(Duration::from_secs(1)).await;
+    }
+}
 
 #[async_trait]
 impl EventHandler for Handler {
@@ -136,18 +152,27 @@ async fn main() {
     dotenv::dotenv().expect("Failed to load .env file");
 
     let (tx, rx): (Sender<ExtEventSink>, Receiver<ExtEventSink>) = mpsc::channel();
-    thread::spawn(move || start_front(tx));
+    let should_quit = Arc::new(Mutex::new(false));
+    let should_quit2 = Arc::clone(&should_quit);
+    tokio::spawn(async move { start_front(tx, should_quit).await });
     let event_sink = rx.recv().unwrap();
-    let client = thread::spawn(|| start_client(event_sink));
 
-    client.join().expect("client panicked").await;
+    tokio::select! {
+        _ = start_client(event_sink) =>{return;},
+        _ = listener(should_quit2) =>{return;}
+    }
 }
 
-fn start_front(tx: Sender<ExtEventSink>) {
-    let window = WindowDesc::new(ui_builder).title("Doki Bot");
+async fn start_front(tx: Sender<ExtEventSink>, should_quit_lock: Arc<Mutex<bool>>) {
+    let window = WindowDesc::new(ui_builder)
+        .title("Doki Bot")
+        .window_size((50.0, 50.0));
     let launcher = AppLauncher::with_window(window);
     tx.send(launcher.get_external_handle()).unwrap();
-    let data: FrontData = FrontData { message_count: 0 };
+    let data: FrontData = FrontData {
+        message_count: 0,
+        should_quit_lock,
+    };
     launcher.launch(data).unwrap();
 }
 

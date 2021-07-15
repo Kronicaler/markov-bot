@@ -1,7 +1,11 @@
 #![allow(dead_code)]
 use crate::*;
 use druid::Target;
-use serenity::{client::Context, prelude::RwLock};
+use serenity::{
+    client::Context,
+    prelude::{RwLock, TypeMapKey},
+    Client,
+};
 use std::{collections::HashMap, sync::Arc, usize};
 
 pub struct MarkovChain;
@@ -49,9 +53,12 @@ impl TypeMapKey for MessageCount {
     type Value = Arc<RwLock<usize>>;
 }
 
-pub struct EventSink;
-impl TypeMapKey for EventSink {
-    type Value = Arc<RwLock<ExtEventSink>>;
+pub struct FrontChannel;
+impl TypeMapKey for FrontChannel {
+    type Value = Arc<RwLock<FrontChannelStruct>>;
+}
+pub struct FrontChannelStruct {
+    pub event_sink: ExtEventSink,
 }
 
 pub async fn init_global_data_for_client(client: &Client, event_sink: ExtEventSink) {
@@ -106,6 +113,7 @@ pub async fn init_global_data_for_client(client: &Client, event_sink: ExtEventSi
             .expect("couldn't read file"),
     )
     .unwrap();
+    let front_channel = FrontChannelStruct { event_sink };
 
     data.insert::<MarkovChain>(Arc::new(RwLock::new(markov)));
     data.insert::<MarkovBlacklistedChannels>(Arc::new(RwLock::new(blacklisted_channels_in_file)));
@@ -114,7 +122,7 @@ pub async fn init_global_data_for_client(client: &Client, event_sink: ExtEventSi
     data.insert::<ListenerBlacklistedUsers>(Arc::new(RwLock::new(user_listener_blacklist)));
     data.insert::<BotChannelIds>(Arc::new(RwLock::new(bot_channel)));
     data.insert::<MessageCount>(Arc::new(RwLock::new(num_of_messages)));
-    data.insert::<EventSink>(Arc::new(RwLock::new(event_sink)));
+    data.insert::<FrontChannel>(Arc::new(RwLock::new(front_channel)));
 }
 
 pub async fn get_listener_response_lock(ctx: &Context) -> Arc<RwLock<HashMap<String, String>>> {
@@ -194,12 +202,12 @@ pub async fn get_message_count_lock(ctx: &Context) -> Arc<RwLock<usize>> {
     message_count_lock
 }
 
-pub async fn get_event_sink_lock(ctx: &Context) -> Arc<RwLock<ExtEventSink>> {
+pub async fn get_front_channel_lock(ctx: &Context) -> Arc<RwLock<FrontChannelStruct>> {
     let event_sink_lock = ctx
         .data
         .read()
         .await
-        .get::<EventSink>()
+        .get::<FrontChannel>()
         .expect("expected EventSink in TypeMap")
         .clone();
     event_sink_lock
