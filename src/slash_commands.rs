@@ -81,3 +81,44 @@ pub async fn create_global_commands(ctx: &Context) {
     .await
     .unwrap();
 }
+
+pub async fn create_guild_commands(ctx: &Context) {
+    GuildId(724690339054486107)
+        .create_application_commands(&ctx.http, |commands| {
+            commands.create_application_command(|command| {
+                command
+                    .name("command")
+                    .description("this is a command")
+                    .create_option(|option| {
+                        option
+                            .name("option")
+                            .description("this is an option")
+                            .kind(ApplicationCommandOptionType::SubCommand)
+                            .create_sub_option(|suboption| {
+                                suboption
+                                    .name("suboption")
+                                    .description("this is a suboption")
+                                    .kind(ApplicationCommandOptionType::Boolean)
+                            })
+                            .create_sub_option(|suboption| {
+                                suboption
+                                    .name("suboption2")
+                                    .description("this is a suboption")
+                                    .kind(ApplicationCommandOptionType::Boolean)
+                            })
+                    })
+                    .create_option(|option| {
+                        option
+                            .name("option2")
+                            .description("this is an option")
+                            .kind(ApplicationCommandOptionType::SubCommand)
+                            .create_sub_option(|suboption| {
+                                suboption
+                                    .name("suboption3")
+                                    .description("this is a suboption")
+                                    .kind(ApplicationCommandOptionType::Boolean)
+                            })
+                    })
+            })
+        }).await.unwrap();
+}

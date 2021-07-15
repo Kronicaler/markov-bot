@@ -24,6 +24,7 @@ use serenity::{
         standard::macros::{group, hook},
         StandardFramework,
     },
+    futures::join,
     http::Http,
     model::{
         channel::Message,
@@ -48,62 +49,22 @@ struct Handler {}
 
 #[async_trait]
 impl EventHandler for Handler {
+    async fn ready(&self, ctx: Context, ready: Ready) {
+        println!("{} is connected!", ready.user.name);
+
+        let t1 = ctx.set_activity(Activity::watching("https://github.com/TheKroni/doki-bot"));
+        let t2 = create_global_commands(&ctx);
+        let t3 = create_guild_commands(&ctx);
+
+        join!(t1, t2, t3);
+    }
+
     async fn interaction_create(&self, ctx: Context, interaction: Interaction) {
         if interaction.kind == InteractionType::ApplicationCommand {
             if let Some(InteractionData::ApplicationCommand(data)) = interaction.data.as_ref() {
                 command_responses(data, ctx, &interaction).await;
             }
         }
-    }
-
-    async fn ready(&self, ctx: Context, ready: Ready) {
-        println!("{} is connected!", ready.user.name);
-
-        ctx.set_activity(Activity::watching("https://github.com/TheKroni/doki-bot"))
-            .await;
-
-        create_global_commands(&ctx).await;
-
-        GuildId(724690339054486107)
-            .create_application_commands(ctx.http, |commands| {
-                commands.create_application_command(|command| {
-                    command
-                        .name("command")
-                        .description("this is a command")
-                        .create_option(|option| {
-                            option
-                                .name("option")
-                                .description("this is an option")
-                                .kind(ApplicationCommandOptionType::SubCommand)
-                                .create_sub_option(|suboption| {
-                                    suboption
-                                        .name("suboption")
-                                        .description("this is a suboption")
-                                        .kind(ApplicationCommandOptionType::Boolean)
-                                })
-                                .create_sub_option(|suboption| {
-                                    suboption
-                                        .name("suboption2")
-                                        .description("this is a suboption")
-                                        .kind(ApplicationCommandOptionType::Boolean)
-                                })
-                        })
-                        .create_option(|option| {
-                            option
-                                .name("option2")
-                                .description("this is an option")
-                                .kind(ApplicationCommandOptionType::SubCommand)
-                                .create_sub_option(|suboption| {
-                                    suboption
-                                        .name("suboption3")
-                                        .description("this is a suboption")
-                                        .kind(ApplicationCommandOptionType::Boolean)
-                                })
-                        })
-                })
-            })
-            .await
-            .unwrap();
     }
 }
 
