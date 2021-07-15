@@ -179,12 +179,11 @@ async fn main() {
     dotenv::dotenv().expect("Failed to load .env file");
 
     let (tx, rx): (Sender<ExtEventSink>, Receiver<ExtEventSink>) = mpsc::channel();
-    let front = thread::spawn(move || start_front(tx));
+    thread::spawn(move || start_front(tx));
     let event_sink = rx.recv().unwrap();
     let client = thread::spawn(|| start_client(event_sink));
 
     client.join().expect("client panicked").await;
-    front.join().expect("front panicked");
 }
 
 fn start_front(tx: Sender<ExtEventSink>) {
