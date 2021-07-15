@@ -1,4 +1,4 @@
-#![windows_subsystem = "windows"]
+//#![windows_subsystem = "windows"]
 mod commands;
 mod file_operations;
 mod front;
@@ -7,6 +7,7 @@ mod helper_funcs;
 mod listener_response;
 mod markov_chain_funcs;
 mod slash_commands;
+mod system_tray;
 mod unit_tests;
 
 use commands::example::*;
@@ -37,6 +38,8 @@ use serenity::{
     Client,
 };
 use slash_commands::*;
+use system_tray::*;
+
 use std::{
     collections::HashSet,
     env, fs, panic,
@@ -155,11 +158,13 @@ async fn main() {
     let should_quit = Arc::new(Mutex::new(false));
     let should_quit2 = Arc::clone(&should_quit);
     tokio::spawn(async move { start_front(tx, should_quit).await });
-    let event_sink = rx.recv().unwrap();
+    let tray = tokio::spawn(async { create_tray_icon() }.await);
 
+    let event_sink = rx.recv().unwrap();
     tokio::select! {
-        _ = start_client(event_sink) =>{return;},
-        _ = listener(should_quit2) =>{return;}
+        _ = tray =>{},
+        _ = start_client(event_sink) =>{},
+        _ = listener(should_quit2) =>{},
     }
 }
 
