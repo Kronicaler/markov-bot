@@ -11,7 +11,7 @@ mod system_tray;
 mod unit_tests;
 
 use commands::example::*;
-use druid::{AppLauncher, ExtEventSink, WindowDesc};
+use druid::ExtEventSink;
 use file_operations::*;
 use front::*;
 use global_data::*;
@@ -43,22 +43,21 @@ use system_tray::*;
 use std::{
     collections::HashSet,
     env, fs, panic,
-    sync::{
-        mpsc::{self, Receiver, Sender},
-    },
+    sync::mpsc::{self, Receiver, Sender},
+    time::Duration,
 };
 
 const KRONI_ID: u64 = 594772815283093524;
 
-struct Handler {}
-
 async fn listener(quit_reciever: Receiver<bool>) {
+    tokio::time::sleep(Duration::from_secs(1)).await;
     for recieved in quit_reciever {
         if recieved {
             return;
         }
     }
 }
+struct Handler {}
 
 #[async_trait]
 impl EventHandler for Handler {
@@ -152,29 +151,14 @@ async fn main() {
     let (quit_sender, quit_reciever): (Sender<bool>, Receiver<bool>) = mpsc::channel();
 
     tokio::spawn(async move { start_front(tx, quit_sender).await });
-    let tray = tokio::spawn(async { create_tray_icon() }.await);
-    let listener = tokio::spawn(async{listener(quit_reciever)}.await);
 
     let event_sink = rx.recv().unwrap();
 
     tokio::select! {
-        _ = tray =>{},
+        _ = create_tray_icon() =>{},
         _ = start_client(event_sink) =>{},
-        _ = listener =>{},
+        _ = listener(quit_reciever) =>{},
     }
-}
-
-async fn start_front(tx: Sender<ExtEventSink>, quit_sender: Sender<bool>) {
-    let window = WindowDesc::new(ui_builder)
-        .title("Doki Bot")
-        .window_size((50.0, 50.0));
-    let launcher = AppLauncher::with_window(window);
-    tx.send(launcher.get_external_handle()).unwrap();
-    let data: FrontData = FrontData {
-        message_count: 0,
-        quit_sender,
-    };
-    launcher.launch(data).unwrap();
 }
 
 async fn start_client(event_sink: ExtEventSink) {

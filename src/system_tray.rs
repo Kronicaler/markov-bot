@@ -1,6 +1,8 @@
 extern crate native_windows_derive as nwd;
 extern crate native_windows_gui as nwg;
 
+use std::time::Duration;
+
 use nwd::NwgUi;
 use nwg::NativeUi;
 
@@ -58,6 +60,7 @@ impl SystemTray {
 }
 
 pub async fn create_tray_icon() {
+    tokio::time::sleep(Duration::from_secs(1)).await;
     nwg::init().expect("Failed to init Native Windows GUI");
     let _ui = SystemTray::build_ui(Default::default()).expect("Failed to build UI");
     nwg::dispatch_thread_events();

@@ -1,6 +1,5 @@
 use std::sync::mpsc::Sender;
 
-
 use druid::widget::{Button, Controller, Flex, Label};
 use druid::*;
 
@@ -15,6 +14,19 @@ pub struct FrontData {
     pub quit_sender: Sender<bool>,
 }
 
+pub async fn start_front(tx: Sender<ExtEventSink>, quit_sender: Sender<bool>) {
+    let window = WindowDesc::new(ui_builder)
+        .title("Doki Bot")
+        .window_size((50.0, 50.0));
+    let launcher = AppLauncher::with_window(window);
+    tx.send(launcher.get_external_handle()).unwrap();
+    let data: FrontData = FrontData {
+        message_count: 0,
+        quit_sender,
+    };
+    launcher.launch(data).unwrap();
+}
+
 pub fn ui_builder() -> impl Widget<FrontData> {
     let msg_count_label =
         Label::dynamic(|data: &usize, _env: &_| format!("Number of messages stored: {}", data))
@@ -24,13 +36,12 @@ pub fn ui_builder() -> impl Widget<FrontData> {
             .padding(5.0)
             .center();
 
-    let quit_button = Button::new("Quit client")
-        .on_click(|_ctx, data: &mut FrontData, _env| {
-            {
-                data.quit_sender.send(true).unwrap();
-            }
-            _ctx.window().close();
-        });
+    let quit_button = Button::new("Quit client").on_click(|_ctx, data: &mut FrontData, _env| {
+        {
+            data.quit_sender.send(true).unwrap();
+        }
+        _ctx.window().close();
+    });
 
     Flex::column()
         .with_child(msg_count_label)
