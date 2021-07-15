@@ -1,7 +1,15 @@
 use crate::*;
-use serenity::{client::Context, model::{channel::{GuildChannel, Message}, interactions::{
+use serenity::{
+    client::Context,
+    model::{
+        channel::{GuildChannel, Message},
+        interactions::{
             ApplicationCommandInteractionData, ApplicationCommandInteractionDataOptionValue,
-        }, prelude::User}, prelude::Mentionable};
+        },
+        prelude::User,
+    },
+    prelude::Mentionable,
+};
 
 pub fn id_command(data: &ApplicationCommandInteractionData) -> String {
     let options = data
@@ -25,7 +33,7 @@ pub fn get_first_mentioned_user(msg: &Message) -> Option<&User> {
         }
         return Option::Some(user);
     }
-    return None;
+    None
 }
 /**
 It first tries to send a message in the same channel.
@@ -39,12 +47,15 @@ pub async fn send_message_to_first_available_channel(ctx: &Context, msg: &Messag
     let bot_channels = bot_channels_lock.read().await;
     let bot_channel_id = bot_channels.get(&msg.guild_id.unwrap().0);
 
-    if let Err(_) = msg.channel_id.say(&ctx.http, message).await {
+    if msg.channel_id.say(&ctx.http, message).await.is_err() {
         //try sending message to bot channel
         if let Some(channel_id) = bot_channel_id {
-            let bot_channel = ctx.cache.guild_channel(channel_id.clone()).await;
+            let bot_channel = ctx.cache.guild_channel(*channel_id).await;
             if let Some(channel) = bot_channel {
-                channel.say(&ctx.http, msg.author.mention().to_string() + " " + message).await.unwrap();
+                channel
+                    .say(&ctx.http, msg.author.mention().to_string() + " " + message)
+                    .await
+                    .unwrap();
                 return;
             }
         }
@@ -76,7 +87,7 @@ pub async fn set_bot_channel(ctx: &Context, interaction: &Interaction) -> String
     let member_perms = member.permissions.unwrap();
 
     if !member_perms.administrator() && member.user.id != KRONI_ID {
-        return "You need to have the Administrator permission to invoke this command".to_string()
+        return "You need to have the Administrator permission to invoke this command".to_string();
     }
 
     let guild_id = interaction.guild_id.unwrap().0;

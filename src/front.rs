@@ -35,7 +35,7 @@ impl Controller<usize, Label<usize>> for GeneralController {
     ) {
         match event {
             Event::Command(cmd) if cmd.is(SET_MESSAGE_COUNT) => {
-                *data = cmd.get_unchecked(SET_MESSAGE_COUNT).clone();
+                *data = *cmd.get_unchecked(SET_MESSAGE_COUNT);
             }
             _ => child.event(ctx, event, data, env),
         }

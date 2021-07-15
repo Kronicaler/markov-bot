@@ -31,7 +31,7 @@ pub fn create_file_if_missing<'a>(path: &'a str, contents: &str) -> &'a str {
     if !Path::new(path).exists() {
         fs::write(path, contents).unwrap();
     }
-    return path;
+    path
 }
 
 /// If the message filter changes it's helpful to call this function when the bot starts so the filtering is consistent across the file.
@@ -48,8 +48,8 @@ pub fn clean_markov_file(msg: Message) {
     }
 }
 
-pub fn append_to_markov_file(str: String) -> () {
-    if !str.is_empty() && str.split(' ').collect::<Vec<&str>>().len() >= 5 {
+pub fn append_to_markov_file(str: String) {
+    if !str.is_empty() && str.split(' ').count() >= 5 {
         let mut file = OpenOptions::new()
             .write(true)
             .append(true)
@@ -79,7 +79,7 @@ pub fn import_chain_from_file() -> Vec<InputData> {
         };
         input_data.push(input);
     }
-    return input_data;
+    input_data
 }
 
 pub fn save_markov_blacklisted_users(
@@ -91,7 +91,7 @@ pub fn save_markov_blacklisted_users(
     )
 }
 
-pub fn save_bot_channel(bot_channels:&HashMap<u64,u64>) -> Result<(),std::io::Error>{
+pub fn save_bot_channel(bot_channels: &HashMap<u64, u64>) -> Result<(), std::io::Error> {
     fs::write(
         BOT_CHANNEL_PATH,
         serde_json::to_string(bot_channels).unwrap(),

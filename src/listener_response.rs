@@ -24,7 +24,7 @@ pub async fn list_listeners(ctx: &Context) -> String {
     message.pop();
     message.pop();
 
-    return message;
+    message
 }
 
 pub async fn remove_listener_command(
@@ -52,7 +52,7 @@ pub async fn remove_listener_command(
         }
     }
 
-    return "Something went wrong".to_string();
+    "Something went wrong".to_string()
 }
 
 pub async fn set_listener_command(
@@ -99,7 +99,7 @@ pub async fn set_listener_command(
             return "Set listener".to_string();
         }
     }
-    return "Couldn't set listener".to_string();
+    "Couldn't set listener".to_string()
 }
 
 pub async fn blacklist_user_from_listener(ctx: &Context, user: &User) -> String {
@@ -110,11 +110,11 @@ pub async fn blacklist_user_from_listener(ctx: &Context, user: &User) -> String 
     if !users_blacklisted_from_listener.contains(&user.id.0) {
         users_blacklisted_from_listener.insert(user.id.0);
         save_user_listener_blacklist_to_file(users_blacklisted_from_listener.clone());
-        return "Added user to the blacklist".to_string();
+        "Added user to the blacklist".to_string()
     } else {
         users_blacklisted_from_listener.remove(&user.id.0);
         save_user_listener_blacklist_to_file(users_blacklisted_from_listener.clone());
-        return "Removed user from the blacklist".to_string();
+        "Removed user from the blacklist".to_string()
     }
 }
 
@@ -123,7 +123,7 @@ pub async fn blacklist_user_from_listener(ctx: &Context, user: &User) -> String 
 ///If a listened word is found it returns the response
 pub async fn check_for_listened_words(
     ctx: &Context,
-    words_in_message: &Vec<String>,
+    words_in_message: &[String],
     user_id: &UserId,
 ) -> Option<String> {
     let listener_response_lock = get_listener_response_lock(ctx).await;
@@ -136,7 +136,7 @@ pub async fn check_for_listened_words(
             return Some(response.to_string());
         }
     }
-    return None;
+    None
 }
 
 pub fn create_listener_commands(

@@ -1,4 +1,4 @@
-//#![windows_subsystem = "windows"]
+#![windows_subsystem = "windows"]
 mod commands;
 mod file_operations;
 mod front;
@@ -50,13 +50,8 @@ struct Handler {}
 impl EventHandler for Handler {
     async fn interaction_create(&self, ctx: Context, interaction: Interaction) {
         if interaction.kind == InteractionType::ApplicationCommand {
-            if let Some(data) = interaction.data.as_ref() {
-                match data {
-                    InteractionData::ApplicationCommand(data) => {
-                        command_responses(data, ctx, &interaction).await;
-                    }
-                    _ => {}
-                }
+            if let Some(InteractionData::ApplicationCommand(data)) = interaction.data.as_ref() {
+                command_responses(data, ctx, &interaction).await;
             }
         }
     }
@@ -189,7 +184,7 @@ async fn main() {
 }
 
 fn start_front(tx: Sender<ExtEventSink>) {
-    let window = WindowDesc::new(|| ui_builder()).title("Doki Bot");
+    let window = WindowDesc::new(ui_builder).title("Doki Bot");
     let launcher = AppLauncher::with_window(window);
     tx.send(launcher.get_external_handle()).unwrap();
     let data: FrontData = FrontData { message_count: 0 };
