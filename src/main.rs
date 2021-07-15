@@ -56,6 +56,9 @@ async fn listener(quit_reciever: Receiver<bool>) {
             return;
         }
     }
+    loop{
+        tokio::time::sleep(Duration::from_secs(10000)).await;
+    }
 }
 struct Handler {}
 
