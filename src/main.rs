@@ -1,4 +1,4 @@
-//#![windows_subsystem = "windows"]
+#![windows_subsystem = "windows"]
 mod commands;
 mod file_operations;
 mod front;
@@ -45,24 +45,18 @@ use std::{
     env, fs, panic,
     sync::{
         mpsc::{self, Receiver, Sender},
-        Arc, Mutex,
     },
-    time::Duration,
 };
 
 const KRONI_ID: u64 = 594772815283093524;
 
 struct Handler {}
 
-async fn listener(should_quit_lock: Arc<Mutex<bool>>) {
-    loop {
-        {
-            let should_quit = should_quit_lock.lock().unwrap();
-            if *should_quit {
-                return;
-            }
+async fn listener(quit_reciever: Receiver<bool>) {
+    for recieved in quit_reciever {
+        if recieved {
+            return;
         }
-        tokio::time::sleep(Duration::from_secs(1)).await;
     }
 }
 
@@ -155,20 +149,22 @@ async fn main() {
     dotenv::dotenv().expect("Failed to load .env file");
 
     let (tx, rx): (Sender<ExtEventSink>, Receiver<ExtEventSink>) = mpsc::channel();
-    let should_quit = Arc::new(Mutex::new(false));
-    let should_quit2 = Arc::clone(&should_quit);
-    tokio::spawn(async move { start_front(tx, should_quit).await });
+    let (quit_sender, quit_reciever): (Sender<bool>, Receiver<bool>) = mpsc::channel();
+
+    tokio::spawn(async move { start_front(tx, quit_sender).await });
     let tray = tokio::spawn(async { create_tray_icon() }.await);
+    let listener = tokio::spawn(async{listener(quit_reciever)}.await);
 
     let event_sink = rx.recv().unwrap();
+
     tokio::select! {
         _ = tray =>{},
         _ = start_client(event_sink) =>{},
-        _ = listener(should_quit2) =>{},
+        _ = listener =>{},
     }
 }
 
-async fn start_front(tx: Sender<ExtEventSink>, should_quit_lock: Arc<Mutex<bool>>) {
+async fn start_front(tx: Sender<ExtEventSink>, quit_sender: Sender<bool>) {
     let window = WindowDesc::new(ui_builder)
         .title("Doki Bot")
         .window_size((50.0, 50.0));
@@ -176,7 +172,7 @@ async fn start_front(tx: Sender<ExtEventSink>, should_quit_lock: Arc<Mutex<bool>
     tx.send(launcher.get_external_handle()).unwrap();
     let data: FrontData = FrontData {
         message_count: 0,
-        should_quit_lock,
+        quit_sender,
     };
     launcher.launch(data).unwrap();
 }

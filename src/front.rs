@@ -1,4 +1,5 @@
-use std::sync::{Arc, Mutex};
+use std::sync::mpsc::Sender;
+
 
 use druid::widget::{Button, Controller, Flex, Label};
 use druid::*;
@@ -10,7 +11,8 @@ pub const ID_MESSAGE_COUNT: WidgetId = WidgetId::reserved(1);
 #[derive(Clone, Data, Lens)]
 pub struct FrontData {
     pub message_count: usize,
-    pub should_quit_lock: Arc<Mutex<bool>>,
+    #[data(ignore)]
+    pub quit_sender: Sender<bool>,
 }
 
 pub fn ui_builder() -> impl Widget<FrontData> {
@@ -23,14 +25,12 @@ pub fn ui_builder() -> impl Widget<FrontData> {
             .center();
 
     let quit_button = Button::new("Quit client")
-        .on_click(|_ctx, data: &mut Arc<Mutex<bool>>, _env| {
+        .on_click(|_ctx, data: &mut FrontData, _env| {
             {
-                let mut should_quit = data.lock().unwrap();
-                *should_quit = !*should_quit;
+                data.quit_sender.send(true).unwrap();
             }
             _ctx.window().close();
-        })
-        .lens(FrontData::should_quit_lock);
+        });
 
     Flex::column()
         .with_child(msg_count_label)
