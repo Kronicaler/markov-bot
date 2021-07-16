@@ -158,7 +158,7 @@ async fn main() {
     let event_sink = rx.recv().unwrap();
 
     tokio::select! {
-        _ = create_tray_icon() =>{},
+        _ = tokio::task::spawn_blocking(create_tray_icon) =>{},
         _ = start_client(event_sink) =>{},
         _ = listener(quit_reciever) =>{},
     }
