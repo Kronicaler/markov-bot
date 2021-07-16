@@ -39,13 +39,14 @@ pub async fn should_add_message_to_markov_file(msg: &Message, ctx: &Context) {
                 }
                 let filtered_message = filter_message_for_markov_file(str, msg);
                 //msg.reply(&ctx.http, &filtered_message).await.unwrap();
-                append_to_markov_file(filtered_message);
+                append_to_markov_file(&filtered_message);
                 let message_count_lock = get_message_count_lock(ctx).await;
                 let mut message_count = message_count_lock.write().await;
                 *message_count = message_count.checked_add(1).unwrap();
                 let front_channel_lock = get_front_channel_lock(ctx).await;
                 let front_channel = front_channel_lock.read().await;
-                front_channel.event_sink
+                front_channel
+                    .event_sink
                     .submit_command(
                         SET_MESSAGE_COUNT,
                         *message_count,
@@ -211,24 +212,17 @@ pub async fn add_or_remove_user_from_markov_blacklist(user: &User, ctx: &Context
     let blacklisted_users_lock = get_markov_blacklisted_users_lock(ctx).await;
     let mut blacklisted_users = blacklisted_users_lock.write().await;
 
-    match !blacklisted_users.contains(&user.id.0) {
-        true => {
-            {
-                blacklisted_users.insert(user.id.0);
-            }
-            match save_markov_blacklisted_users(&*blacklisted_users) {
-                Ok(_) => "Added ".to_owned() + &user.name + " to the list of blacklisted users",
-                Err(_) => "Couldn't add the user to the file".to_string(),
-            }
+    if blacklisted_users.contains(&user.id.0) {
+        blacklisted_users.remove(&user.id.0);
+        match save_markov_blacklisted_users(&*blacklisted_users) {
+            Ok(_) => "Removed ".to_owned() + &user.name + " from the list of blacklisted users",
+            Err(_) => "Couldn't remove the user from the file".to_string(),
         }
-        false => {
-            {
-                blacklisted_users.remove(&user.id.0);
-            }
-            match save_markov_blacklisted_users(&*blacklisted_users) {
-                Ok(_) => "Removed ".to_owned() + &user.name + " from the list of blacklisted users",
-                Err(_) => "Couldn't remove the user from the file".to_string(),
-            }
+    } else {
+        blacklisted_users.insert(user.id.0);
+        match save_markov_blacklisted_users(&*blacklisted_users) {
+            Ok(_) => "Added ".to_owned() + &user.name + " to the list of blacklisted users",
+            Err(_) => "Couldn't add the user to the file".to_string(),
         }
     }
 }

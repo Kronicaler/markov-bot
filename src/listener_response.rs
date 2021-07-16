@@ -45,11 +45,11 @@ pub async fn remove_listener_command(
     if let ApplicationCommandInteractionDataOptionValue::String(listener) = listener {
         if listener_response.contains_key(listener) {
             listener_response.remove(listener);
-            save_listener_response_to_file(listener_response.clone());
+            save_listener_response_to_file(&listener_response);
             return "Successfully removed the listener".to_string();
-        } else {
+        } 
             return "That listener doesn't exist".to_string();
-        }
+        
     }
 
     "Something went wrong".to_string()
@@ -95,7 +95,7 @@ pub async fn set_listener_command(
                 listener.to_lowercase().trim().to_string(),
                 response.trim().to_string(),
             );
-            save_listener_response_to_file(listener_response.clone());
+            save_listener_response_to_file(&listener_response);
             return "Set listener".to_string();
         }
     }
@@ -107,14 +107,14 @@ pub async fn blacklist_user_from_listener(ctx: &Context, user: &User) -> String 
 
     let mut users_blacklisted_from_listener = listener_blacklisted_users_lock.write().await;
 
-    if !users_blacklisted_from_listener.contains(&user.id.0) {
-        users_blacklisted_from_listener.insert(user.id.0);
-        save_user_listener_blacklist_to_file(users_blacklisted_from_listener.clone());
-        "Added user to the blacklist".to_string()
-    } else {
+    if users_blacklisted_from_listener.contains(&user.id.0) {
         users_blacklisted_from_listener.remove(&user.id.0);
-        save_user_listener_blacklist_to_file(users_blacklisted_from_listener.clone());
+        save_user_listener_blacklist_to_file(&users_blacklisted_from_listener);
         "Removed user from the blacklist".to_string()
+    } else {
+        users_blacklisted_from_listener.insert(user.id.0);
+        save_user_listener_blacklist_to_file(&users_blacklisted_from_listener);
+        "Added user to the blacklist".to_string()
     }
 }
 
@@ -124,7 +124,7 @@ pub async fn blacklist_user_from_listener(ctx: &Context, user: &User) -> String 
 pub async fn check_for_listened_words(
     ctx: &Context,
     words_in_message: &[String],
-    user_id: &UserId,
+    user_id: UserId,
 ) -> Option<String> {
     let listener_response_lock = get_listener_response_lock(ctx).await;
     let listener_response = listener_response_lock.read().await;

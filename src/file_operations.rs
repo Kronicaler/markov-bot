@@ -9,7 +9,7 @@ use crate::*;
 use markov_strings::{ImportExport, InputData};
 use serenity::model::channel::Message;
 
-pub fn save_user_listener_blacklist_to_file(blacklist: HashSet<u64>) {
+pub fn save_user_listener_blacklist_to_file(blacklist: &HashSet<u64>) {
     fs::write(
         LISTENER_BLACKLISTED_USERS_PATH,
         serde_json::to_string(&blacklist).unwrap(),
@@ -17,7 +17,7 @@ pub fn save_user_listener_blacklist_to_file(blacklist: HashSet<u64>) {
     .unwrap();
 }
 
-pub fn save_listener_response_to_file(listener_response: HashMap<String, String>) {
+pub fn save_listener_response_to_file(listener_response: &HashMap<String, String>) {
     fs::write(
         LISTENER_RESPONSE_PATH,
         serde_json::to_string(&listener_response).unwrap(),
@@ -36,19 +36,19 @@ pub fn create_file_if_missing<'a>(path: &'a str, contents: &str) -> &'a str {
 
 /// If the message filter changes it's helpful to call this function when the bot starts so the filtering is consistent across the file.
 #[allow(dead_code)]
-pub fn clean_markov_file(msg: Message) {
+pub fn clean_markov_file(msg: &Message) {
     let file = fs::read_to_string(MARKOV_DATA_SET_PATH).unwrap();
     let messages = file
         .split("\n\n")
-        .map(|s| s.to_string())
+        .map(ToString::to_string)
         .collect::<Vec<String>>();
     fs::write(MARKOV_DATA_SET_PATH, "").unwrap();
     for message in messages {
-        append_to_markov_file(filter_message_for_markov_file(message, &msg))
+        append_to_markov_file(&filter_message_for_markov_file(message, &msg))
     }
 }
 
-pub fn append_to_markov_file(str: String) {
+pub fn append_to_markov_file(str: &str) {
     if !str.is_empty() && str.split(' ').count() >= 5 {
         let mut file = OpenOptions::new()
             .write(true)
@@ -63,7 +63,7 @@ pub fn append_to_markov_file(str: String) {
 }
 
 #[allow(dead_code)]
-pub fn export_to_markov_file(export: ImportExport) {
+pub fn export_to_markov_file(export: &ImportExport) {
     fs::write(MARKOV_EXPORT_PATH, serde_json::to_string(&export).unwrap()).unwrap();
 }
 

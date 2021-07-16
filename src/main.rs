@@ -1,4 +1,8 @@
 #![windows_subsystem = "windows"]
+#![deny(warnings, missing_docs, clippy::all)]
+
+//! A discord bot written in rust for fun
+
 mod commands;
 mod file_operations;
 mod front;
@@ -47,7 +51,7 @@ use std::{
     time::Duration,
 };
 
-const KRONI_ID: u64 = 594772815283093524;
+const KRONI_ID: u64 = 594_772_815_283_093_524;
 
 async fn listener(quit_reciever: Receiver<bool>) {
     tokio::time::sleep(Duration::from_secs(1)).await;
@@ -56,7 +60,7 @@ async fn listener(quit_reciever: Receiver<bool>) {
             return;
         }
     }
-    loop{
+    loop {
         tokio::time::sleep(Duration::from_secs(10000)).await;
     }
 }
@@ -94,10 +98,10 @@ async fn normal_message(ctx: &Context, msg: &Message) {
         .content
         .to_lowercase()
         .split(' ')
-        .map(|s| s.to_string())
+        .map(ToString::to_string)
         .collect::<Vec<String>>();
 
-    if let Some(response) = check_for_listened_words(ctx, &words_in_message, &msg.author.id).await {
+    if let Some(response) = check_for_listened_words(ctx, &words_in_message, msg.author.id).await {
         send_message_to_first_available_channel(ctx, msg, &response).await;
         return;
     }
@@ -153,7 +157,7 @@ async fn main() {
     let (tx, rx): (Sender<ExtEventSink>, Receiver<ExtEventSink>) = mpsc::channel();
     let (quit_sender, quit_reciever): (Sender<bool>, Receiver<bool>) = mpsc::channel();
 
-    tokio::spawn(async move { start_front(tx, quit_sender).await });
+    tokio::spawn(async move { start_gui(tx, quit_sender).await });
 
     let event_sink = rx.recv().unwrap();
 

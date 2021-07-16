@@ -83,7 +83,7 @@ pub async fn create_global_commands(ctx: &Context) {
 }
 
 pub async fn create_guild_commands(ctx: &Context) {
-    GuildId(724690339054486107)
+    GuildId(724_690_339_054_486_107)
         .create_application_commands(&ctx.http, |commands| {
             commands.create_application_command(|command| {
                 command
