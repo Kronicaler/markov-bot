@@ -1,4 +1,4 @@
-#![windows_subsystem = "windows"]
+//#![windows_subsystem = "windows"]
 #![deny(warnings, missing_docs, clippy::all)]
 
 //! A discord bot written in rust for fun
@@ -43,27 +43,12 @@ use serenity::{
 };
 use slash_commands::*;
 use system_tray::*;
+use tokio::sync::mpsc::{self, Receiver, Sender};
 
-use std::{
-    collections::HashSet,
-    env, fs, panic,
-    sync::mpsc::{self, Receiver, Sender},
-    time::Duration,
-};
+use std::{collections::HashSet, env, fs, panic};
 
 const KRONI_ID: u64 = 594_772_815_283_093_524;
 
-async fn listener(quit_reciever: Receiver<bool>) {
-    tokio::time::sleep(Duration::from_secs(1)).await;
-    for recieved in quit_reciever {
-        if recieved {
-            return;
-        }
-    }
-    loop {
-        tokio::time::sleep(Duration::from_secs(10000)).await;
-    }
-}
 struct Handler {}
 
 #[async_trait]
@@ -154,17 +139,15 @@ async fn main() {
     fs::create_dir("data/markov data").ok();
     dotenv::dotenv().expect("Failed to load .env file");
 
-    let (tx, rx): (Sender<ExtEventSink>, Receiver<ExtEventSink>) = mpsc::channel();
-    let (quit_sender, quit_reciever): (Sender<bool>, Receiver<bool>) = mpsc::channel();
+    let (tx, mut rx): (Sender<ExtEventSink>, Receiver<ExtEventSink>) = mpsc::channel(1);
 
-    tokio::spawn(async move { start_gui(tx, quit_sender).await });
+    tokio::task::spawn_blocking(move || start_gui(tx));
 
-    let event_sink = rx.recv().unwrap();
+    let event_sink = rx.recv().await.unwrap();
 
     tokio::select! {
         _ = tokio::task::spawn_blocking(create_tray_icon) =>{},
         _ = start_client(event_sink) =>{},
-        _ = listener(quit_reciever) =>{},
     }
 }
 

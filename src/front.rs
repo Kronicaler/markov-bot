@@ -1,6 +1,5 @@
-use std::sync::mpsc::Sender;
-
-use druid::widget::{Button, Controller, Flex, Label};
+use crate::*;
+use druid::widget::{Controller, Flex, Label};
 use druid::*;
 
 pub const SET_MESSAGE_COUNT: Selector<usize> = Selector::new("message-count");
@@ -10,20 +9,20 @@ pub const ID_MESSAGE_COUNT: WidgetId = WidgetId::reserved(1);
 #[derive(Clone, Data, Lens)]
 pub struct GuiData {
     pub message_count: usize,
-    #[data(ignore)]
-    pub quit_sender: Sender<bool>,
 }
 
-pub async fn start_gui(tx: Sender<ExtEventSink>, quit_sender: Sender<bool>) {
+pub fn start_gui(tx: Sender<ExtEventSink>) {
     let window = WindowDesc::new(ui_builder)
         .title("Doki Bot")
         .window_size((50.0, 50.0));
     let launcher = AppLauncher::with_window(window);
-    tx.send(launcher.get_external_handle()).unwrap();
-    let data: GuiData = GuiData {
-        message_count: 0,
-        quit_sender,
-    };
+    match tx.blocking_send(launcher.get_external_handle()) {
+        Ok(_) => {}
+        Err(_) => {
+            panic!()
+        }
+    }
+    let data: GuiData = GuiData { message_count: 0 };
     launcher.launch(data).unwrap();
 }
 
@@ -36,16 +35,7 @@ pub fn ui_builder() -> impl Widget<GuiData> {
             .padding(5.0)
             .center();
 
-    let quit_button = Button::new("Quit client").on_click(|ctx, data: &mut GuiData, _env| {
-        {
-            data.quit_sender.send(true).unwrap();
-        }
-        ctx.window().close();
-    });
-
-    Flex::column()
-        .with_child(msg_count_label)
-        .with_child(quit_button)
+    Flex::column().with_child(msg_count_label)
 }
 
 struct GeneralController;
