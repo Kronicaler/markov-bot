@@ -11,6 +11,7 @@ mod unit_tests;
 
 use client::*;
 use commands::example::*;
+use crossbeam::channel::{Receiver, Sender};
 use druid::ExtEventSink;
 use gui::*;
 use markov_strings::Markov;
@@ -33,7 +34,6 @@ use serenity::{
     Client,
 };
 use system_tray::*;
-use tokio::sync::mpsc::{self, Receiver, Sender};
 
 use std::{collections::HashSet, env, fs, panic};
 
@@ -129,11 +129,11 @@ async fn main() {
     fs::create_dir("data/markov data").ok();
     dotenv::dotenv().expect("Failed to load .env file");
 
-    let (tx, mut rx): (Sender<ExtEventSink>, Receiver<ExtEventSink>) = mpsc::channel(1); //TODO replace with crossbeam channels in the future
+    let (tx, rx): (Sender<ExtEventSink>, Receiver<ExtEventSink>) = crossbeam::channel::bounded(10);
 
     tokio::task::spawn_blocking(move || start_gui(&tx));
 
-    let event_sink = rx.recv().await.unwrap();
+    let event_sink = rx.recv().unwrap();
 
     tokio::select! {
         _ = tokio::task::spawn_blocking(create_tray_icon) =>{},

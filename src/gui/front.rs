@@ -16,12 +16,7 @@ pub fn start_gui(tx: &Sender<ExtEventSink>) {
         .title("Doki Bot")
         .window_size((50.0, 50.0));
     let launcher = AppLauncher::with_window(window);
-    match tx.blocking_send(launcher.get_external_handle()) {
-        Ok(_) => {}
-        Err(_) => {
-            panic!()
-        }
-    }
+    tx.send(launcher.get_external_handle()).unwrap();
     let data: GuiData = GuiData { message_count: 0 };
     launcher.launch(data).unwrap();
 }
