@@ -1,27 +1,18 @@
 //#![windows_subsystem = "windows"]
-#![deny(warnings, missing_docs, clippy::all)]
+#![deny(missing_docs, clippy::all)]
 
 //! A discord bot written in rust for fun
 
+mod client;
 mod commands;
-mod file_operations;
-mod front;
-mod global_data;
-mod helper_funcs;
-mod listener_response;
-mod markov_chain_funcs;
-mod slash_commands;
+mod gui;
 mod system_tray;
 mod unit_tests;
 
+use client::*;
 use commands::example::*;
 use druid::ExtEventSink;
-use file_operations::*;
-use front::*;
-use global_data::*;
-use helper_funcs::*;
-use listener_response::*;
-use markov_chain_funcs::*;
+use gui::*;
 use markov_strings::Markov;
 use serenity::{
     async_trait,
@@ -41,7 +32,6 @@ use serenity::{
     },
     Client,
 };
-use slash_commands::*;
 use system_tray::*;
 use tokio::sync::mpsc::{self, Receiver, Sender};
 
