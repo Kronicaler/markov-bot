@@ -129,7 +129,7 @@ async fn main() {
     fs::create_dir("data/markov data").ok();
     dotenv::dotenv().expect("Failed to load .env file");
 
-    let (tx, mut rx): (Sender<ExtEventSink>, Receiver<ExtEventSink>) = mpsc::channel(1);
+    let (tx, mut rx): (Sender<ExtEventSink>, Receiver<ExtEventSink>) = mpsc::channel(1); //TODO replace with crossbeam channels in the future
 
     tokio::task::spawn_blocking(move || start_gui(&tx));
 
