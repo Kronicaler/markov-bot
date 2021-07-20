@@ -11,7 +11,7 @@ pub struct GuiData {
     pub message_count: usize,
 }
 
-pub fn start_gui(tx: Sender<ExtEventSink>) {
+pub fn start_gui(tx: &Sender<ExtEventSink>) {
     let window = WindowDesc::new(ui_builder)
         .title("Doki Bot")
         .window_size((50.0, 50.0));

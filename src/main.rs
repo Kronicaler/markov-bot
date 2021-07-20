@@ -131,7 +131,7 @@ async fn main() {
 
     let (tx, mut rx): (Sender<ExtEventSink>, Receiver<ExtEventSink>) = mpsc::channel(1);
 
-    tokio::task::spawn_blocking(move || start_gui(tx));
+    tokio::task::spawn_blocking(move || start_gui(&tx));
 
     let event_sink = rx.recv().await.unwrap();
 
