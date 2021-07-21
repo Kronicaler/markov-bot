@@ -43,8 +43,11 @@ pub fn clean_markov_file(msg: &Message) {
         .map(ToString::to_string)
         .collect::<Vec<String>>();
     fs::write(MARKOV_DATA_SET_PATH, "").unwrap();
-    for message in messages {
-        append_to_markov_file(&filter_message_for_markov_file(message, &msg))
+
+    let filtered_messages: Vec<String> = messages.into_par_iter().map(|message| filter_message_for_markov_file(message, &msg)).collect();
+
+    for message in filtered_messages{
+        append_to_markov_file(&message);
     }
 }
 
@@ -70,16 +73,14 @@ pub fn export_to_markov_file(export: &ImportExport) {
 pub fn import_chain_from_file() -> Vec<InputData> {
     let text_from_file =
         fs::read_to_string(create_file_if_missing(MARKOV_DATA_SET_PATH, "")).unwrap();
-    let text_array = text_from_file.split("\n\n");
-    let mut input_data: Vec<InputData> = Vec::new();
-    for message in text_array {
-        let input = InputData {
+    let text_array: Vec<&str> = text_from_file.split("\n\n").collect();
+    text_array
+        .into_par_iter()
+        .map(|message| InputData {
             text: message.to_string(),
             meta: None,
-        };
-        input_data.push(input);
-    }
-    input_data
+        })
+        .collect()
 }
 
 pub fn save_markov_blacklisted_users(
