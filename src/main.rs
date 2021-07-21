@@ -131,7 +131,7 @@ async fn main() {
 
     let (tx, rx): (Sender<ExtEventSink>, Receiver<ExtEventSink>) = crossbeam::channel::bounded(10);
 
-    tokio::task::spawn_blocking(move || start_gui(&tx));
+    std::thread::spawn(move ||start_gui(&tx));
 
     let event_sink = rx.recv().unwrap();
 
