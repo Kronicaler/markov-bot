@@ -131,18 +131,27 @@ async fn main() {
     dotenv::dotenv().expect("Failed to load .env file");
 
     let (tx, rx): (Sender<ExtEventSink>, Receiver<ExtEventSink>) = crossbeam::channel::bounded(10);
+    let (export_and_quit_sender, export_and_quit_receiver): (Sender<bool>, Receiver<bool>) =
+        crossbeam::channel::bounded(10);
 
-    std::thread::spawn(move || start_gui(&tx));
+        let senders_to_client = SendersToClient{ export_and_quit: export_and_quit_sender };
+
+    std::thread::spawn(move || start_gui(&tx, senders_to_client));
 
     let event_sink = rx.recv().unwrap();
 
+    let front_channel = FrontChannelStruct {
+        event_sink: event_sink,
+        export_and_quit_receiver,
+    };
+
     tokio::select! {
         _ = tokio::task::spawn_blocking(create_tray_icon) =>{},
-        _ = start_client(event_sink) =>{},
+        _ = start_client(front_channel) =>{},
     }
 }
 
-async fn start_client(event_sink: ExtEventSink) {
+async fn start_client(front_channel: FrontChannelStruct) {
     let token = env::var("DISCORD_TOKEN").expect("Expected a token in the environment");
     let application_id: UserId = env::var("APPLICATION_ID")
         .expect("Expected an application id in the environment")
@@ -169,8 +178,9 @@ async fn start_client(event_sink: ExtEventSink) {
         .event_handler(Handler {})
         .await
         .expect("Err creating client");
+
     {
-        init_global_data_for_client(&client, event_sink).await;
+        init_global_data_for_client(&client, front_channel).await;
     }
     if let Err(why) = client.start().await {
         println!("Client error: {:?}", why);

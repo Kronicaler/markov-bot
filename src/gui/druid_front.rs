@@ -1,5 +1,5 @@
 use crate::*;
-use druid::widget::{Controller, Flex, Label};
+use druid::widget::{Button, Controller, Flex, Label};
 use druid::*;
 
 pub const SET_MESSAGE_COUNT: Selector<usize> = Selector::new("message-count");
@@ -9,15 +9,25 @@ pub const ID_MESSAGE_COUNT: WidgetId = WidgetId::reserved(1);
 #[derive(Clone, Data, Lens)]
 pub struct GuiData {
     pub message_count: usize,
+    #[data(ignore)]
+    pub senders_to_client: SendersToClient,
 }
 
-pub fn start_gui(tx: &Sender<ExtEventSink>) {
+#[derive(Clone)]
+pub struct SendersToClient {
+    pub export_and_quit: Sender<bool>,
+}
+
+pub fn start_gui(tx: &Sender<ExtEventSink>, senders_to_client: SendersToClient) {
     let window = WindowDesc::new(ui_builder)
         .title("Doki Bot")
         .window_size((50.0, 50.0));
     let launcher = AppLauncher::with_window(window);
     tx.send(launcher.get_external_handle()).unwrap();
-    let data: GuiData = GuiData { message_count: 0 };
+    let data: GuiData = GuiData {
+        message_count: 0,
+        senders_to_client,
+    };
     launcher.launch(data).unwrap();
 }
 
@@ -29,6 +39,8 @@ pub fn ui_builder() -> impl Widget<GuiData> {
             .lens(GuiData::message_count)
             .padding(5.0)
             .center();
+
+    let export_button = Button::new("")
 
     Flex::column().with_child(msg_count_label)
 }

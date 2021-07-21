@@ -1,3 +1,3 @@
-pub mod front;
+pub mod druid_front;
 
-pub use front::*;
+pub use druid_front::*;

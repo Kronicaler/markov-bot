@@ -59,9 +59,10 @@ impl TypeMapKey for FrontChannel {
 }
 pub struct FrontChannelStruct {
     pub event_sink: ExtEventSink,
+    pub export_and_quit_receiver: Receiver<bool>,
 }
 
-pub async fn init_global_data_for_client(client: &Client, event_sink: ExtEventSink) {
+pub async fn init_global_data_for_client(client: &Client, front_channel: FrontChannelStruct) {
     let mut data = client.data.write().await;
 
     let markov;
@@ -75,7 +76,8 @@ pub async fn init_global_data_for_client(client: &Client, event_sink: ExtEventSi
         markov = init.0;
         num_of_messages = init.1;
     }
-    event_sink
+    front_channel
+        .event_sink
         .submit_command(
             SET_MESSAGE_COUNT,
             num_of_messages,
@@ -113,7 +115,6 @@ pub async fn init_global_data_for_client(client: &Client, event_sink: ExtEventSi
             .expect("couldn't read file"),
     )
     .unwrap();
-    let front_channel = FrontChannelStruct { event_sink };
 
     data.insert::<MarkovChain>(Arc::new(RwLock::new(markov)));
     data.insert::<MarkovBlacklistedChannels>(Arc::new(RwLock::new(blacklisted_channels_in_file)));
