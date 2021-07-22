@@ -40,9 +40,11 @@ pub fn ui_builder() -> impl Widget<GuiData> {
             .padding(5.0)
             .center();
 
-    let export_button = Button::new("")
+    let export_button = Button::new("Export Markov Chain and close the Client").on_click(|_ctx, data: &mut GuiData, _env| {
+        data.senders_to_client.export_and_quit.try_send(true).unwrap();
+    });
 
-    Flex::column().with_child(msg_count_label)
+    Flex::column().with_child(msg_count_label).with_child(export_button)
 }
 
 struct GeneralController;

@@ -1217,8 +1217,6 @@ dependencies = [
 [[package]]
 name = "markov_strings"
 version = "0.1.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "939026ed132dd1433fbcbf5df174cb25c7276aed87f5c9c7ce1b7b944ef29aa8"
 dependencies = [
  "rand 0.8.4",
  "serde",

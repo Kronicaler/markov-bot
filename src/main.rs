@@ -19,16 +19,17 @@ use rayon::prelude::*;
 use serenity::{Client, async_trait, client::{Context, EventHandler}, framework::{
         standard::macros::{group, hook},
         StandardFramework,
-    }, futures::join, http:: Http, model::{
+    }, futures::{join}, http::Http, model::{
         channel::Message,
         gateway::Ready,
         id::{GuildId, UserId},
         interactions::*,
         prelude::Activity,
-    }};
+    }, prelude::TypeMap};
 use system_tray::*;
+use tokio::select;
 
-use std::{collections::HashSet, env, fs, panic};
+use std::{collections::HashSet, env, fs, panic, sync::Arc};
 
 const KRONI_ID: u64 = 594_772_815_283_093_524;
 
@@ -122,18 +123,20 @@ async fn main() {
     fs::create_dir("data/markov data").ok();
     dotenv::dotenv().expect("Failed to load .env file");
 
-    let (tx, rx): (Sender<ExtEventSink>, Receiver<ExtEventSink>) = crossbeam::channel::bounded(10);
+    let (tx, rx): (Sender<ExtEventSink>, Receiver<ExtEventSink>) = crossbeam::channel::unbounded();
     let (export_and_quit_sender, export_and_quit_receiver): (Sender<bool>, Receiver<bool>) =
-        crossbeam::channel::bounded(10);
+        crossbeam::channel::unbounded();
 
-        let senders_to_client = SendersToClient{ export_and_quit: export_and_quit_sender };
+    let senders_to_client = SendersToClient {
+        export_and_quit: export_and_quit_sender,
+    };
 
     std::thread::spawn(move || start_gui(&tx, senders_to_client));
 
     let event_sink = rx.recv().unwrap();
 
     let front_channel = FrontChannelStruct {
-        event_sink: event_sink,
+        event_sink,
         export_and_quit_receiver,
     };
 
@@ -174,7 +177,32 @@ async fn start_client(front_channel: FrontChannelStruct) {
     {
         init_global_data_for_client(&client, front_channel).await;
     }
-    if let Err(why) = client.start().await {
-        println!("Client error: {:?}", why);
+
+    select! {
+        _ = listener(client.data.clone()) =>{println!("do_stuff_async() completed first")}
+        _ = client.start() => {}
+    }
+    // tokio::spawn(listener(client.data.clone()));
+    // if let Err(why) = client.start().await {
+    //     println!("Client error: {:?}", why);
+    // }
+}
+
+async fn listener(data: Arc<serenity::prelude::RwLock<TypeMap>>) {
+    loop {
+        let front_channel_lock = get_front_channel_lock(&data).await;
+        let front_channel = front_channel_lock.read().await;
+
+        if let Ok(recieved) = front_channel.export_and_quit_receiver.try_recv() {
+            if recieved {
+                let markov_chain_lock = get_markov_chain_lock(&data).await;
+                let markov_chain = markov_chain_lock.write_owned().await.clone();
+
+                export_to_markov_file(&markov_chain.export());
+                return;
+            }
+        }
+
+        tokio::time::sleep(std::time::Duration::from_millis(500)).await;
     }
 }
