@@ -12,10 +12,10 @@ pub struct SystemTray {
     #[nwg_control]
     window: nwg::MessageWindow,
 
-    #[nwg_resource(source_file: Some("./test_rc/cog.ico"))]
+    #[nwg_resource(source_file: Some("src/system_tray/doki.ico"))]
     icon: nwg::Icon,
 
-    #[nwg_control(icon: Some(&data.icon), tip: Some("Hello"))]
+    #[nwg_control(icon: Some(&data.icon), tip: Some("Doki Bot"))]
     #[nwg_events(MousePressLeftUp: [SystemTray::show_menu], OnContextMenu: [SystemTray::show_menu])]
     tray: nwg::TrayNotification,
 

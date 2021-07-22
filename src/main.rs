@@ -14,10 +14,7 @@ use druid::ExtEventSink;
 use gui::*;
 use markov_strings::Markov;
 use rayon::prelude::*;
-use serenity::model::{
-        id::GuildId,
-        interactions::*,
-    };
+use serenity::model::{id::GuildId, interactions::*};
 use system_tray::*;
 use tokio::select;
 
