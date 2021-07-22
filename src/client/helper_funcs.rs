@@ -43,7 +43,7 @@ If that fails then it sends the message to the bot channel if one is set
 If that fails then it iterates through every channel in the guild until it finds one it can send a message in
 */
 pub async fn send_message_to_first_available_channel(ctx: &Context, msg: &Message, message: &str) {
-    let bot_channels_lock = get_bot_channel_id_lock(ctx).await;
+    let bot_channels_lock = get_bot_channel_id_lock(&ctx.data).await;
     let bot_channels = bot_channels_lock.read().await;
     let bot_channel_id = bot_channels.get(&msg.guild_id.unwrap().0);
 
@@ -92,7 +92,7 @@ pub async fn set_bot_channel(ctx: &Context, interaction: &Interaction) -> String
 
     let guild_id = interaction.guild_id.unwrap().0;
     let channel_id = interaction.channel_id.unwrap().0;
-    let response_channel_lock = get_bot_channel_id_lock(ctx).await;
+    let response_channel_lock = get_bot_channel_id_lock(&ctx.data).await;
     let mut bot_channel_ids = response_channel_lock.write().await;
     bot_channel_ids.insert(guild_id, channel_id);
     match save_bot_channel(&bot_channel_ids.clone()) {

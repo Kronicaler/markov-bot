@@ -1,11 +1,7 @@
 #![allow(dead_code)]
 use crate::*;
 use druid::Target;
-use serenity::{
-    client::Context,
-    prelude::{RwLock, TypeMapKey},
-    Client,
-};
+use serenity::{Client, prelude::{RwLock, TypeMap, TypeMapKey}};
 use std::{collections::HashMap, sync::Arc, usize};
 
 pub struct MarkovChain;
@@ -126,9 +122,10 @@ pub async fn init_global_data_for_client(client: &Client, front_channel: FrontCh
     data.insert::<FrontChannel>(Arc::new(RwLock::new(front_channel)));
 }
 
-pub async fn get_listener_response_lock(ctx: &Context) -> Arc<RwLock<HashMap<String, String>>> {
-    let listener_response_lock = ctx
-        .data
+pub async fn get_listener_response_lock(
+    data: &Arc<RwLock<TypeMap>>,
+) -> Arc<RwLock<HashMap<String, String>>> {
+    let listener_response_lock = data
         .read()
         .await
         .get::<ListenerResponse>()
@@ -137,9 +134,10 @@ pub async fn get_listener_response_lock(ctx: &Context) -> Arc<RwLock<HashMap<Str
     listener_response_lock
 }
 
-pub async fn get_listener_blacklisted_users_lock(ctx: &Context) -> Arc<RwLock<HashSet<u64>>> {
-    let listener_blacklisted_users_lock = ctx
-        .data
+pub async fn get_listener_blacklisted_users_lock(
+    data: &Arc<RwLock<TypeMap>>,
+) -> Arc<RwLock<HashSet<u64>>> {
+    let listener_blacklisted_users_lock = data
         .read()
         .await
         .get::<ListenerBlacklistedUsers>()
@@ -148,9 +146,10 @@ pub async fn get_listener_blacklisted_users_lock(ctx: &Context) -> Arc<RwLock<Ha
     listener_blacklisted_users_lock
 }
 
-pub async fn get_markov_blacklisted_users_lock(ctx: &Context) -> Arc<RwLock<HashSet<u64>>> {
-    let markov_blacklisted_users_lock = ctx
-        .data
+pub async fn get_markov_blacklisted_users_lock(
+    data: &Arc<RwLock<TypeMap>>,
+) -> Arc<RwLock<HashSet<u64>>> {
+    let markov_blacklisted_users_lock =data
         .read()
         .await
         .get::<MarkovBlacklistedUsers>()
@@ -159,9 +158,10 @@ pub async fn get_markov_blacklisted_users_lock(ctx: &Context) -> Arc<RwLock<Hash
     markov_blacklisted_users_lock
 }
 
-pub async fn get_markov_blacklisted_channels_lock(ctx: &Context) -> Arc<RwLock<HashSet<u64>>> {
-    let markov_blacklisted_channels_lock = ctx
-        .data
+pub async fn get_markov_blacklisted_channels_lock(
+    data: &Arc<RwLock<TypeMap>>,
+) -> Arc<RwLock<HashSet<u64>>> {
+    let markov_blacklisted_channels_lock =data
         .read()
         .await
         .get::<MarkovBlacklistedChannels>()
@@ -170,9 +170,9 @@ pub async fn get_markov_blacklisted_channels_lock(ctx: &Context) -> Arc<RwLock<H
     markov_blacklisted_channels_lock
 }
 
-pub async fn get_markov_chain_lock(ctx: &Context) -> Arc<RwLock<Markov>> {
-    let markov_chain_lock = ctx
-        .data
+pub async fn get_markov_chain_lock(data: &Arc<RwLock<TypeMap>>) -> Arc<RwLock<Markov>> {
+    let markov_chain_lock = 
+        data
         .read()
         .await
         .get::<MarkovChain>()
@@ -181,9 +181,8 @@ pub async fn get_markov_chain_lock(ctx: &Context) -> Arc<RwLock<Markov>> {
     markov_chain_lock
 }
 
-pub async fn get_bot_channel_id_lock(ctx: &Context) -> Arc<RwLock<HashMap<u64, u64>>> {
-    let bot_channel_ids_lock = ctx
-        .data
+pub async fn get_bot_channel_id_lock(data: &Arc<RwLock<TypeMap>>) -> Arc<RwLock<HashMap<u64, u64>>> {
+    let bot_channel_ids_lock = data
         .read()
         .await
         .get::<BotChannelIds>()
@@ -192,9 +191,8 @@ pub async fn get_bot_channel_id_lock(ctx: &Context) -> Arc<RwLock<HashMap<u64, u
     bot_channel_ids_lock
 }
 
-pub async fn get_message_count_lock(ctx: &Context) -> Arc<RwLock<usize>> {
-    let message_count_lock = ctx
-        .data
+pub async fn get_message_count_lock(data: &Arc<RwLock<TypeMap>>) -> Arc<RwLock<usize>> {
+    let message_count_lock =data
         .read()
         .await
         .get::<MessageCount>()
@@ -203,9 +201,8 @@ pub async fn get_message_count_lock(ctx: &Context) -> Arc<RwLock<usize>> {
     message_count_lock
 }
 
-pub async fn get_front_channel_lock(ctx: &Context) -> Arc<RwLock<FrontChannelStruct>> {
-    let event_sink_lock = ctx
-        .data
+pub async fn get_front_channel_lock(data: &Arc<RwLock<TypeMap>>) -> Arc<RwLock<FrontChannelStruct>> {
+    let event_sink_lock = data
         .read()
         .await
         .get::<FrontChannel>()

@@ -18,8 +18,8 @@ pub async fn should_add_message_to_markov_file(msg: &Message, ctx: &Context) {
         .is_some()
     {
         {
-            let markov_blacklisted_users_lock = get_markov_blacklisted_users_lock(ctx).await;
-            let markov_blacklisted_channels_lock = get_markov_blacklisted_channels_lock(ctx).await;
+            let markov_blacklisted_users_lock = get_markov_blacklisted_users_lock(&ctx.data).await;
+            let markov_blacklisted_channels_lock = get_markov_blacklisted_channels_lock(&ctx.data).await;
 
             if !markov_blacklisted_channels_lock
                 .read()
@@ -40,10 +40,10 @@ pub async fn should_add_message_to_markov_file(msg: &Message, ctx: &Context) {
                 let filtered_message = filter_message_for_markov_file(str, msg);
                 //msg.reply(&ctx.http, &filtered_message).await.unwrap();
                 append_to_markov_file(&filtered_message);
-                let message_count_lock = get_message_count_lock(ctx).await;
+                let message_count_lock = get_message_count_lock(&ctx.data).await;
                 let mut message_count = message_count_lock.write().await;
                 *message_count = message_count.checked_add(1).unwrap();
-                let front_channel_lock = get_front_channel_lock(ctx).await;
+                let front_channel_lock = get_front_channel_lock(&ctx.data).await;
                 let front_channel = front_channel_lock.read().await;
                 front_channel
                     .event_sink
@@ -59,7 +59,7 @@ pub async fn should_add_message_to_markov_file(msg: &Message, ctx: &Context) {
 }
 
 pub async fn send_markov_text(ctx: &Context, msg: &Message) {
-    let markov_lock = get_markov_chain_lock(ctx).await;
+    let markov_lock = get_markov_chain_lock(&ctx.data).await;
 
     let markov_chain = markov_lock.read().await;
 
@@ -189,7 +189,7 @@ pub async fn blacklist_user_command(msg: &Message, ctx: &Context) -> String {
 
 pub async fn blacklisted_command(ctx: &Context) -> String {
     let mut blacklisted_users = Vec::new();
-    let blacklisted_users_lock = get_markov_blacklisted_users_lock(ctx).await;
+    let blacklisted_users_lock = get_markov_blacklisted_users_lock(&ctx.data).await;
 
     for user_id in blacklisted_users_lock.read().await.iter() {
         blacklisted_users.push(ctx.http.get_user(*user_id).await.unwrap().name);
@@ -209,7 +209,7 @@ pub async fn blacklisted_command(ctx: &Context) -> String {
 }
 
 pub async fn add_or_remove_user_from_markov_blacklist(user: &User, ctx: &Context) -> String {
-    let blacklisted_users_lock = get_markov_blacklisted_users_lock(ctx).await;
+    let blacklisted_users_lock = get_markov_blacklisted_users_lock(&ctx.data).await;
     let mut blacklisted_users = blacklisted_users_lock.write().await;
 
     if blacklisted_users.contains(&user.id.0) {

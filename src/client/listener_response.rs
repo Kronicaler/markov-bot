@@ -13,7 +13,7 @@ use serenity::{
 };
 
 pub async fn list_listeners(ctx: &Context) -> String {
-    let listener_response_lock = get_listener_response_lock(ctx).await;
+    let listener_response_lock = get_listener_response_lock(&ctx.data).await;
     let listener_response = listener_response_lock.read().await;
 
     let mut message = String::new();
@@ -38,7 +38,7 @@ pub async fn remove_listener_command(
         .resolved
         .as_ref()
         .unwrap();
-    let listener_response_lock = get_listener_response_lock(ctx).await;
+    let listener_response_lock = get_listener_response_lock(&ctx.data).await;
 
     let mut listener_response = listener_response_lock.write().await;
 
@@ -88,7 +88,7 @@ pub async fn set_listener_command(
                 return "can't add a mention".to_string();
             }
 
-            let listener_response_lock = get_listener_response_lock(ctx).await;
+            let listener_response_lock = get_listener_response_lock(&ctx.data).await;
 
             let mut listener_response = listener_response_lock.write().await;
             listener_response.insert(
@@ -103,7 +103,7 @@ pub async fn set_listener_command(
 }
 
 pub async fn blacklist_user_from_listener(ctx: &Context, user: &User) -> String {
-    let listener_blacklisted_users_lock = get_listener_blacklisted_users_lock(ctx).await;
+    let listener_blacklisted_users_lock = get_listener_blacklisted_users_lock(&ctx.data).await;
 
     let mut users_blacklisted_from_listener = listener_blacklisted_users_lock.write().await;
 
@@ -126,9 +126,9 @@ pub async fn check_for_listened_words(
     words_in_message: &[String],
     user_id: UserId,
 ) -> Option<String> {
-    let listener_response_lock = get_listener_response_lock(ctx).await;
+    let listener_response_lock = get_listener_response_lock(&ctx.data).await;
     let listener_response = listener_response_lock.read().await;
-    let listener_blacklisted_users_lock = get_listener_blacklisted_users_lock(ctx).await;
+    let listener_blacklisted_users_lock = get_listener_blacklisted_users_lock(&ctx.data).await;
     let listener_blacklisted_users = listener_blacklisted_users_lock.read().await;
     for (listener, response) in listener_response.iter() {
         if words_in_message.contains(&listener) && !listener_blacklisted_users.contains(&user_id.0)

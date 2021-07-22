@@ -16,24 +16,16 @@ use druid::ExtEventSink;
 use gui::*;
 use markov_strings::Markov;
 use rayon::prelude::*;
-use serenity::{
-    async_trait,
-    client::{Context, EventHandler},
-    framework::{
+use serenity::{Client, async_trait, client::{Context, EventHandler}, framework::{
         standard::macros::{group, hook},
         StandardFramework,
-    },
-    futures::join,
-    http::Http,
-    model::{
+    }, futures::join, http:: Http, model::{
         channel::Message,
         gateway::Ready,
         id::{GuildId, UserId},
         interactions::*,
         prelude::Activity,
-    },
-    Client,
-};
+    }};
 use system_tray::*;
 
 use std::{collections::HashSet, env, fs, panic};
