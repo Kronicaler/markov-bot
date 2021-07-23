@@ -1,8 +1,19 @@
 use std::{env, sync::Arc};
 
-use serenity::{Client, async_trait, client::{Context, EventHandler, bridge::gateway::ShardManager}, framework::{StandardFramework, standard::macros::{group, hook}}, http::Http, model::{interactions::Interaction, prelude::*}, prelude::*};
-use tokio::join;
 use crate::*;
+use serenity::{
+    async_trait,
+    client::{bridge::gateway::ShardManager, Context, EventHandler},
+    framework::{
+        standard::macros::{group, hook},
+        StandardFramework,
+    },
+    http::Http,
+    model::{interactions::Interaction, prelude::*},
+    prelude::*,
+    Client,
+};
+use tokio::join;
 
 struct Handler {}
 

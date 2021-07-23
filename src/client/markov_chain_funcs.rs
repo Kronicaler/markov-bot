@@ -19,7 +19,8 @@ pub async fn should_add_message_to_markov_file(msg: &Message, ctx: &Context) {
     {
         {
             let markov_blacklisted_users_lock = get_markov_blacklisted_users_lock(&ctx.data).await;
-            let markov_blacklisted_channels_lock = get_markov_blacklisted_channels_lock(&ctx.data).await;
+            let markov_blacklisted_channels_lock =
+                get_markov_blacklisted_channels_lock(&ctx.data).await;
 
             if !markov_blacklisted_channels_lock
                 .read()

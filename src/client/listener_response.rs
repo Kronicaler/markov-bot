@@ -47,9 +47,8 @@ pub async fn remove_listener_command(
             listener_response.remove(listener);
             save_listener_response_to_file(&listener_response);
             return "Successfully removed the listener".to_string();
-        } 
-            return "That listener doesn't exist".to_string();
-        
+        }
+        return "That listener doesn't exist".to_string();
     }
 
     "Something went wrong".to_string()

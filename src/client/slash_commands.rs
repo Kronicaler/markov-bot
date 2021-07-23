@@ -120,5 +120,7 @@ pub async fn create_guild_commands(ctx: &Context) {
                             })
                     })
             })
-        }).await.unwrap();
+        })
+        .await
+        .unwrap();
 }

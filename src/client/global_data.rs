@@ -1,7 +1,10 @@
 #![allow(dead_code)]
 use crate::*;
 use druid::Target;
-use serenity::{Client, prelude::{RwLock, TypeMap, TypeMapKey}};
+use serenity::{
+    prelude::{RwLock, TypeMap, TypeMapKey},
+    Client,
+};
 use std::{collections::HashMap, sync::Arc, usize};
 
 pub struct MarkovChain;
@@ -149,7 +152,7 @@ pub async fn get_listener_blacklisted_users_lock(
 pub async fn get_markov_blacklisted_users_lock(
     data: &Arc<RwLock<TypeMap>>,
 ) -> Arc<RwLock<HashSet<u64>>> {
-    let markov_blacklisted_users_lock =data
+    let markov_blacklisted_users_lock = data
         .read()
         .await
         .get::<MarkovBlacklistedUsers>()
@@ -161,7 +164,7 @@ pub async fn get_markov_blacklisted_users_lock(
 pub async fn get_markov_blacklisted_channels_lock(
     data: &Arc<RwLock<TypeMap>>,
 ) -> Arc<RwLock<HashSet<u64>>> {
-    let markov_blacklisted_channels_lock =data
+    let markov_blacklisted_channels_lock = data
         .read()
         .await
         .get::<MarkovBlacklistedChannels>()
@@ -171,8 +174,7 @@ pub async fn get_markov_blacklisted_channels_lock(
 }
 
 pub async fn get_markov_chain_lock(data: &Arc<RwLock<TypeMap>>) -> Arc<RwLock<Markov>> {
-    let markov_chain_lock = 
-        data
+    let markov_chain_lock = data
         .read()
         .await
         .get::<MarkovChain>()
@@ -181,7 +183,9 @@ pub async fn get_markov_chain_lock(data: &Arc<RwLock<TypeMap>>) -> Arc<RwLock<Ma
     markov_chain_lock
 }
 
-pub async fn get_bot_channel_id_lock(data: &Arc<RwLock<TypeMap>>) -> Arc<RwLock<HashMap<u64, u64>>> {
+pub async fn get_bot_channel_id_lock(
+    data: &Arc<RwLock<TypeMap>>,
+) -> Arc<RwLock<HashMap<u64, u64>>> {
     let bot_channel_ids_lock = data
         .read()
         .await
@@ -192,7 +196,7 @@ pub async fn get_bot_channel_id_lock(data: &Arc<RwLock<TypeMap>>) -> Arc<RwLock<
 }
 
 pub async fn get_message_count_lock(data: &Arc<RwLock<TypeMap>>) -> Arc<RwLock<usize>> {
-    let message_count_lock =data
+    let message_count_lock = data
         .read()
         .await
         .get::<MessageCount>()
@@ -201,7 +205,9 @@ pub async fn get_message_count_lock(data: &Arc<RwLock<TypeMap>>) -> Arc<RwLock<u
     message_count_lock
 }
 
-pub async fn get_front_channel_lock(data: &Arc<RwLock<TypeMap>>) -> Arc<RwLock<FrontChannelStruct>> {
+pub async fn get_front_channel_lock(
+    data: &Arc<RwLock<TypeMap>>,
+) -> Arc<RwLock<FrontChannelStruct>> {
     let event_sink_lock = data
         .read()
         .await

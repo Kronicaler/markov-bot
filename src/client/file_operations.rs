@@ -44,9 +44,12 @@ pub fn clean_markov_file(msg: &Message) {
         .collect::<Vec<String>>();
     fs::write(MARKOV_DATA_SET_PATH, "").unwrap();
 
-    let filtered_messages: Vec<String> = messages.into_par_iter().map(|message| filter_message_for_markov_file(message, &msg)).collect();
+    let filtered_messages: Vec<String> = messages
+        .into_par_iter()
+        .map(|message| filter_message_for_markov_file(message, &msg))
+        .collect();
 
-    for message in filtered_messages{
+    for message in filtered_messages {
         append_to_markov_file(&message);
     }
 }
