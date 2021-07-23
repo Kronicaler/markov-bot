@@ -3,14 +3,23 @@ use druid::widget::{Button, Controller, Flex, Label};
 use druid::*;
 
 pub const SET_MESSAGE_COUNT: Selector<usize> = Selector::new("message-count");
+pub const EXPORTED_MARKOV_CHAIN: Selector<ExportStatus> = Selector::new("exported-markov-chain");
 
 pub const ID_MESSAGE_COUNT: WidgetId = WidgetId::reserved(1);
+pub const ID_EXPORTED_MARKOV_CHAIN: WidgetId = WidgetId::reserved(2);
 
 #[derive(Clone, Data, Lens)]
 pub struct GuiData {
     pub message_count: usize,
+    pub export_status: ExportStatus,
     #[data(ignore)]
     pub senders_to_client: SendersToClient,
+}
+#[derive(Clone, Copy, PartialEq, Data)]
+pub enum ExportStatus {
+    Success,
+    Failure,
+    None,
 }
 
 #[derive(Clone)]
@@ -27,6 +36,7 @@ pub fn start_gui(tx: &Sender<ExtEventSink>, senders_to_client: SendersToClient) 
     let data: GuiData = GuiData {
         message_count: 0,
         senders_to_client,
+        export_status: ExportStatus::None,
     };
     launcher.launch(data).unwrap();
 }
@@ -49,9 +59,19 @@ pub fn ui_builder() -> impl Widget<GuiData> {
         },
     );
 
+    let export_status_label = Label::dynamic(|data: &ExportStatus, _env: &_| match data {
+        ExportStatus::Success => "Success!".to_string(),
+        ExportStatus::Failure => "Failure".to_string(),
+        ExportStatus::None => "".to_string(),
+    })
+    .controller(GeneralController)
+    .with_id(ID_EXPORTED_MARKOV_CHAIN)
+    .lens(GuiData::export_status);
+
     Flex::column()
         .with_child(msg_count_label)
         .with_child(export_button)
+        .with_child(export_status_label)
 }
 
 struct GeneralController;
@@ -68,6 +88,24 @@ impl Controller<usize, Label<usize>> for GeneralController {
         match event {
             Event::Command(cmd) if cmd.is(SET_MESSAGE_COUNT) => {
                 *data = *cmd.get_unchecked(SET_MESSAGE_COUNT);
+            }
+            _ => child.event(ctx, event, data, env),
+        }
+    }
+}
+
+impl Controller<ExportStatus, Label<ExportStatus>> for GeneralController {
+    fn event(
+        &mut self,
+        child: &mut Label<ExportStatus>,
+        ctx: &mut EventCtx,
+        event: &Event,
+        data: &mut ExportStatus,
+        env: &Env,
+    ) {
+        match event {
+            Event::Command(cmd) if cmd.is(EXPORTED_MARKOV_CHAIN) => {
+                *data = *cmd.get_unchecked(EXPORTED_MARKOV_CHAIN);
             }
             _ => child.event(ctx, event, data, env),
         }

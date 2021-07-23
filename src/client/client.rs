@@ -1,6 +1,7 @@
 use std::{env, sync::Arc};
 
 use crate::*;
+use druid::Target;
 use serenity::{
     async_trait,
     client::{bridge::gateway::ShardManager, Context, EventHandler},
@@ -151,6 +152,16 @@ pub async fn listener(
             let markov_chain = markov_chain_lock.write_owned().await.clone();
 
             export_to_markov_file(&markov_chain.export());
+
+            let event_sink_lock = get_front_channel_lock(&data).await;
+            let event_sink = event_sink_lock.read().await;
+
+            event_sink
+                .event_sink
+                .submit_command(EXPORTED_MARKOV_CHAIN, ExportStatus::Success, Target::Auto)
+                .unwrap();
+
+            tokio::time::sleep(std::time::Duration::from_secs(2)).await;
 
             shard_manager.lock().await.shutdown_all().await;
             return;
