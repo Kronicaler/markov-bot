@@ -14,7 +14,7 @@ pub fn save_user_listener_blacklist_to_file(blacklist: &HashSet<u64>) {
         LISTENER_BLACKLISTED_USERS_PATH,
         serde_json::to_string(&blacklist).unwrap(),
     )
-    .unwrap();
+    .expect("Something went wrong while writing to file.");
 }
 
 pub fn save_listener_response_to_file(listener_response: &HashMap<String, String>) {
@@ -22,14 +22,14 @@ pub fn save_listener_response_to_file(listener_response: &HashMap<String, String
         LISTENER_RESPONSE_PATH,
         serde_json::to_string(&listener_response).unwrap(),
     )
-    .unwrap();
+    .expect("Something went wrong while writing to file.");
 }
 
 ///checks if a file exists and if it doesn't it initializes it
 ///otherwise it just returns the path back
 pub fn create_file_if_missing<'a>(path: &'a str, contents: &str) -> &'a str {
     if !Path::new(path).exists() {
-        fs::write(path, contents).unwrap();
+        fs::write(path, contents).expect("Something went wrong while writing to file.");
     }
     path
 }
@@ -37,12 +37,13 @@ pub fn create_file_if_missing<'a>(path: &'a str, contents: &str) -> &'a str {
 /// If the message filter changes it's helpful to call this function when the bot starts so the filtering is consistent across the file.
 #[allow(dead_code)]
 pub fn clean_markov_file(msg: &Message) {
-    let file = fs::read_to_string(MARKOV_DATA_SET_PATH).unwrap();
+    let file = fs::read_to_string(MARKOV_DATA_SET_PATH)
+        .expect("Something went wrong while reading the file.");
     let messages = file
         .split("\n\n")
         .map(ToString::to_string)
         .collect::<Vec<String>>();
-    fs::write(MARKOV_DATA_SET_PATH, "").unwrap();
+    fs::write(MARKOV_DATA_SET_PATH, "").expect("Something went wrong while writing to file.");
 
     let filtered_messages: Vec<String> = messages
         .into_par_iter()
