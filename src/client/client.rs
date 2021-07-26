@@ -106,7 +106,7 @@ pub async fn start_client(front_channel: FrontChannelStruct) {
     let application_id: UserId = env::var("APPLICATION_ID")
         .expect("Expected an APPLICATION_ID in the environment")
         .parse()
-        .unwrap();
+        .expect("Couldn't parse the APPLICATION_ID");
     let http = Http::new_with_token(&token);
     let (owners, _bot_id) = match http.get_current_application_info().await {
         Ok(info) => {
