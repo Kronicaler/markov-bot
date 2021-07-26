@@ -102,9 +102,9 @@ async fn normal_message(ctx: &Context, msg: &Message) {
 }
 
 pub async fn start_client(front_channel: FrontChannelStruct) {
-    let token = env::var("DISCORD_TOKEN").expect("Expected a token in the environment");
+    let token = env::var("DISCORD_TOKEN").expect("Expected a DISCORD_TOKEN in the environment");
     let application_id: UserId = env::var("APPLICATION_ID")
-        .expect("Expected an application id in the environment")
+        .expect("Expected an APPLICATION_ID in the environment")
         .parse()
         .unwrap();
     let http = Http::new_with_token(&token);
