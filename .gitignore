@@ -4,3 +4,4 @@
 doki_bot.exe
 markov data set backup.txt
 .env
+/local-dependencies/markov_strings/target
