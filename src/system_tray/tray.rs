@@ -67,20 +67,15 @@ pub fn create_tray_icon(tray_thread_quit_sender: Sender<bool>) {
     tray_thread_quit_sender.send(true).unwrap();
 }
 
-pub async fn start_tray(export_and_quit_receiver_tray: Receiver<bool>) {
+pub async fn start_tray() {
     let (tray_thread_quit_sender, tray_thread_quit_receiver): (Sender<bool>, Receiver<bool>) =
         crossbeam::channel::unbounded();
     std::thread::spawn(|| create_tray_icon(tray_thread_quit_sender));
 
     loop {
-        if let Ok(_) = export_and_quit_receiver_tray.try_recv() {
-            // this receiver and the receiver in the client are competing for who gets the message, if the tray gets the message then the program "crashes"
-            return;
-        }
         if let Ok(_) = tray_thread_quit_receiver.try_recv() {
             return;
         }
-
         tokio::time::sleep(Duration::from_millis(500)).await;
     }
 }

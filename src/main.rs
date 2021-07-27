@@ -35,7 +35,6 @@ async fn main() {
         export_and_quit: export_and_quit_sender,
     };
 
-    let export_and_quit_receiver_tray = export_and_quit_receiver.clone();
     std::thread::spawn(move || start_gui(&tx, senders_to_client));
 
     let event_sink = rx.recv().unwrap();
@@ -45,7 +44,7 @@ async fn main() {
         export_and_quit_receiver,
     };
     select! {
-        _=start_client(front_channel) =>{},
-        _=start_tray(export_and_quit_receiver_tray) => {println!("tray exited")}
+        _=start_client(front_channel) =>{println!("client exited")},
+        _=start_tray() => {println!("tray exited")}
     }
 }
