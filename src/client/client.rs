@@ -148,13 +148,13 @@ pub async fn listener(
         let front_channel = front_channel_lock.read().await;
 
         if let Ok(_) = front_channel.export_and_quit_receiver.try_recv() {
-            let markov_chain_lock = get_markov_chain_lock(&data).await;
-            let markov_chain = markov_chain_lock.write_owned().await.clone();
+            let (markov_chain_lock, event_sink_lock) =
+                tokio::join!(get_markov_chain_lock(&data), get_front_channel_lock(&data));
 
-            let event_sink_lock = get_front_channel_lock(&data).await;
-            let event_sink = event_sink_lock.read().await;
+            let (markov_chain, event_sink) =
+                tokio::join!(markov_chain_lock.write(), event_sink_lock.read());
 
-            if let Err(_) = export_to_markov_file(&markov_chain.export()) {
+            if let Err(_) = export_to_markov_file(&markov_chain.clone().export()) {
                 send_markov_export_failure(&event_sink).await;
                 continue;
             }
