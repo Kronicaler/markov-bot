@@ -70,8 +70,8 @@ pub fn append_to_markov_file(str: &str) {
 }
 
 #[allow(dead_code)]
-pub fn export_to_markov_file(export: &ImportExport) {
-    fs::write(MARKOV_EXPORT_PATH, serde_json::to_string(&export).unwrap()).unwrap();
+pub fn export_to_markov_file(export: &ImportExport) -> Result<(), std::io::Error> {
+    fs::write(MARKOV_EXPORT_PATH, serde_json::to_string(&export).unwrap())
 }
 
 pub fn import_chain_from_file() -> Vec<InputData> {

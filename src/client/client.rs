@@ -151,10 +151,17 @@ pub async fn listener(
             let markov_chain_lock = get_markov_chain_lock(&data).await;
             let markov_chain = markov_chain_lock.write_owned().await.clone();
 
-            export_to_markov_file(&markov_chain.export());
-
             let event_sink_lock = get_front_channel_lock(&data).await;
             let event_sink = event_sink_lock.read().await;
+
+            if let Err(_) = export_to_markov_file(&markov_chain.export()) {
+                event_sink
+                    .event_sink
+                    .submit_command(EXPORTED_MARKOV_CHAIN, ExportStatus::Failure, Target::Auto)
+                    .unwrap();
+
+                continue;
+            }
 
             event_sink
                 .event_sink
