@@ -66,10 +66,11 @@ pub async fn send_markov_text(ctx: &Context, msg: &Message) {
 
     match markov_chain.generate() {
         Ok(markov_result) => {
-            msg.channel_id
-                .say(&ctx.http, &markov_result.text)
-                .await
-                .unwrap();
+            let mut message = markov_result.text;
+            if cfg!(debug_assertions) {
+                message += " --debug";
+            }
+            msg.channel_id.say(&ctx.http, message).await.unwrap();
         }
         Err(_) => {
             msg.channel_id
@@ -91,7 +92,7 @@ pub fn init_markov_debug() -> Markov {
     .unwrap();
     markov.set_max_tries(200);
     markov.set_filter(|r| {
-        if r.text.split(' ').count() >= 5 && r.score >= 5 && r.refs.len() >= 2 {
+        if r.text.split(' ').count() >= 5 && r.refs.len() >= 2 {
             return true;
         }
         false
@@ -101,10 +102,10 @@ pub fn init_markov_debug() -> Markov {
 
 pub fn init_markov() -> (Markov, usize) {
     let mut markov_chain = Markov::new();
-    markov_chain.set_state_size(2).unwrap();
+    markov_chain.set_state_size(3).unwrap();
     markov_chain.set_max_tries(200);
     markov_chain.set_filter(|r| {
-        if r.text.split(' ').count() >= 5 && r.score >= 5 && r.refs.len() >= 2 {
+        if r.text.split(' ').count() >= 5 && r.refs.len() >= 2 {
             return true;
         }
         false
