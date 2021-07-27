@@ -155,11 +155,7 @@ pub async fn listener(
             let event_sink = event_sink_lock.read().await;
 
             if let Err(_) = export_to_markov_file(&markov_chain.export()) {
-                event_sink
-                    .event_sink
-                    .submit_command(EXPORTED_MARKOV_CHAIN, ExportStatus::Failure, Target::Auto)
-                    .unwrap();
-
+                send_markov_export_failure(&event_sink).await;
                 continue;
             }
 
@@ -176,4 +172,18 @@ pub async fn listener(
 
         tokio::time::sleep(std::time::Duration::from_millis(500)).await;
     }
+}
+
+async fn send_markov_export_failure(
+    event_sink: &tokio::sync::RwLockReadGuard<'_, FrontChannelStruct>,
+) {
+    event_sink
+        .event_sink
+        .submit_command(EXPORTED_MARKOV_CHAIN, ExportStatus::Failure, Target::Auto)
+        .unwrap();
+    tokio::time::sleep(std::time::Duration::from_secs(3)).await;
+    event_sink
+        .event_sink
+        .submit_command(EXPORTED_MARKOV_CHAIN, ExportStatus::None, Target::Auto)
+        .unwrap();
 }
