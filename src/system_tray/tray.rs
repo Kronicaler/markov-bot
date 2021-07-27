@@ -74,6 +74,7 @@ pub async fn start_tray(export_and_quit_receiver_tray: Receiver<bool>) {
 
     loop {
         if let Ok(_) = export_and_quit_receiver_tray.try_recv() {
+            // this receiver and the receiver in the client are competing for who gets the message, if the tray gets the message then the program "crashes"
             return;
         }
         if let Ok(_) = tray_thread_quit_receiver.try_recv() {

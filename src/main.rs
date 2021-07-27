@@ -46,6 +46,6 @@ async fn main() {
     };
     select! {
         _=start_client(front_channel) =>{},
-        _=start_tray(export_and_quit_receiver_tray) => {}
+        _=start_tray(export_and_quit_receiver_tray) => {println!("tray exited")}
     }
 }
