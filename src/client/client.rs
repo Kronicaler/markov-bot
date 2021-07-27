@@ -148,22 +148,22 @@ pub async fn listener(
         let front_channel = front_channel_lock.read().await;
 
         if let Ok(_) = front_channel.export_and_quit_receiver.try_recv() {
-            let (markov_chain_lock, event_sink_lock) =
-                tokio::join!(get_markov_chain_lock(&data), get_front_channel_lock(&data));
+            {
+                let (markov_chain_lock, event_sink_lock) =
+                    tokio::join!(get_markov_chain_lock(&data), get_front_channel_lock(&data));
+                let (markov_chain, event_sink) =
+                    tokio::join!(markov_chain_lock.write(), event_sink_lock.read());
 
-            let (markov_chain, event_sink) =
-                tokio::join!(markov_chain_lock.write(), event_sink_lock.read());
+                if let Err(_) = export_to_markov_file(&markov_chain.clone().export()) {
+                    send_markov_export_failure(&event_sink).await;
+                    continue;
+                }
 
-            if let Err(_) = export_to_markov_file(&markov_chain.clone().export()) {
-                send_markov_export_failure(&event_sink).await;
-                continue;
+                event_sink
+                    .event_sink
+                    .submit_command(EXPORTED_MARKOV_CHAIN, ExportStatus::Success, Target::Auto)
+                    .unwrap();
             }
-
-            event_sink
-                .event_sink
-                .submit_command(EXPORTED_MARKOV_CHAIN, ExportStatus::Success, Target::Auto)
-                .unwrap();
-
             tokio::time::sleep(std::time::Duration::from_secs(2)).await;
 
             shard_manager.lock().await.shutdown_all().await;
