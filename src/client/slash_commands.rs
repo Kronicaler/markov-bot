@@ -21,10 +21,10 @@ pub async fn command_responses(
             .await
         }
         "test-command" => "here be future tests".to_string(),
-        "setlistener" => set_listener_command(&ctx, data).await,
-        "removelistener" => remove_listener_command(&ctx, data).await,
-        "listeners" => list_listeners(&ctx).await,
-        "blacklistlistener" => {
+        "createtag" => set_listener_command(&ctx, data).await,
+        "removetag" => remove_listener_command(&ctx, data).await,
+        "tags" => list_listeners(&ctx).await,
+        "blacklistmefromtags" => {
             blacklist_user_from_listener(&ctx, &interaction.member.clone().unwrap().user).await
         }
         "setbotchannel" => set_bot_channel(&ctx, interaction).await,
