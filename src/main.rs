@@ -1,4 +1,4 @@
-#![windows_subsystem = "windows"]
+//#![windows_subsystem = "windows"]
 #![deny(missing_docs, clippy::all)]
 
 //! A discord bot written in rust for fun
