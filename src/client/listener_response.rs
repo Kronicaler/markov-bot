@@ -46,9 +46,9 @@ pub async fn remove_listener_command(
         if listener_response.contains_key(listener) {
             listener_response.remove(listener);
             save_listener_response_to_file(&listener_response);
-            return "Successfully removed the listener".to_string();
+            return "Successfully removed the tag".to_string();
         }
-        return "That listener doesn't exist".to_string();
+        return "That tag doesn't exist".to_string();
     }
 
     "Something went wrong".to_string()
@@ -95,10 +95,10 @@ pub async fn set_listener_command(
                 response.trim().to_string(),
             );
             save_listener_response_to_file(&listener_response);
-            return "Set listener".to_string();
+            return "Set tag".to_string();
         }
     }
-    "Couldn't set listener".to_string()
+    "Couldn't set tag".to_string()
 }
 
 pub async fn blacklist_user_from_listener(ctx: &Context, user: &User) -> String {
