@@ -142,14 +142,14 @@ pub fn create_listener_commands(
     commands: &mut serenity::builder::CreateApplicationCommands,
 ) -> &mut serenity::builder::CreateApplicationCommands {
     commands.create_application_command(|command| {
-            command.name("setlistener").description(
-                "Start a listener for a word or list of words and a response whenever someone says that word",
+            command.name("createtag").description(
+                "Create a tag for a word or list of words and a response whenever someone says that word",
             )
             .create_option(|option|{
-                option.name("listenedword").description("What word to listen for").kind(ApplicationCommandOptionType::String).required(true)
+                option.name("tag").description("What word to listen for").kind(ApplicationCommandOptionType::String).required(true)
             })
             .create_option(|option|{
-                option.name("response").description("What the response should be when the listened word is said")
+                option.name("response").description("What the response should be when the tag is said")
                 .kind(ApplicationCommandOptionType::String)
                 .required(true)
             })
@@ -160,9 +160,9 @@ pub fn create_listener_commands(
             })
         })
         .create_application_command(|command|{
-            command.name("listeners").description("List all of the listeners")
+            command.name("tags").description("List all of the tags")
         })
         .create_application_command(|command|{
-            command.name("blacklistlistener").description("The bot won't respond to your messages if you trip off a listener")
+            command.name("blacklistmefromtags").description("The bot won't respond to your messages if you trip off a tag")
         })
 }
