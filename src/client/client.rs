@@ -81,7 +81,7 @@ async fn normal_message(ctx: &Context, msg: &Message) {
             msg.channel_id
                 .say(
                     &ctx.http,
-                    "all my commands are prefixed by pinging me\nping : Pong!",
+                    "All of my commands are slash commands.\n\n\n\n/ping: Pong!\n\n/id: gives you the user id of the selected user\n\n/blacklistedmarkov: lists out the users the bot will not learn from\n\n/blacklistmarkov: blacklist yourself from the markov chain if you don't want the bot to store your messages and learn from them\n\n/setbotchannel: for admins only, set the channel the bot will talk in, if you don't want users using the bot anywhere else you'll have to do it with roles\n\n/createtag: create a tag that the bot will listen for and then respond to when it is said\n\n/removetag: remove a tag\n\n/tags: list out the current tags\n\n/blacklistmefromtags: blacklist yourself from tags so the bot won't ping you if you trip off a tag",
                 )
                 .await
                 .unwrap();
