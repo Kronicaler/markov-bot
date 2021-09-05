@@ -1,6 +1,6 @@
 [package]
 name = "doki_bot"
-version = "0.1.0"
+version = "1.0.1"
 authors = ["Kroni"]
 edition = "2018"
 
