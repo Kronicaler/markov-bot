@@ -129,12 +129,38 @@ pub async fn check_for_listened_words(
     let listener_response = listener_response_lock.read().await;
     let listener_blacklisted_users_lock = get_listener_blacklisted_users_lock(&ctx.data).await;
     let listener_blacklisted_users = listener_blacklisted_users_lock.read().await;
+
     for (listener, response) in listener_response.iter() {
-        if words_in_message.contains(&listener) && !listener_blacklisted_users.contains(&user_id.0)
-        {
-            return Some(response.to_string());
+        let listener_words = listener
+            .split(' ')
+            .map(ToString::to_string)
+            .collect::<Vec<String>>();
+
+        let mut listener_iterator = listener_words.iter();
+
+        if listener_words.len() > 1 {
+            let mut count = 0;
+            for message_word in words_in_message.iter() {
+                if message_word == listener_iterator.next()? {
+                    count += 1;
+                } else {
+                    count = 0;
+                    listener_iterator = listener_words.iter();
+                }
+
+                if count == listener_words.len() {
+                    return Some(response.to_string());
+                }
+            }
+        } else {
+            if words_in_message.contains(&listener)
+                && !listener_blacklisted_users.contains(&user_id.0)
+            {
+                return Some(response.to_string());
+            }
         }
     }
+    
     None
 }
 
