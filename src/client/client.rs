@@ -31,10 +31,9 @@ impl EventHandler for Handler {
     }
 
     async fn interaction_create(&self, ctx: Context, interaction: Interaction) {
-        if interaction.kind == InteractionType::ApplicationCommand {
-            if let Some(InteractionData::ApplicationCommand(data)) = interaction.data.as_ref() {
-                command_responses(data, ctx, &interaction).await;
-            }
+        if interaction.kind() == InteractionType::ApplicationCommand {
+            let command = interaction.application_command().unwrap();
+            command_responses(&command, ctx).await;
         }
     }
 }

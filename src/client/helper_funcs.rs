@@ -1,18 +1,9 @@
 use crate::*;
-use serenity::{
-    client::Context,
-    model::{
-        channel::{GuildChannel, Message},
-        interactions::{
-            ApplicationCommandInteractionData, ApplicationCommandInteractionDataOptionValue,
-        },
-        prelude::User,
-    },
-    prelude::Mentionable,
-};
+use serenity::{client::Context, model::{channel::{GuildChannel, Message}, interactions::application_command::{ApplicationCommandInteraction, ApplicationCommandInteractionDataOptionValue}, prelude::User}, prelude::Mentionable};
 
-pub fn id_command(data: &ApplicationCommandInteractionData) -> String {
-    let options = data
+pub fn id_command(command: &ApplicationCommandInteraction) -> String {
+    let options = command
+        .data
         .options
         .get(0)
         .expect("Expected user option")
@@ -82,16 +73,16 @@ pub async fn send_message_to_first_available_channel(ctx: &Context, msg: &Messag
     }
 }
 
-pub async fn set_bot_channel(ctx: &Context, interaction: &Interaction) -> String {
-    let member = interaction.member.as_ref().unwrap();
+pub async fn set_bot_channel(ctx: &Context, command: &ApplicationCommandInteraction) -> String {
+    let member = command.member.as_ref().unwrap();
     let member_perms = member.permissions.unwrap();
 
     if !member_perms.administrator() && member.user.id != KRONI_ID {
         return "You need to have the Administrator permission to invoke this command".to_string();
     }
 
-    let guild_id = interaction.guild_id.unwrap().0;
-    let channel_id = interaction.channel_id.unwrap().0;
+    let guild_id = command.guild_id.unwrap().0;
+    let channel_id = command.channel_id.0;
     let response_channel_lock = get_bot_channel_id_lock(&ctx.data).await;
     let mut bot_channel_ids = response_channel_lock.write().await;
     bot_channel_ids.insert(guild_id, channel_id);

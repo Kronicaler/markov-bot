@@ -1,16 +1,6 @@
 use crate::*;
 use regex::Regex;
-use serenity::{
-    client::Context,
-    model::{
-        id::UserId,
-        interactions::{
-            ApplicationCommandInteractionData, ApplicationCommandInteractionDataOptionValue,
-            ApplicationCommandOptionType,
-        },
-        prelude::User,
-    },
-};
+use serenity::{client::Context, model::{id::UserId, interactions::application_command::{ApplicationCommandInteraction, ApplicationCommandInteractionDataOptionValue, ApplicationCommandOptionType}, prelude::User}};
 
 pub async fn list_listeners(ctx: &Context) -> String {
     let listener_response_lock = get_listener_response_lock(&ctx.data).await;
@@ -29,9 +19,10 @@ pub async fn list_listeners(ctx: &Context) -> String {
 
 pub async fn remove_listener_command(
     ctx: &Context,
-    data: &ApplicationCommandInteractionData,
+    command: &ApplicationCommandInteraction,
 ) -> String {
-    let listener = data
+    let listener = command
+        .data
         .options
         .get(0)
         .expect("expected listener")
@@ -56,16 +47,18 @@ pub async fn remove_listener_command(
 
 pub async fn set_listener_command(
     ctx: &Context,
-    data: &ApplicationCommandInteractionData,
+    command: &ApplicationCommandInteraction,
 ) -> String {
-    let listener = data
+    let listener = command
+        .data
         .options
         .get(0)
         .expect("expected listener")
         .resolved
         .as_ref()
         .unwrap();
-    let response = data
+    let response = command
+        .data
         .options
         .get(1)
         .expect("expected response")
@@ -160,7 +153,7 @@ pub async fn check_for_listened_words(
             }
         }
     }
-    
+
     None
 }
 
