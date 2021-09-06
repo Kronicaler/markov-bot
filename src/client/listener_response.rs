@@ -168,7 +168,7 @@ pub fn create_listener_commands(
     commands: &mut serenity::builder::CreateApplicationCommands,
 ) -> &mut serenity::builder::CreateApplicationCommands {
     commands.create_application_command(|command| {
-            command.name("createtag").description(
+            command.name(Command::createtag).description(
                 "Create a tag for a word or list of words and a response whenever someone says that word",
             )
             .create_option(|option|{
@@ -181,14 +181,14 @@ pub fn create_listener_commands(
             })
         })
         .create_application_command(|command| {
-            command.name("removetag").description("Remove a tag").create_option(|option|{
+            command.name(Command::removetag).description("Remove a tag").create_option(|option|{
                 option.name("tag").description("The tag to remove").kind(ApplicationCommandOptionType::String).required(true)
             })
         })
         .create_application_command(|command|{
-            command.name("tags").description("List all of the tags")
+            command.name(Command::tags).description("List all of the tags")
         })
         .create_application_command(|command|{
-            command.name("blacklistmefromtags").description("The bot won't respond to your messages if you trip off a tag")
+            command.name(Command::blacklistmefromtags).description("The bot won't respond to your messages if you trip off a tag")
         })
 }

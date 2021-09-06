@@ -16,6 +16,8 @@ native-windows-gui = "1.0"
 native-windows-derive = "1.0"
 crossbeam = "0.8.1"
 rayon = "1.5.1"
+strum = "0.21"
+strum_macros = "0.21"
 
 [patch.crates-io]
 markov_strings = { path = "local-dependencies/markov_strings" }
