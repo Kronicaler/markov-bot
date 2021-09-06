@@ -28,6 +28,7 @@ pub async fn command_responses(
             blacklist_user_from_listener(&ctx, &interaction.member.clone().unwrap().user).await
         }
         "setbotchannel" => set_bot_channel(&ctx, interaction).await,
+        "help" => "All of my commands are slash commands.\n\n\n\n/ping: Pong!\n\n/id: gives you the user id of the selected user\n\n/blacklistedmarkov: lists out the users the bot will not learn from\n\n/blacklistmarkov: blacklist yourself from the markov chain if you don't want the bot to store your messages and learn from them\n\n/setbotchannel: for admins only, set the channel the bot will talk in, if you don't want users using the bot anywhere else you'll have to do it with roles\n\n/createtag: create a tag that the bot will listen for and then respond to when it is said\n\n/removetag: remove a tag\n\n/tags: list out the current tags\n\n/blacklistmefromtags: blacklist yourself from tags so the bot won't ping you if you trip off a tag".to_string(),
         "command" => "command".to_string(),
         _ => "not implemented :(".to_string(),
     };
@@ -75,6 +76,9 @@ pub async fn create_global_commands(ctx: &Context) {
                 command.name("setbotchannel").description(
                     "Set this channel as the channel where the bot will send messages in",
                 )
+            })
+            .create_application_command(|command| {
+                command.name("help").description("Information about the bots commands")
             });
         create_listener_commands(commands)
     })
