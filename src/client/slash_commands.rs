@@ -24,7 +24,7 @@ pub enum Command {
     blacklistmefromtags,
     setbotchannel,
     help,
-    #[strum(serialize = "blue")]
+    #[strum(serialize = "test-command")]
     testcommand,
     command,
     version,
