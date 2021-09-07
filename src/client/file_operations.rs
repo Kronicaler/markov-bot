@@ -81,7 +81,7 @@ pub fn import_chain_from_file() -> Vec<InputData> {
     text_array
         .into_par_iter()
         .map(|message| InputData {
-            text: message.to_string(),
+            text: message.to_owned(),
             meta: None,
         })
         .collect()

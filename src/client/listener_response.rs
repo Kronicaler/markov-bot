@@ -84,8 +84,8 @@ pub async fn set_listener_command(
 
             let mut listener_response = listener_response_lock.write().await;
             listener_response.insert(
-                listener.to_lowercase().trim().to_string(),
-                response.trim().to_string(),
+                listener.to_lowercase().trim().to_owned(),
+                response.trim().to_owned(),
             );
             save_listener_response_to_file(&listener_response);
             return "Set tag".to_owned();
@@ -142,14 +142,14 @@ pub async fn check_for_listened_words(
                 }
 
                 if count == listener_words.len() {
-                    return Some(response.to_string());
+                    return Some(response.to_owned());
                 }
             }
         } else {
             if words_in_message.contains(&listener)
                 && !listener_blacklisted_users.contains(&user_id.0)
             {
-                return Some(response.to_string());
+                return Some(response.to_owned());
             }
         }
     }

@@ -410,7 +410,7 @@ impl Markov {
                 .collect::<Vec<_>>()
                 .join(" ")
                 .trim()
-                .to_string();
+                .to_owned();
 
             let result = MarkovResult {
                 text: sentence,
@@ -500,7 +500,7 @@ mod tests {
         ];
         data.iter()
             .map(|s| InputData {
-                text: s.to_string(),
+                text: s.to_owned(),
                 meta: None,
             })
             .collect()

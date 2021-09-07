@@ -176,7 +176,7 @@ pub fn filter_message_for_markov_file(str: String, msg: &Message) -> String {
         }
     }
 
-    return filtered_message.trim().to_string();
+    return filtered_message.trim().to_owned();
 }
 
 pub async fn blacklist_user_command(msg: &Message, ctx: &Context) -> String {
