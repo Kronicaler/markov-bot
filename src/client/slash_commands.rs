@@ -7,6 +7,7 @@ use serenity::{
         ApplicationCommand, ApplicationCommandInteraction, ApplicationCommandOptionType,
     },
 };
+#[allow(unused_imports)]
 use std::string::ToString;
 use strum_macros::{Display, EnumString};
 
@@ -32,7 +33,7 @@ pub enum Command {
 pub async fn command_responses(command: &ApplicationCommandInteraction, ctx: Context) {
     let content = match Command::from_str(&command.data.name) {
         Ok(user_command) => match user_command{
-            Command::ping => "Hey, I'm alive!".to_string(),
+            Command::ping => "Hey, I'm alive!".to_owned(),
             Command::id => id_command(command),
             Command::blacklistedmarkov => blacklisted_command(&ctx).await,
             Command::blacklistmarkov => {
@@ -42,7 +43,7 @@ pub async fn command_responses(command: &ApplicationCommandInteraction, ctx: Con
                 )
                 .await
             }
-            Command::testcommand => "here be future tests".to_string(),
+            Command::testcommand => "here be future tests".to_owned(),
             Command::createtag => set_listener_command(&ctx, command).await,
             Command::removetag => remove_listener_command(&ctx, command).await,
             Command::tags => list_listeners(&ctx).await,
@@ -50,11 +51,11 @@ pub async fn command_responses(command: &ApplicationCommandInteraction, ctx: Con
                 blacklist_user_from_listener(&ctx, &command.member.clone().unwrap().user).await
             }
             Command::setbotchannel => set_bot_channel(&ctx, command).await,
-            Command::help => "All of my commands are slash commands.\n\n\n\n/ping: Pong!\n\n/id: gives you the user id of the selected user\n\n/blacklistedmarkov: lists out the users the bot will not learn from\n\n/blacklistmarkov: blacklist yourself from the markov chain if you don't want the bot to store your messages and learn from them\n\n/setbotchannel: for admins only, set the channel the bot will talk in, if you don't want users using the bot anywhere else you'll have to do it with roles\n\n/createtag: create a tag that the bot will listen for and then respond to when it is said\n\n/removetag: remove a tag\n\n/tags: list out the current tags\n\n/blacklistmefromtags: blacklist yourself from tags so the bot won't ping you if you trip off a tag".to_string(),
-            Command::command => "command".to_string(),
+            Command::help => "All of my commands are slash commands.\n\n\n\n/ping: Pong!\n\n/id: gives you the user id of the selected user\n\n/blacklistedmarkov: lists out the users the bot will not learn from\n\n/blacklistmarkov: blacklist yourself from the markov chain if you don't want the bot to store your messages and learn from them\n\n/setbotchannel: for admins only, set the channel the bot will talk in, if you don't want users using the bot anywhere else you'll have to do it with roles\n\n/createtag: create a tag that the bot will listen for and then respond to when it is said\n\n/removetag: remove a tag\n\n/tags: list out the current tags\n\n/blacklistmefromtags: blacklist yourself from tags so the bot won't ping you if you trip off a tag".to_owned(),
+            Command::command => "command".to_owned(),
             Command::version => "My current version is ".to_owned() + env!("CARGO_PKG_VERSION")
         },
-        Err(_) => "not implemented :(".to_string(),
+        Err(_) => "not implemented :(".to_owned(),
     };
     if let Err(why) = command
         .create_interaction_response(&ctx.http, |response| {

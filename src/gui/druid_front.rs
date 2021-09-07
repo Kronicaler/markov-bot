@@ -60,9 +60,9 @@ pub fn ui_builder() -> impl Widget<GuiData> {
     );
 
     let export_status_label = Label::dynamic(|data: &ExportStatus, _env: &_| match data {
-        ExportStatus::Success => "Success!".to_string(),
-        ExportStatus::Failure => "Failure".to_string(),
-        ExportStatus::None => "".to_string(),
+        ExportStatus::Success => "Success!".to_owned(),
+        ExportStatus::Failure => "Failure".to_owned(),
+        ExportStatus::None => "".to_owned(),
     })
     .controller(GeneralController)
     .with_id(ID_EXPORTED_MARKOV_CHAIN)

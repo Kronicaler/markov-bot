@@ -58,11 +58,11 @@ async fn normal_message(ctx: &Context, msg: &Message) {
     }
 
     if msg.mentions_me(&ctx.http).await.unwrap() && !msg.author.bot {
-        if words_in_message.contains(&"stfu".to_string())
+        if words_in_message.contains(&"stfu".to_owned())
             || msg.content.to_lowercase().contains("shut up")
             || msg.content.to_lowercase().contains("shut the fuck up")
-            || words_in_message.contains(&"kys".to_string())
-            || words_in_message.contains(&"die".to_string())
+            || words_in_message.contains(&"kys".to_owned())
+            || words_in_message.contains(&"die".to_owned())
             || msg.content.to_lowercase().contains("kill yourself")
             || msg.content.to_lowercase().contains("fuck you")
             || msg.content.to_lowercase().contains("fuck u")
@@ -76,7 +76,7 @@ async fn normal_message(ctx: &Context, msg: &Message) {
             return;
         }
 
-        if words_in_message.contains(&"help".to_string()) {
+        if words_in_message.contains(&"help".to_owned()) {
             msg.channel_id
                 .say(
                     &ctx.http,

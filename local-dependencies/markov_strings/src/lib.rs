@@ -24,15 +24,15 @@ use std::collections::{HashMap, HashSet};
 /// ```rust
 /// # use markov_strings::*;
 /// let data = vec![InputData {
-///     text: "foo bar".to_string(),
-///     meta: Some("serialized value".to_string())
+///     text: "foo bar".to_owned(),
+///     meta: Some("serialized value".to_owned())
 /// }];
 /// ```
 ///
 /// Implements `impl From<String>` so you can do
 /// ```rust
 /// # use markov_strings::*;
-/// let data: Vec<InputData> = vec!["foo bar".to_string()]
+/// let data: Vec<InputData> = vec!["foo bar".to_owned()]
 ///     .iter()
 ///     .map(|s| s.to_owned().into())
 ///     .collect();
@@ -170,7 +170,7 @@ impl Markov {
     /// # use markov_strings::*;
     /// let data: Vec<InputData> = vec![];
     /// # let data: Vec<InputData> = vec![
-    /// #   InputData{ text: "foo bar lorem ipsum".to_string(), meta: None },
+    /// #   InputData{ text: "foo bar lorem ipsum".to_owned(), meta: None },
     /// # ];
     /// let mut markov = Markov::new();
     ///
@@ -351,7 +351,7 @@ impl Markov {
     /// let mut markov = Markov::new();
     /// let data: Vec<InputData> = vec![/* lots of data */];
     /// # let data: Vec<InputData> = vec![
-    /// #   InputData{ text: "foo bar lorem ipsum".to_string(), meta: None },
+    /// #   InputData{ text: "foo bar lorem ipsum".to_owned(), meta: None },
     /// # ];
     /// markov.add_to_corpus(data);
     /// let result = markov.generate().unwrap();
@@ -439,7 +439,7 @@ impl Markov {
     /// # use markov_strings::*;
     /// # use std::collections::{HashMap, HashSet};
     /// let data: Vec<InputData> = vec![
-    ///   InputData{ text: "foo bar lorem ipsum".to_string(), meta: Some("something".to_string()) },
+    ///   InputData{ text: "foo bar lorem ipsum".to_owned(), meta: Some("something".to_owned()) },
     /// ];
     /// let mut markov = Markov::new();
     /// markov.add_to_corpus(data);
@@ -451,7 +451,7 @@ impl Markov {
     /// assert_eq!(result.refs, expected);
     /// let input_ref = *result.refs.get(0).unwrap();
     /// assert_eq!(markov.get_input_ref(input_ref).unwrap().text, "foo bar lorem ipsum");
-    /// assert_eq!(markov.get_input_ref(input_ref).unwrap().meta, Some("something".to_string()));
+    /// assert_eq!(markov.get_input_ref(input_ref).unwrap().meta, Some("something".to_owned()));
     /// ```
     pub fn get_input_ref(self: &Self, index: usize) -> Option<&InputData> {
         self.data.get(index)
@@ -638,7 +638,7 @@ mod tests {
         assert_eq!(input.text, "foo");
         assert_eq!(input.meta, None);
 
-        let texts = vec!["foo".to_string()];
+        let texts = vec!["foo".to_owned()];
         let mut markov = Markov::new();
         markov.add_to_corpus(
             texts

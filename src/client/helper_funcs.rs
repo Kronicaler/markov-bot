@@ -13,7 +13,7 @@ pub fn id_command(command: &ApplicationCommandInteraction) -> String {
     if let ApplicationCommandInteractionDataOptionValue::User(user, _member) = options {
         format!("{}'s id is {}", user, user.id)
     } else {
-        "Please provide a valid user".to_string()
+        "Please provide a valid user".to_owned()
     }
 }
 
@@ -78,7 +78,7 @@ pub async fn set_bot_channel(ctx: &Context, command: &ApplicationCommandInteract
     let member_perms = member.permissions.unwrap();
 
     if !member_perms.administrator() && member.user.id != KRONI_ID {
-        return "You need to have the Administrator permission to invoke this command".to_string();
+        return "You need to have the Administrator permission to invoke this command".to_owned();
     }
 
     let guild_id = command.guild_id.unwrap().0;
@@ -87,7 +87,7 @@ pub async fn set_bot_channel(ctx: &Context, command: &ApplicationCommandInteract
     let mut bot_channel_ids = response_channel_lock.write().await;
     bot_channel_ids.insert(guild_id, channel_id);
     match save_bot_channel(&bot_channel_ids.clone()) {
-        Ok(_) => "Succesfully set this channel as the bot channel".to_string(),
-        Err(_) => "Something went wrong setting bot channel".to_string(),
+        Ok(_) => "Succesfully set this channel as the bot channel".to_owned(),
+        Err(_) => "Something went wrong setting bot channel".to_owned(),
     }
 }

@@ -37,12 +37,12 @@ pub async fn remove_listener_command(
         if listener_response.contains_key(listener) {
             listener_response.remove(listener);
             save_listener_response_to_file(&listener_response);
-            return "Successfully removed the tag".to_string();
+            return "Successfully removed the tag".to_owned();
         }
-        return "That tag doesn't exist".to_string();
+        return "That tag doesn't exist".to_owned();
     }
 
-    "Something went wrong".to_string()
+    "Something went wrong".to_owned()
 }
 
 pub async fn set_listener_command(
@@ -77,7 +77,7 @@ pub async fn set_listener_command(
                 || response.contains("@everyone")
                 || response.contains("@here")
             {
-                return "can't add a mention".to_string();
+                return "can't add a mention".to_owned();
             }
 
             let listener_response_lock = get_listener_response_lock(&ctx.data).await;
@@ -88,10 +88,10 @@ pub async fn set_listener_command(
                 response.trim().to_string(),
             );
             save_listener_response_to_file(&listener_response);
-            return "Set tag".to_string();
+            return "Set tag".to_owned();
         }
     }
-    "Couldn't set tag".to_string()
+    "Couldn't set tag".to_owned()
 }
 
 pub async fn blacklist_user_from_listener(ctx: &Context, user: &User) -> String {
@@ -102,11 +102,11 @@ pub async fn blacklist_user_from_listener(ctx: &Context, user: &User) -> String 
     if users_blacklisted_from_listener.contains(&user.id.0) {
         users_blacklisted_from_listener.remove(&user.id.0);
         save_user_listener_blacklist_to_file(&users_blacklisted_from_listener);
-        "Removed user from the blacklist".to_string()
+        "Removed user from the blacklist".to_owned()
     } else {
         users_blacklisted_from_listener.insert(user.id.0);
         save_user_listener_blacklist_to_file(&users_blacklisted_from_listener);
-        "Added user to the blacklist".to_string()
+        "Added user to the blacklist".to_owned()
     }
 }
 

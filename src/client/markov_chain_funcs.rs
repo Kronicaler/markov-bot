@@ -183,7 +183,7 @@ pub async fn blacklist_user_command(msg: &Message, ctx: &Context) -> String {
     let user = match get_first_mentioned_user(msg) {
         Some(returned_user) => returned_user,
         None => {
-            return "Please specify a user".to_string();
+            return "Please specify a user".to_owned();
         }
     };
     add_or_remove_user_from_markov_blacklist(user, ctx).await
@@ -198,7 +198,7 @@ pub async fn blacklisted_command(ctx: &Context) -> String {
     }
 
     if blacklisted_users.is_empty() {
-        return "Currently there are no blacklisted users".to_string();
+        return "Currently there are no blacklisted users".to_owned();
     }
 
     let mut message = String::from("Blacklisted users: ");
@@ -218,13 +218,13 @@ pub async fn add_or_remove_user_from_markov_blacklist(user: &User, ctx: &Context
         blacklisted_users.remove(&user.id.0);
         match save_markov_blacklisted_users(&*blacklisted_users) {
             Ok(_) => "Removed ".to_owned() + &user.name + " from the list of blacklisted users",
-            Err(_) => "Couldn't remove the user from the file".to_string(),
+            Err(_) => "Couldn't remove the user from the file".to_owned(),
         }
     } else {
         blacklisted_users.insert(user.id.0);
         match save_markov_blacklisted_users(&*blacklisted_users) {
             Ok(_) => "Added ".to_owned() + &user.name + " to the list of blacklisted users",
-            Err(_) => "Couldn't add the user to the file".to_string(),
+            Err(_) => "Couldn't add the user to the file".to_owned(),
         }
     }
 }
