@@ -27,7 +27,7 @@ pub enum Command {
     #[strum(serialize = "blue")]
     testcommand,
     command,
-    version
+    version,
 }
 
 pub async fn command_responses(command: &ApplicationCommandInteraction, ctx: Context) {
@@ -107,10 +107,10 @@ pub async fn create_global_commands(ctx: &Context) {
                     .name(Command::help)
                     .description("Information about the bots commands")
             })
-            .create_application_command(|command|{
+            .create_application_command(|command| {
                 command
-                .name(Command::version)
-                .description("The current version of the bot")
+                    .name(Command::version)
+                    .description("The current version of the bot")
             });
         create_listener_commands(commands)
     })
@@ -121,41 +121,47 @@ pub async fn create_global_commands(ctx: &Context) {
 pub async fn create_guild_commands(ctx: &Context) {
     GuildId(724_690_339_054_486_107)
         .set_application_commands(&ctx.http, |commands| {
-            commands.create_application_command(|command| {
-                command
-                    .name(Command::command)
-                    .description("this is a command")
-                    .create_option(|option| {
-                        option
-                            .name("option")
-                            .description("this is an option")
-                            .kind(ApplicationCommandOptionType::SubCommand)
-                            .create_sub_option(|suboption| {
-                                suboption
-                                    .name("suboption")
-                                    .description("this is a suboption")
-                                    .kind(ApplicationCommandOptionType::Boolean)
-                            })
-                            .create_sub_option(|suboption| {
-                                suboption
-                                    .name("suboption2")
-                                    .description("this is a suboption")
-                                    .kind(ApplicationCommandOptionType::Boolean)
-                            })
-                    })
-                    .create_option(|option| {
-                        option
-                            .name("option2")
-                            .description("this is an option")
-                            .kind(ApplicationCommandOptionType::SubCommand)
-                            .create_sub_option(|suboption| {
-                                suboption
-                                    .name("suboption3")
-                                    .description("this is a suboption")
-                                    .kind(ApplicationCommandOptionType::Boolean)
-                            })
-                    })
-            })
+            commands
+                .create_application_command(|command| {
+                    command
+                        .name(Command::command)
+                        .description("this is a command")
+                        .create_option(|option| {
+                            option
+                                .name("option")
+                                .description("this is an option")
+                                .kind(ApplicationCommandOptionType::SubCommand)
+                                .create_sub_option(|suboption| {
+                                    suboption
+                                        .name("suboption")
+                                        .description("this is a suboption")
+                                        .kind(ApplicationCommandOptionType::Boolean)
+                                })
+                                .create_sub_option(|suboption| {
+                                    suboption
+                                        .name("suboption2")
+                                        .description("this is a suboption")
+                                        .kind(ApplicationCommandOptionType::Boolean)
+                                })
+                        })
+                        .create_option(|option| {
+                            option
+                                .name("option2")
+                                .description("this is an option")
+                                .kind(ApplicationCommandOptionType::SubCommand)
+                                .create_sub_option(|suboption| {
+                                    suboption
+                                        .name("suboption3")
+                                        .description("this is a suboption")
+                                        .kind(ApplicationCommandOptionType::Boolean)
+                                })
+                        })
+                })
+                .create_application_command(|command| {
+                    command
+                        .name(Command::testcommand)
+                        .description("test command".to_owned())
+                })
         })
         .await
         .unwrap();
