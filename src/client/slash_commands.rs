@@ -7,8 +7,6 @@ use serenity::{
         ApplicationCommand, ApplicationCommandInteraction, ApplicationCommandOptionType,
     },
 };
-#[allow(unused_imports)]
-use std::string::ToString;
 use strum_macros::{Display, EnumString};
 
 #[allow(non_camel_case_types)]
