@@ -1,5 +1,3 @@
-use std::{env, sync::Arc};
-
 use crate::*;
 use druid::Target;
 use serenity::{
@@ -14,9 +12,16 @@ use serenity::{
     prelude::*,
     Client,
 };
+use std::{env, sync::Arc};
+use strum_macros::{Display, EnumString};
 use tokio::join;
 
 struct Handler {}
+
+#[derive(Display, EnumString)]
+pub enum ButtonIds {
+    BlacklistMeFromTags,
+}
 
 #[async_trait]
 impl EventHandler for Handler {
@@ -31,9 +36,27 @@ impl EventHandler for Handler {
     }
 
     async fn interaction_create(&self, ctx: Context, interaction: Interaction) {
-        if interaction.kind() == InteractionType::ApplicationCommand {
-            let command = interaction.application_command().unwrap();
-            command_responses(&command, ctx).await;
+        match interaction.kind() {
+            InteractionType::Ping => todo!(),
+            InteractionType::ApplicationCommand => {
+                let command = interaction.application_command().unwrap();
+                command_responses(&command, ctx).await;
+            }
+            InteractionType::MessageComponent => {
+                let button = interaction.message_component().unwrap();
+                
+                if button.data.custom_id == ButtonIds::BlacklistMeFromTags.to_string() {
+                    let response = blacklist_user_from_listener(&ctx, &button.user).await;
+                    
+                    button.create_interaction_response(&ctx.http, |r| {
+                        r.interaction_response_data(|d| {
+                            d.content(response)
+                        })
+                    }).await.unwrap();
+                }
+            }
+            InteractionType::Unknown => todo!(),
+            _ => {}
         }
     }
 }

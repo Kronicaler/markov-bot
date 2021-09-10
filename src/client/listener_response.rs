@@ -134,7 +134,7 @@ pub async fn check_for_listened_words(
     let listener_blacklisted_users = listener_blacklisted_users_lock.read().await;
 
     if listener_blacklisted_users.contains(&user_id.0) {
-        return None
+        return None;
     }
 
     for (listener, response) in listener_response.iter() {
@@ -159,10 +159,8 @@ pub async fn check_for_listened_words(
                     return Some(response.to_owned());
                 }
             }
-        } else {
-            if words_in_message.contains(&listener) {
-                return Some(response.to_owned());
-            }
+        } else if words_in_message.contains(&listener) {
+            return Some(response.to_owned());
         }
     }
 

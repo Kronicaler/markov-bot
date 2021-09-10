@@ -35,7 +35,7 @@ pub async fn command_responses(command: &ApplicationCommandInteraction, ctx: Con
             Command::id => id_command(command),
             Command::blacklistedmarkov => blacklisted_command(&ctx).await,
             Command::blacklistmarkov => add_or_remove_user_from_markov_blacklist(&command.member.as_ref().unwrap().user,&ctx).await,
-            Command::testcommand => "here be future tests".to_owned(),
+            Command::testcommand => test_command(),
             Command::createtag => set_listener_command(&ctx, command).await,
             Command::removetag => remove_listener_command(&ctx, command).await,
             Command::tags => list_listeners(&ctx).await,
@@ -57,6 +57,10 @@ pub async fn command_responses(command: &ApplicationCommandInteraction, ctx: Con
     {
         println!("Cannot respond to slash command: {}", why);
     }
+}
+
+fn test_command() -> String {
+    "here be tests".to_owned()
 }
 
 pub async fn create_global_commands(ctx: &Context) {

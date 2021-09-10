@@ -1,5 +1,19 @@
 use crate::*;
-use serenity::{client::Context, model::{channel::{GuildChannel, Message}, interactions::application_command::{ApplicationCommandInteraction, ApplicationCommandInteractionDataOptionValue}, prelude::User}, prelude::Mentionable};
+use serenity::{
+    builder::ParseValue,
+    client::Context,
+    model::{
+        channel::{GuildChannel, Message},
+        interactions::{
+            application_command::{
+                ApplicationCommandInteraction, ApplicationCommandInteractionDataOptionValue,
+            },
+            message_component::ButtonStyle,
+        },
+        prelude::User,
+    },
+    prelude::Mentionable,
+};
 
 pub fn id_command(command: &ApplicationCommandInteraction) -> String {
     let options = command
@@ -44,7 +58,19 @@ pub async fn send_message_to_first_available_channel(ctx: &Context, msg: &Messag
             let bot_channel = ctx.cache.guild_channel(*channel_id).await;
             if let Some(channel) = bot_channel {
                 channel
-                    .say(&ctx.http, msg.author.mention().to_string() + " " + message)
+                    .send_message(&ctx.http, |m| {
+                        m.components(|c| {
+                            c.create_action_row(|a| {
+                                a.create_button(|b| {
+                                    b.label("Stop pinging me")
+                                        .style(ButtonStyle::Primary)
+                                        .custom_id(ButtonIds::BlacklistMeFromTags)
+                                })
+                            })
+                        })
+                        .allowed_mentions(|m| m.parse(ParseValue::Users))
+                        .content(msg.author.mention().to_string() + " " + message)
+                    })
                     .await
                     .unwrap();
                 return;
@@ -61,9 +87,22 @@ pub async fn send_message_to_first_available_channel(ctx: &Context, msg: &Messag
             .map(|(_, channel)| channel.clone())
             .collect();
         for channel in channels {
+
             match channel
                 .id
-                .say(&ctx.http, msg.author.mention().to_string() + " " + message)
+                .send_message(&ctx.http, |m| {
+                    m.components(|c| {
+                        c.create_action_row(|a| {
+                            a.create_button(|b| {
+                                b.label("Stop pinging me")
+                                    .style(ButtonStyle::Primary)
+                                    .custom_id(ButtonIds::BlacklistMeFromTags)
+                            })
+                        })
+                    })
+                    .allowed_mentions(|m| m.parse(ParseValue::Users))
+                    .content(msg.author.mention().to_string() + " " + message)
+                })
                 .await
             {
                 Ok(_) => break,
