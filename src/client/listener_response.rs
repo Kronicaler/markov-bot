@@ -1,6 +1,16 @@
 use crate::*;
 use regex::Regex;
-use serenity::{client::Context, model::{id::UserId, interactions::application_command::{ApplicationCommandInteraction, ApplicationCommandInteractionDataOptionValue, ApplicationCommandOptionType}, prelude::User}};
+use serenity::{
+    client::Context,
+    model::{
+        id::UserId,
+        interactions::application_command::{
+            ApplicationCommandInteraction, ApplicationCommandInteractionDataOptionValue,
+            ApplicationCommandOptionType,
+        },
+        prelude::User,
+    },
+};
 
 pub async fn list_listeners(ctx: &Context) -> String {
     let listener_response_lock = get_listener_response_lock(&ctx.data).await;
@@ -123,6 +133,10 @@ pub async fn check_for_listened_words(
     let listener_blacklisted_users_lock = get_listener_blacklisted_users_lock(&ctx.data).await;
     let listener_blacklisted_users = listener_blacklisted_users_lock.read().await;
 
+    if listener_blacklisted_users.contains(&user_id.0) {
+        return None
+    }
+
     for (listener, response) in listener_response.iter() {
         let listener_words = listener
             .split(' ')
@@ -146,9 +160,7 @@ pub async fn check_for_listened_words(
                 }
             }
         } else {
-            if words_in_message.contains(&listener)
-                && !listener_blacklisted_users.contains(&user_id.0)
-            {
+            if words_in_message.contains(&listener) {
                 return Some(response.to_owned());
             }
         }
