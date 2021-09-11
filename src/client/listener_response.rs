@@ -112,11 +112,11 @@ pub async fn blacklist_user_from_listener(ctx: &Context, user: &User) -> String 
     if users_blacklisted_from_listener.contains(&user.id.0) {
         users_blacklisted_from_listener.remove(&user.id.0);
         save_user_listener_blacklist_to_file(&users_blacklisted_from_listener);
-        "Removed user from the blacklist".to_owned()
+        format!("Removed {} from the blacklist",&user.name)
     } else {
         users_blacklisted_from_listener.insert(user.id.0);
         save_user_listener_blacklist_to_file(&users_blacklisted_from_listener);
-        "Added user to the blacklist".to_owned()
+        format!("Added {} to the tag blacklist",&user.name)
     }
 }
 
