@@ -59,16 +59,18 @@ pub async fn send_message_to_first_available_channel(ctx: &Context, msg: &Messag
             if let Some(channel) = bot_channel {
                 channel
                     .send_message(&ctx.http, |m| {
-                        m.components(|c| {
-                            c.create_action_row(|a| {
-                                a.create_button(|b| {
-                                    b.label("Stop pinging me")
-                                        .style(ButtonStyle::Primary)
-                                        .custom_id(ButtonIds::BlacklistMeFromTags)
+                        if rand::random::<f32>() < 0.05 {
+                            m.components(|c| {
+                                c.create_action_row(|a| {
+                                    a.create_button(|b| {
+                                        b.label("Stop pinging me")
+                                            .style(ButtonStyle::Primary)
+                                            .custom_id(ButtonIds::BlacklistMeFromTags)
+                                    })
                                 })
-                            })
-                        })
-                        .allowed_mentions(|m| m.parse(ParseValue::Users))
+                            });
+                        }
+                        m.allowed_mentions(|m| m.parse(ParseValue::Users))
                         .content(msg.author.mention().to_string() + " " + message)
                     })
                     .await
@@ -87,7 +89,6 @@ pub async fn send_message_to_first_available_channel(ctx: &Context, msg: &Messag
             .map(|(_, channel)| channel.clone())
             .collect();
         for channel in channels {
-
             match channel
                 .id
                 .send_message(&ctx.http, |m| {
