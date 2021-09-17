@@ -1,18 +1,16 @@
 use crate::*;
-use druid::Target;
 use serenity::{
     async_trait,
-    client::{bridge::gateway::ShardManager, Context, EventHandler},
+    client::{Context, EventHandler},
     framework::{
         standard::macros::{group, hook},
         StandardFramework,
     },
     http::Http,
     model::{interactions::Interaction, prelude::*},
-    prelude::*,
     Client,
 };
-use std::{env, sync::Arc};
+use std::{env};
 use strum_macros::{Display, EnumString};
 use tokio::join;
 
@@ -123,7 +121,7 @@ async fn normal_message(ctx: &Context, msg: &Message) {
     }
 }
 
-pub async fn start_client(front_channel: FrontChannelStruct) {
+pub async fn start_client() {
     let token = env::var("DISCORD_TOKEN").expect("Expected a DISCORD_TOKEN in the environment");
     let application_id: UserId = env::var("APPLICATION_ID")
         .expect("Expected an APPLICATION_ID in the environment")
@@ -152,60 +150,10 @@ pub async fn start_client(front_channel: FrontChannelStruct) {
         .expect("Err creating client");
 
     {
-        init_global_data_for_client(&client, front_channel).await;
+        init_global_data_for_client(&client).await;
     }
 
     select! {
-        _ = listener(client.data.clone(),client.shard_manager.clone()) =>{println!("listener completed first")}
         _ = client.start() => {println!("client completed first")}
     }
-}
-
-pub async fn listener(
-    data: Arc<serenity::prelude::RwLock<TypeMap>>,
-    shard_manager: Arc<Mutex<ShardManager>>,
-) {
-    loop {
-        let front_channel_lock = get_front_channel_lock(&data).await;
-        let front_channel = front_channel_lock.read().await;
-
-        if let Ok(_) = front_channel.export_and_quit_receiver.try_recv() {
-            {
-                let (markov_chain_lock, event_sink_lock) =
-                    tokio::join!(get_markov_chain_lock(&data), get_front_channel_lock(&data));
-                let (markov_chain, event_sink) =
-                    tokio::join!(markov_chain_lock.write(), event_sink_lock.read());
-
-                if let Err(_) = export_to_markov_file(&markov_chain.clone().export()) {
-                    send_markov_export_failure(&event_sink).await;
-                    continue;
-                }
-
-                event_sink
-                    .event_sink
-                    .submit_command(EXPORTED_MARKOV_CHAIN, ExportStatus::Success, Target::Auto)
-                    .unwrap();
-            }
-            tokio::time::sleep(std::time::Duration::from_secs(2)).await;
-
-            shard_manager.lock().await.shutdown_all().await;
-            return;
-        }
-
-        tokio::time::sleep(std::time::Duration::from_millis(500)).await;
-    }
-}
-
-async fn send_markov_export_failure(
-    event_sink: &tokio::sync::RwLockReadGuard<'_, FrontChannelStruct>,
-) {
-    event_sink
-        .event_sink
-        .submit_command(EXPORTED_MARKOV_CHAIN, ExportStatus::Failure, Target::Auto)
-        .unwrap();
-    tokio::time::sleep(std::time::Duration::from_secs(3)).await;
-    event_sink
-        .event_sink
-        .submit_command(EXPORTED_MARKOV_CHAIN, ExportStatus::None, Target::Auto)
-        .unwrap();
 }

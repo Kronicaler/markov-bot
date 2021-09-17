@@ -1,5 +1,4 @@
 use crate::*;
-use druid::Target;
 use markov_strings::Markov;
 use regex::{Captures, Regex};
 use serenity::{
@@ -41,19 +40,6 @@ pub async fn should_add_message_to_markov_file(msg: &Message, ctx: &Context) {
                 let filtered_message = filter_message_for_markov_file(str, msg);
                 //msg.reply(&ctx.http, &filtered_message).await.unwrap();
                 append_to_markov_file(&filtered_message);
-                let message_count_lock = get_message_count_lock(&ctx.data).await;
-                let mut message_count = message_count_lock.write().await;
-                *message_count = message_count.checked_add(1).unwrap();
-                let front_channel_lock = get_front_channel_lock(&ctx.data).await;
-                let front_channel = front_channel_lock.read().await;
-                front_channel
-                    .event_sink
-                    .submit_command(
-                        SET_MESSAGE_COUNT,
-                        *message_count,
-                        Target::Widget(ID_MESSAGE_COUNT),
-                    )
-                    .unwrap();
             }
         }
     }
