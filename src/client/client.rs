@@ -49,6 +49,7 @@ impl EventHandler for Handler {
                     button.create_interaction_response(&ctx.http, |r| {
                         r.interaction_response_data(|d| {
                             d.content(response)
+                            .flags(InteractionApplicationCommandCallbackDataFlags::EPHEMERAL)
                         })
                     }).await.unwrap();
                 }
