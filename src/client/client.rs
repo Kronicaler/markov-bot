@@ -10,7 +10,7 @@ use serenity::{
     model::{interactions::Interaction, prelude::*},
     Client,
 };
-use std::{env};
+use std::env;
 use strum_macros::{Display, EnumString};
 use tokio::join;
 
@@ -42,16 +42,20 @@ impl EventHandler for Handler {
             }
             InteractionType::MessageComponent => {
                 let button = interaction.message_component().unwrap();
-                
+
                 if button.data.custom_id == ButtonIds::BlacklistMeFromTags.to_string() {
                     let response = blacklist_user_from_listener(&ctx, &button.user).await;
-                    
-                    button.create_interaction_response(&ctx.http, |r| {
-                        r.interaction_response_data(|d| {
-                            d.content(response)
-                            .flags(InteractionApplicationCommandCallbackDataFlags::EPHEMERAL)
+
+                    button
+                        .create_interaction_response(&ctx.http, |r| {
+                            r.interaction_response_data(|d| {
+                                d.content(response).flags(
+                                    InteractionApplicationCommandCallbackDataFlags::EPHEMERAL,
+                                )
+                            })
                         })
-                    }).await.unwrap();
+                        .await
+                        .unwrap();
                 }
             }
             InteractionType::Unknown => todo!(),
@@ -80,24 +84,6 @@ async fn normal_message(ctx: &Context, msg: &Message) {
     }
 
     if msg.mentions_me(&ctx.http).await.unwrap() && !msg.author.bot {
-        if words_in_message.contains(&"stfu".to_owned())
-            || msg.content.to_lowercase().contains("shut up")
-            || msg.content.to_lowercase().contains("shut the fuck up")
-            || words_in_message.contains(&"kys".to_owned())
-            || words_in_message.contains(&"die".to_owned())
-            || msg.content.to_lowercase().contains("kill yourself")
-            || msg.content.to_lowercase().contains("fuck you")
-            || msg.content.to_lowercase().contains("fuck u")
-            || msg.content.to_lowercase().contains("fuck off")
-            || msg.content.to_lowercase().contains("suck my")
-        {
-            let troglodyte = "Next time you *think* of replying with a failed attempt at sarcasm, try to take the half-an-hour or so your troglodyte brain requires to formulate a coherent thought and decide if you ACTUALLY have a point or if you're just mashing your bumbling ham-hands across the keyboard in the same an invertebrate would as though it were being electrified for some laboratory experiment; Not that there's a marked difference between the two outcomes, as any attempt at communication on your part will invariably arise from mere random firings of your sputtering, weak neurons that ends up indistinguishable either way.";
-            msg.reply_mention(&ctx.http, troglodyte)
-                .await
-                .expect("well fuck");
-            return;
-        }
-
         if words_in_message.contains(&"help".to_owned()) {
             msg.channel_id
                 .say(
