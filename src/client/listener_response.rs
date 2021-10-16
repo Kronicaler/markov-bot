@@ -112,11 +112,11 @@ pub async fn blacklist_user_from_listener(ctx: &Context, user: &User) -> String 
     if users_blacklisted_from_listener.contains(&user.id.0) {
         users_blacklisted_from_listener.remove(&user.id.0);
         save_user_listener_blacklist_to_file(&users_blacklisted_from_listener);
-        format!("Removed {} from the blacklist",&user.name)
+        format!("Removed {} from the blacklist", &user.name)
     } else {
         users_blacklisted_from_listener.insert(user.id.0);
         save_user_listener_blacklist_to_file(&users_blacklisted_from_listener);
-        format!("Added {} to the tag blacklist",&user.name)
+        format!("Added {} to the tag blacklist", &user.name)
     }
 }
 
@@ -159,7 +159,16 @@ pub async fn check_for_listened_words(
                     return Some(response.to_owned());
                 }
             }
-        } else if words_in_message.contains(&listener) {
+        }
+    }
+
+    for (listener, response) in listener_response.iter() {
+        let listener_words = listener
+            .split(' ')
+            .map(ToString::to_string)
+            .collect::<Vec<String>>();
+
+        if words_in_message.contains(&listener) && listener_words.len() < 2 {
             return Some(response.to_owned());
         }
     }
