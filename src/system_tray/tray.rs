@@ -15,7 +15,7 @@ pub struct SystemTray {
     #[nwg_resource(source_file: Some("data/system tray/doki.ico"))]
     icon: nwg::Icon,
 
-    #[nwg_control(icon: Some(&data.icon), tip: Some("Doki Bot"))]
+    #[nwg_control(icon: Some(&data.icon), tip: Some("Markov Bot"))]
     #[nwg_events(MousePressLeftUp: [SystemTray::show_menu], OnContextMenu: [SystemTray::show_menu])]
     tray: nwg::TrayNotification,
 

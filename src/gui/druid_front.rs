@@ -29,7 +29,7 @@ pub struct SendersToClient {
 
 pub fn start_gui(tx: &Sender<ExtEventSink>, senders_to_client: SendersToClient) {
     let window = WindowDesc::new(ui_builder)
-        .title("Doki Bot")
+        .title("Markov Bot")
         .window_size((50.0, 50.0));
     let launcher = AppLauncher::with_window(window);
     tx.send(launcher.get_external_handle()).unwrap();

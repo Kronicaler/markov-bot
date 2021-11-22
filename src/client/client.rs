@@ -28,7 +28,7 @@ impl EventHandler for Handler {
     async fn ready(&self, ctx: Context, ready: Ready) {
         println!("{} is connected!", ready.user.name);
 
-        let t1 = ctx.set_activity(Activity::watching("https://github.com/TheKroni/doki-bot"));
+        let t1 = ctx.set_activity(Activity::watching("https://github.com/TheKroni/markov-bot"));
         let t2 = create_global_commands(&ctx);
         let t3 = create_guild_commands(&ctx);
 
