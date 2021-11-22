@@ -13,13 +13,12 @@ use serenity::{
 };
 
 pub async fn list_listeners(ctx: &Context) -> String {
-    let listener_response_lock = get_listener_response_lock(&ctx.data).await;
-    let listener_response = listener_response_lock.read().await;
+    let listener_response = get_listener_response_lock(&ctx.data).await;
 
     let mut message = String::new();
 
-    for (listener, _) in listener_response.iter() {
-        message += &format!("{}, ", listener);
+    for entry in listener_response.iter() {
+        message += &format!("{}, ", entry.key());
     }
     message.pop();
     message.pop();
@@ -39,9 +38,7 @@ pub async fn remove_listener_command(
         .resolved
         .as_ref()
         .unwrap();
-    let listener_response_lock = get_listener_response_lock(&ctx.data).await;
-
-    let mut listener_response = listener_response_lock.write().await;
+    let listener_response = get_listener_response_lock(&ctx.data).await;
 
     if let ApplicationCommandInteractionDataOptionValue::String(listener) = listener {
         if listener_response.contains_key(listener) {
@@ -90,9 +87,8 @@ pub async fn set_listener_command(
                 return "can't add a mention".to_owned();
             }
 
-            let listener_response_lock = get_listener_response_lock(&ctx.data).await;
+            let listener_response = get_listener_response_lock(&ctx.data).await;
 
-            let mut listener_response = listener_response_lock.write().await;
             listener_response.insert(
                 listener.to_lowercase().trim().to_owned(),
                 response.trim().to_owned(),
@@ -105,9 +101,7 @@ pub async fn set_listener_command(
 }
 
 pub async fn blacklist_user_from_listener(ctx: &Context, user: &User) -> String {
-    let listener_blacklisted_users_lock = get_listener_blacklisted_users_lock(&ctx.data).await;
-
-    let mut users_blacklisted_from_listener = listener_blacklisted_users_lock.write().await;
+    let users_blacklisted_from_listener = get_listener_blacklisted_users_lock(&ctx.data).await;
 
     if users_blacklisted_from_listener.contains(&user.id.0) {
         users_blacklisted_from_listener.remove(&user.id.0);
@@ -128,16 +122,17 @@ pub async fn check_for_listened_words(
     words_in_message: &[String],
     user_id: UserId,
 ) -> Option<String> {
-    let listener_response_lock = get_listener_response_lock(&ctx.data).await;
-    let listener_response = listener_response_lock.read().await;
-    let listener_blacklisted_users_lock = get_listener_blacklisted_users_lock(&ctx.data).await;
-    let listener_blacklisted_users = listener_blacklisted_users_lock.read().await;
+    let listener_response = get_listener_response_lock(&ctx.data).await;
+    let listener_blacklisted_users = get_listener_blacklisted_users_lock(&ctx.data).await;
 
     if listener_blacklisted_users.contains(&user_id.0) {
         return None;
     }
 
-    for (listener, response) in listener_response.iter() {
+    for entry in listener_response.iter() {
+        let listener = entry.key();
+        let response = entry.value();
+
         let listener_words = listener
             .split(' ')
             .map(ToString::to_string)
@@ -162,7 +157,10 @@ pub async fn check_for_listened_words(
         }
     }
 
-    for (listener, response) in listener_response.iter() {
+    for entry in listener_response.iter() {
+        let listener = entry.key();
+        let response = entry.value();
+
         let listener_words = listener
             .split(' ')
             .map(ToString::to_string)

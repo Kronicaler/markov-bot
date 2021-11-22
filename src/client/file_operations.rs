@@ -1,15 +1,15 @@
 use std::{
-    collections::{HashMap, HashSet},
     fs::{self, OpenOptions},
     io::Write,
     path::Path,
 };
 
 use crate::*;
+use dashmap::{DashMap, DashSet};
 use markov_strings::{ImportExport, InputData};
 use serenity::model::channel::Message;
 
-pub fn save_user_listener_blacklist_to_file(blacklist: &HashSet<u64>) {
+pub fn save_user_listener_blacklist_to_file(blacklist: &DashSet<u64>) {
     fs::write(
         LISTENER_BLACKLISTED_USERS_PATH,
         serde_json::to_string(&blacklist).unwrap(),
@@ -17,7 +17,7 @@ pub fn save_user_listener_blacklist_to_file(blacklist: &HashSet<u64>) {
     .expect("Something went wrong while writing to file.");
 }
 
-pub fn save_listener_response_to_file(listener_response: &HashMap<String, String>) {
+pub fn save_listener_response_to_file(listener_response: &DashMap<String, String>) {
     fs::write(
         LISTENER_RESPONSE_PATH,
         serde_json::to_string(&listener_response).unwrap(),
@@ -88,7 +88,7 @@ pub fn import_chain_from_file() -> Vec<InputData> {
 }
 
 pub fn save_markov_blacklisted_users(
-    blacklisted_users: &HashSet<u64>,
+    blacklisted_users: &DashSet<u64>,
 ) -> Result<(), std::io::Error> {
     fs::write(
         MARKOV_BLACKLISTED_USERS_PATH,
@@ -96,7 +96,7 @@ pub fn save_markov_blacklisted_users(
     )
 }
 
-pub fn save_bot_channel(bot_channels: &HashMap<u64, u64>) -> Result<(), std::io::Error> {
+pub fn save_bot_channel(bot_channels: &DashMap<u64, u64>) -> Result<(), std::io::Error> {
     fs::write(
         BOT_CHANNEL_PATH,
         serde_json::to_string(bot_channels).unwrap(),
