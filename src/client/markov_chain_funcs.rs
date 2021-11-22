@@ -18,18 +18,11 @@ pub async fn should_add_message_to_markov_file(msg: &Message, ctx: &Context) {
         .is_some()
     {
         {
-            let markov_blacklisted_users_lock = get_markov_blacklisted_users_lock(&ctx.data).await;
-            let markov_blacklisted_channels_lock =
-                get_markov_blacklisted_channels_lock(&ctx.data).await;
+            let markov_blacklisted_users = get_markov_blacklisted_users_lock(&ctx.data).await;
+            let markov_blacklisted_channels = get_markov_blacklisted_channels_lock(&ctx.data).await;
 
-            if !markov_blacklisted_channels_lock
-                .read()
-                .await
-                .contains(&msg.channel_id.0)
-                && !markov_blacklisted_users_lock
-                    .read()
-                    .await
-                    .contains(&msg.author.id.0)
+            if !markov_blacklisted_channels.contains(&msg.channel_id.0)
+                && !markov_blacklisted_users.contains(&msg.author.id.0)
                 && !msg.mentions_me(&ctx.http).await.unwrap()
                 && msg.content.split(' ').count() >= 5
             {
@@ -190,19 +183,19 @@ pub async fn blacklist_user_command(msg: &Message, ctx: &Context) -> String {
 }
 
 pub async fn blacklisted_command(ctx: &Context) -> String {
-    let mut blacklisted_users = Vec::new();
-    let blacklisted_users_lock = get_markov_blacklisted_users_lock(&ctx.data).await;
+    let mut blacklisted_usernames = Vec::new();
+    let blacklisted_users = get_markov_blacklisted_users_lock(&ctx.data).await;
 
-    for user_id in blacklisted_users_lock.read().await.iter() {
-        blacklisted_users.push(ctx.http.get_user(*user_id).await.unwrap().name);
+    for user_id in blacklisted_users.iter() {
+        blacklisted_usernames.push(ctx.http.get_user(*user_id).await.unwrap().name);
     }
 
-    if blacklisted_users.is_empty() {
+    if blacklisted_usernames.is_empty() {
         return "Currently there are no blacklisted users".to_owned();
     }
 
     let mut message = String::from("Blacklisted users: ");
-    for user_name in blacklisted_users {
+    for user_name in blacklisted_usernames {
         message += &(user_name + ", ");
     }
     message.pop();
@@ -211,8 +204,7 @@ pub async fn blacklisted_command(ctx: &Context) -> String {
 }
 
 pub async fn add_or_remove_user_from_markov_blacklist(user: &User, ctx: &Context) -> String {
-    let blacklisted_users_lock = get_markov_blacklisted_users_lock(&ctx.data).await;
-    let mut blacklisted_users = blacklisted_users_lock.write().await;
+    let blacklisted_users = get_markov_blacklisted_users_lock(&ctx.data).await;
 
     if blacklisted_users.contains(&user.id.0) {
         blacklisted_users.remove(&user.id.0);
