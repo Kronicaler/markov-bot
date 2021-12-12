@@ -78,7 +78,7 @@ pub async fn send_message_to_first_available_channel(ctx: &Context, msg: &Messag
             }
         }
 
-        //iterate until it managages to send a message
+        //iterate until it manages to send a message
         let channels: Vec<GuildChannel> = msg
             .guild(&ctx.cache)
             .await
@@ -116,7 +116,7 @@ pub async fn set_bot_channel(ctx: &Context, command: &ApplicationCommandInteract
     let member = command.member.as_ref().unwrap();
     let member_perms = member.permissions.unwrap();
 
-    if !member_perms.administrator() && member.user.id != KRONI_ID {
+    if !member_perms.administrator() && member.user.id != OWNER_ID {
         return "You need to have the Administrator permission to invoke this command".to_owned();
     }
 
@@ -125,7 +125,7 @@ pub async fn set_bot_channel(ctx: &Context, command: &ApplicationCommandInteract
     let bot_channel_ids = get_bot_channel_id_lock(&ctx.data).await;
     bot_channel_ids.insert(guild_id, channel_id);
     match save_bot_channel(&bot_channel_ids.clone()) {
-        Ok(_) => "Succesfully set this channel as the bot channel".to_owned(),
+        Ok(_) => "Successfully set this channel as the bot channel".to_owned(),
         Err(_) => "Something went wrong setting bot channel".to_owned(),
     }
 }

@@ -14,12 +14,12 @@ use std::env;
 use strum_macros::{Display, EnumString};
 use tokio::join;
 
-struct Handler {}
-
 #[derive(Display, EnumString)]
 pub enum ButtonIds {
     BlacklistMeFromTags,
 }
+
+struct Handler {}
 
 #[async_trait]
 impl EventHandler for Handler {
@@ -68,6 +68,7 @@ impl EventHandler for Handler {
 #[commands(ping)]
 struct General;
 
+/// Is called by the framework whenever a user sends a message in a server or in the bots DMs
 #[hook]
 async fn normal_message(ctx: &Context, msg: &Message) {
     should_add_message_to_markov_file(&msg, &ctx).await;
@@ -105,7 +106,7 @@ async fn normal_message(ctx: &Context, msg: &Message) {
             return;
         }
 
-        if msg.author.id == KRONI_ID
+        if msg.author.id == OWNER_ID
             && msg.content.to_lowercase().contains("blacklist user")
             && msg.content.to_lowercase().contains("markov")
         {
@@ -124,33 +125,33 @@ pub async fn start_client() {
         .expect("Expected an APPLICATION_ID in the environment")
         .parse()
         .expect("Couldn't parse the APPLICATION_ID");
+
     let http = Http::new_with_token(&token);
-    let (owners, _bot_id) = match http.get_current_application_info().await {
+
+    let owners = match http.get_current_application_info().await {
         Ok(info) => {
             let mut owners = HashSet::new();
             owners.insert(info.owner.id);
 
-            (owners, info.id)
+            owners
         }
         Err(why) => panic!("Could not access application info: {:?}", why),
     };
+
     let framework = StandardFramework::new()
         .configure(|c| c.owners(owners).on_mention(Some(application_id)))
         .group(&GENERAL_GROUP)
         .prefix_only(normal_message)
         .normal_message(normal_message);
+
     let mut client = Client::builder(token)
         .application_id(application_id.0)
         .framework(framework)
         .event_handler(Handler {})
         .await
-        .expect("Err creating client");
+        .expect("Error creating client");
 
-    {
-        init_global_data_for_client(&client).await;
-    }
+    init_global_data_for_client(&client).await.unwrap();
 
-    select! {
-        _ = client.start() => {println!("client completed first")}
-    }
+    client.start().await.unwrap();
 }

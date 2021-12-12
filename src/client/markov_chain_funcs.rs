@@ -5,7 +5,8 @@ use serenity::{
     client::Context,
     model::{channel::Message, prelude::User},
 };
-use std::{fs, u64, usize};
+use std::error::Error;
+use std::{fs, u64};
 
 pub async fn should_add_message_to_markov_file(msg: &Message, ctx: &Context) {
     if msg
@@ -60,15 +61,11 @@ pub async fn send_markov_text(ctx: &Context, msg: &Message) {
     };
 }
 
-pub fn init_markov_debug() -> Markov {
-    let mut markov: Markov = serde_json::from_str(
-        &fs::read_to_string(create_file_if_missing(
-            MARKOV_EXPORT_PATH,
-            &serde_json::to_string(&Markov::new().export()).unwrap(),
-        ))
-        .unwrap(),
-    )
-    .unwrap();
+pub fn init_markov_debug() -> Result<Markov, Box<dyn Error>> {
+    let mut markov: Markov = serde_json::from_str(&fs::read_to_string(create_file_if_missing(
+        MARKOV_EXPORT_PATH,
+        &serde_json::to_string(&Markov::new().export())?,
+    )?)?)?;
     markov.set_max_tries(200);
     markov.set_filter(|r| {
         if r.text.split(' ').count() >= 5 && r.refs.len() >= 2 {
@@ -76,12 +73,12 @@ pub fn init_markov_debug() -> Markov {
         }
         false
     });
-    markov
+    Ok(markov)
 }
 
-pub fn init_markov() -> (Markov, usize) {
+pub fn init_markov() -> Result<Markov, Box<dyn Error>> {
     let mut markov_chain = Markov::new();
-    markov_chain.set_state_size(3).unwrap();
+    markov_chain.set_state_size(3).unwrap(); // Will never fail
     markov_chain.set_max_tries(200);
     markov_chain.set_filter(|r| {
         if r.text.split(' ').count() >= 5 && r.refs.len() >= 2 {
@@ -89,10 +86,9 @@ pub fn init_markov() -> (Markov, usize) {
         }
         false
     });
-    let input_data = import_chain_from_file();
-    let num_of_messages = input_data.len();
+    let input_data = import_chain_from_file()?;
     markov_chain.add_to_corpus(input_data);
-    (markov_chain, num_of_messages)
+    Ok(markov_chain)
 }
 
 pub fn filter_message_for_markov_file(str: String, msg: &Message) -> String {
