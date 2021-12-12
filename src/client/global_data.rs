@@ -1,12 +1,11 @@
 #![allow(dead_code)]
 use crate::*;
 use dashmap::{DashMap, DashSet};
-use druid::Target;
 use serenity::{
     prelude::{RwLock, TypeMap, TypeMapKey},
     Client,
 };
-use std::{sync::Arc, usize};
+use std::{sync::Arc};
 
 pub struct MarkovChain;
 impl TypeMapKey for MarkovChain {
@@ -48,25 +47,10 @@ impl TypeMapKey for BotChannelIds {
 }
 pub const BOT_CHANNEL_PATH: &str = "data/bot channel.json";
 
-pub struct MessageCount;
-impl TypeMapKey for MessageCount {
-    type Value = Arc<RwLock<usize>>;
-}
-
-pub struct FrontChannel;
-impl TypeMapKey for FrontChannel {
-    type Value = Arc<RwLock<FrontChannelStruct>>;
-}
-pub struct FrontChannelStruct {
-    pub event_sink: ExtEventSink,
-    pub export_and_quit_receiver: Receiver<bool>,
-}
-
-pub async fn init_global_data_for_client(client: &Client, front_channel: FrontChannelStruct) {
+pub async fn init_global_data_for_client(client: &Client) {
     let mut data = client.data.write().await;
 
     let markov;
-    let mut num_of_messages = 10;
     if cfg!(debug_assertions) {
         println!("Debugging enabled");
         markov = init_markov_debug();
@@ -74,16 +58,7 @@ pub async fn init_global_data_for_client(client: &Client, front_channel: FrontCh
         println!("Debugging disabled");
         let init = init_markov();
         markov = init.0;
-        num_of_messages = init.1;
     }
-    front_channel
-        .event_sink
-        .submit_command(
-            SET_MESSAGE_COUNT,
-            num_of_messages,
-            Target::Widget(ID_MESSAGE_COUNT),
-        )
-        .unwrap();
 
     let blacklisted_channels_in_file: DashSet<u64> = serde_json::from_str(
         &fs::read_to_string(create_file_if_missing(
@@ -122,8 +97,6 @@ pub async fn init_global_data_for_client(client: &Client, front_channel: FrontCh
     data.insert::<ListenerResponse>(Arc::new(action_response));
     data.insert::<ListenerBlacklistedUsers>(Arc::new(user_listener_blacklist));
     data.insert::<BotChannelIds>(Arc::new(bot_channel));
-    data.insert::<MessageCount>(Arc::new(RwLock::new(num_of_messages)));
-    data.insert::<FrontChannel>(Arc::new(RwLock::new(front_channel)));
 }
 
 pub async fn get_listener_response_lock(
@@ -194,26 +167,4 @@ pub async fn get_bot_channel_id_lock(
         .expect("expected MarkovChain in TypeMap")
         .clone();
     bot_channel_ids_lock
-}
-
-pub async fn get_message_count_lock(data: &Arc<RwLock<TypeMap>>) -> Arc<RwLock<usize>> {
-    let message_count_lock = data
-        .read()
-        .await
-        .get::<MessageCount>()
-        .expect("expected MessageCount in TypeMap")
-        .clone();
-    message_count_lock
-}
-
-pub async fn get_front_channel_lock(
-    data: &Arc<RwLock<TypeMap>>,
-) -> Arc<RwLock<FrontChannelStruct>> {
-    let event_sink_lock = data
-        .read()
-        .await
-        .get::<FrontChannel>()
-        .expect("expected EventSink in TypeMap")
-        .clone();
-    event_sink_lock
 }

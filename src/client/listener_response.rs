@@ -154,7 +154,19 @@ pub async fn check_for_listened_words(
                     return Some(response.to_owned());
                 }
             }
-        } else if words_in_message.contains(&listener) {
+        }
+    }
+
+    for entry in listener_response.iter() {
+        let listener = entry.key();
+        let response = entry.value();
+
+        let listener_words = listener
+            .split(' ')
+            .map(ToString::to_string)
+            .collect::<Vec<String>>();
+
+        if words_in_message.contains(&listener) && listener_words.len() < 2 {
             return Some(response.to_owned());
         }
     }
