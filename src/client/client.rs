@@ -23,6 +23,7 @@ struct Handler {}
 
 #[async_trait]
 impl EventHandler for Handler {
+    /// Is called when the bot connects to discord.
     async fn ready(&self, ctx: Context, ready: Ready) {
         println!("{} is connected!", ready.user.name);
 

@@ -60,7 +60,9 @@ pub async fn send_markov_text(ctx: &Context, msg: &Message) {
         }
     };
 }
-
+/// Gets the [`Markov`] data set from `markov export.json`.
+/// 
+/// This is faster than getting the data set from `markov data set.txt` so it's useful for testing purposes
 pub fn init_markov_debug() -> Result<Markov, Box<dyn Error>> {
     let mut markov: Markov = serde_json::from_str(&fs::read_to_string(create_file_if_missing(
         MARKOV_EXPORT_PATH,
@@ -76,6 +78,7 @@ pub fn init_markov_debug() -> Result<Markov, Box<dyn Error>> {
     Ok(markov)
 }
 
+/// Gets the [`Markov`] data set from `markov data set.txt` and returns the initialized markov chain
 pub fn init_markov() -> Result<Markov, Box<dyn Error>> {
     let mut markov_chain = Markov::new();
     markov_chain.set_state_size(3).unwrap(); // Will never fail

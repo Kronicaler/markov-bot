@@ -48,6 +48,8 @@ impl TypeMapKey for BotChannelIds {
 pub const BOT_CHANNEL_PATH: &str = "data/bot channel.json";
 
 /// Initialize the global data for the client so it can be used from multiple threads.
+/// 
+/// If this is the first time the bot is run in the environment it will create the data files with initialized contents
 pub async fn init_global_data_for_client(client: &Client) -> Result<(), Box<dyn Error>> {
     let mut data = client.data.write().await;
 

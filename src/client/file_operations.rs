@@ -75,6 +75,7 @@ pub fn export_to_markov_file(export: &ImportExport) -> Result<(), std::io::Error
     fs::write(MARKOV_EXPORT_PATH, serde_json::to_string(&export).unwrap())
 }
 
+/// Imports the [`Markov`] data set from `markov data set.txt"`
 pub fn import_chain_from_file() -> Result<Vec<InputData>, Box<dyn Error>> {
     let text_from_file = fs::read_to_string(create_file_if_missing(MARKOV_DATA_SET_PATH, "")?)?;
     let text_array: Vec<&str> = text_from_file.split("\n\n").collect();
