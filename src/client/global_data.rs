@@ -7,6 +7,18 @@ use serenity::{
 };
 use std::{error::Error, sync::Arc};
 
+pub const HELP_MESSAGE: &str = "All of my commands are slash commands.
+/ping: Pong!
+/id: gives you the user id of the selected user
+/blacklistedmarkov: lists out the users the bot will not learn from
+/blacklistmarkov: blacklist yourself from the markov chain if you don't want the bot to store your messages and learn from them
+/setbotchannel: for admins only, set the channel the bot will talk in, if you don't want users using the bot anywhere else you'll have to do it with roles
+/createtag: create a tag that the bot will listen for and then respond to when it is said
+/removetag: remove a tag
+/tags: list out the current tags
+/blacklistmefromtags: blacklist yourself from tags so the bot won't ping you if you trip off a tag
+/version: Check the version of the bot";
+
 pub struct MarkovChain;
 impl TypeMapKey for MarkovChain {
     type Value = Arc<RwLock<Markov>>;
@@ -48,7 +60,7 @@ impl TypeMapKey for BotChannelIds {
 pub const BOT_CHANNEL_PATH: &str = "data/bot channel.json";
 
 /// Initialize the global data for the client so it can be used from multiple threads.
-/// 
+///
 /// If this is the first time the bot is run in the environment it will create the data files with initialized contents
 pub async fn init_global_data_for_client(client: &Client) -> Result<(), Box<dyn Error>> {
     let mut data = client.data.write().await;
@@ -58,7 +70,7 @@ pub async fn init_global_data_for_client(client: &Client) -> Result<(), Box<dyn 
         init_markov_debug()?
     } else {
         println!("Debugging disabled");
-         init_markov()?
+        init_markov()?
     };
 
     let blacklisted_channels_in_file: DashSet<u64> = serde_json::from_str(&fs::read_to_string(

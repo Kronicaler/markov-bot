@@ -3,11 +3,12 @@ use markov_strings::Markov;
 use regex::{Captures, Regex};
 use serenity::{
     client::Context,
-    model::{channel::Message, prelude::User},
+    model::{channel::Message, id::ChannelId, prelude::User},
 };
 use std::error::Error;
 use std::{fs, u64};
 
+/// Checks if a message should be added to the Markov data set and if it should be added it adds it
 pub async fn should_add_message_to_markov_file(msg: &Message, ctx: &Context) {
     if msg
         .channel_id
@@ -26,20 +27,17 @@ pub async fn should_add_message_to_markov_file(msg: &Message, ctx: &Context) {
                 && !msg.mentions_me(&ctx.http).await.unwrap()
                 && msg.content.split(' ').count() >= 5
             {
-                let re = Regex::new(r#"(?:(?:https?|ftp)://|\b(?:[a-z\d]+\.))(?:(?:[^\s()<>]+|\((?:[^\s()<>]+|(?:\([^\s()<>]+\)))?\))+(?:\((?:[^\s()<>]+|(?:\(?:[^\s()<>]+\)))?\)|[^\s`!()\[\]{};:'".,<>?«»“”‘’]))?"#).unwrap();
-                let mut str = re.replace_all(&msg.content, "").into_owned();
-                while str.ends_with(' ') {
-                    str.pop();
-                }
-                let filtered_message = filter_message_for_markov_file(str, msg);
+                let filtered_message = filter_message_for_markov_file(msg);
                 //msg.reply(&ctx.http, &filtered_message).await.unwrap();
-                append_to_markov_file(&filtered_message);
+                if !filtered_message.is_empty() && filtered_message.split(' ').count() >= 5 {
+                    append_to_markov_file(&filtered_message);
+                }
             }
         }
     }
 }
-
-pub async fn send_markov_text(ctx: &Context, msg: &Message) {
+/// Sends a randomly generated sentence from the Markov chain to the channel
+pub async fn send_markov_text(ctx: &Context, channel_id: &ChannelId) {
     let markov_lock = get_markov_chain_lock(&ctx.data).await;
 
     let markov_chain = markov_lock.read().await;
@@ -50,19 +48,15 @@ pub async fn send_markov_text(ctx: &Context, msg: &Message) {
             if cfg!(debug_assertions) {
                 message += " --debug";
             }
-            msg.channel_id.say(&ctx.http, message).await.unwrap();
+            channel_id.say(&ctx.http, message).await.unwrap();
         }
         Err(_) => {
-            msg.channel_id
-                .say(&ctx.http, "Try again later.")
-                .await
-                .unwrap();
+            channel_id.say(&ctx.http, "Try again later.").await.unwrap();
         }
     };
 }
-/// Gets the [`Markov`] data set from `markov export.json`.
-/// 
-/// This is faster than getting the data set from `markov data set.txt` so it's useful for testing purposes
+
+/// Initializes the Markov chain from [`MARKOV_EXPORT_PATH`]
 pub fn init_markov_debug() -> Result<Markov, Box<dyn Error>> {
     let mut markov: Markov = serde_json::from_str(&fs::read_to_string(create_file_if_missing(
         MARKOV_EXPORT_PATH,
@@ -78,7 +72,7 @@ pub fn init_markov_debug() -> Result<Markov, Box<dyn Error>> {
     Ok(markov)
 }
 
-/// Gets the [`Markov`] data set from `markov data set.txt` and returns the initialized markov chain
+/// Initializes the Markov chain from [`MARKOV_DATA_SET_PATH`]
 pub fn init_markov() -> Result<Markov, Box<dyn Error>> {
     let mut markov_chain = Markov::new();
     markov_chain.set_state_size(3).unwrap(); // Will never fail
@@ -94,9 +88,20 @@ pub fn init_markov() -> Result<Markov, Box<dyn Error>> {
     Ok(markov_chain)
 }
 
-pub fn filter_message_for_markov_file(str: String, msg: &Message) -> String {
+/// Filters a message so it can be inserted into the Markov data set.
+/// 
+/// Removes links, User IDs, emotes, animated emotes, non alphanumeric characters, line feeds, extra whitespace, and role IDs.
+/// 
+/// Replaces uppercase letters with their lowercase variants.
+pub fn filter_message_for_markov_file(msg: &Message) -> String {
+    let re = Regex::new(r#"(?:(?:https?|ftp)://|\b(?:[a-z\d]+\.))(?:(?:[^\s()<>]+|\((?:[^\s()<>]+|(?:\([^\s()<>]+\)))?\))+(?:\((?:[^\s()<>]+|(?:\(?:[^\s()<>]+\)))?\)|[^\s`!()\[\]{};:'".,<>?«»“”‘’]))?"#).unwrap();
+    let mut str = re.replace_all(&msg.content, "").into_owned();
+    while str.ends_with(' ') {
+        str.pop();
+    }
+
     let mut filtered_message = str;
-    //THIS IS GONNA BE A PAIN IN THE ASS
+    
     let user_regex = Regex::new(r"<@!?(\d+)>").unwrap();
 
     let regexes_to_replace_with_whitespace: Vec<Regex> = vec![
@@ -137,6 +142,54 @@ pub fn filter_message_for_markov_file(str: String, msg: &Message) -> String {
                 })
                 .into_owned();
         }
+        for regex in &regexes_to_replace_with_whitespace {
+            while regex.is_match(&filtered_message) {
+                number_of_matches += 1;
+                filtered_message = regex.replace_all(&filtered_message, " ").into_owned();
+            }
+        }
+        while upper_case_regex.is_match(&filtered_message) {
+            number_of_matches += 1;
+            filtered_message = upper_case_regex
+                .replace(&filtered_message, |caps: &Captures| caps[0].to_lowercase())
+                .into_owned();
+        }
+        if number_of_matches == 0 {
+            break;
+        }
+    }
+
+    return filtered_message.trim().to_owned();
+}
+/// Filters a string so it can be inserted into the Markov data set.
+/// 
+/// Removes links, User IDs, emotes, animated emotes, non alphanumeric characters, line feeds, extra whitespace, and role IDs.
+/// 
+/// Replaces uppercase letters with their lowercase variants.
+pub fn filter_string_for_markov_file(msg: String) -> String {
+    let re = Regex::new(r#"(?:(?:https?|ftp)://|\b(?:[a-z\d]+\.))(?:(?:[^\s()<>]+|\((?:[^\s()<>]+|(?:\([^\s()<>]+\)))?\))+(?:\((?:[^\s()<>]+|(?:\(?:[^\s()<>]+\)))?\)|[^\s`!()\[\]{};:'".,<>?«»“”‘’]))?"#).unwrap();
+    let mut str = re.replace_all(&msg, "").into_owned();
+    while str.ends_with(' ') {
+        str.pop();
+    }
+
+    let mut filtered_message = str;
+
+    let regexes_to_replace_with_whitespace: Vec<Regex> = vec![
+        Regex::new(r"<:?(\w+:)(\d+)>").unwrap(),  //emote regex
+        Regex::new(r"<a:?(\w+:)(\d+)>").unwrap(), //animated emote regex
+        Regex::new(r#"[,.!"\#$()=?*<>{}\[\]\\\|Łł@*;:+~ˇ^˘°˛`´˝]"#).unwrap(), //non alphanumeric regex
+        Regex::new(r"^(\d{18})$").unwrap(), //remaining numbers from users regex
+        Regex::new(r"\n").unwrap(),         //line feed regex
+        Regex::new(r"[ ]{3}|[ ]{2}").unwrap(), //double and triple whitespace regex
+        Regex::new(r"<@&(\d+)>").unwrap(),  // role regex
+    ];
+
+    let upper_case_regex = Regex::new(r"[A-Z][a-z0-9_-]{1,}").unwrap();
+
+    loop {
+        let mut number_of_matches: u16 = 0;
+
         for regex in &regexes_to_replace_with_whitespace {
             while regex.is_match(&filtered_message) {
                 number_of_matches += 1;

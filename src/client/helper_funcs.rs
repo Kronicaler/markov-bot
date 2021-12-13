@@ -70,7 +70,7 @@ pub async fn send_message_to_first_available_channel(ctx: &Context, msg: &Messag
                             });
                         }
                         m.allowed_mentions(|m| m.parse(ParseValue::Users))
-                        .content(msg.author.mention().to_string() + " " + message)
+                            .content(msg.author.mention().to_string() + " " + message)
                     })
                     .await
                     .unwrap();
@@ -124,7 +124,7 @@ pub async fn set_bot_channel(ctx: &Context, command: &ApplicationCommandInteract
     let channel_id = command.channel_id.0;
     let bot_channel_ids = get_bot_channel_id_lock(&ctx.data).await;
     bot_channel_ids.insert(guild_id, channel_id);
-    match save_bot_channel(&bot_channel_ids.clone()) {
+    match save_bot_channel(&bot_channel_ids) {
         Ok(_) => "Successfully set this channel as the bot channel".to_owned(),
         Err(_) => "Something went wrong setting bot channel".to_owned(),
     }

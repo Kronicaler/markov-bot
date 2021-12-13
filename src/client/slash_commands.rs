@@ -9,6 +9,7 @@ use serenity::{
 };
 use strum_macros::{Display, EnumString};
 
+/// All the slash commands the bot has implemented
 #[allow(non_camel_case_types)]
 #[derive(Display, EnumString)]
 pub enum Command {
@@ -28,22 +29,31 @@ pub enum Command {
     version,
 }
 
+/// Check which slash command was triggered and call the appropriate function
 pub async fn command_responses(command: &ApplicationCommandInteraction, ctx: Context) {
     let content = match Command::from_str(&command.data.name) {
-        Ok(user_command) => match user_command{
+        Ok(user_command) => match user_command {
             Command::ping => "Hey, I'm alive!".to_owned(),
             Command::id => id_command(command),
             Command::blacklistedmarkov => blacklisted_command(&ctx).await,
-            Command::blacklistmarkov => add_or_remove_user_from_markov_blacklist(&command.member.as_ref().unwrap().user,&ctx).await,
+            Command::blacklistmarkov => {
+                add_or_remove_user_from_markov_blacklist(
+                    &command.member.as_ref().unwrap().user,
+                    &ctx,
+                )
+                .await
+            }
             Command::testcommand => test_command(),
             Command::createtag => set_listener_command(&ctx, command).await,
             Command::removetag => remove_listener_command(&ctx, command).await,
             Command::tags => list_listeners(&ctx).await,
-            Command::blacklistmefromtags => blacklist_user_from_listener(&ctx, &command.member.clone().unwrap().user).await,
+            Command::blacklistmefromtags => {
+                blacklist_user_from_listener(&ctx, &command.member.clone().unwrap().user).await
+            }
             Command::setbotchannel => set_bot_channel(&ctx, command).await,
-            Command::help => "All of my commands are slash commands.\n\n\n\n/ping: Pong!\n\n/id: gives you the user id of the selected user\n\n/blacklistedmarkov: lists out the users the bot will not learn from\n\n/blacklistmarkov: blacklist yourself from the markov chain if you don't want the bot to store your messages and learn from them\n\n/setbotchannel: for admins only, set the channel the bot will talk in, if you don't want users using the bot anywhere else you'll have to do it with roles\n\n/createtag: create a tag that the bot will listen for and then respond to when it is said\n\n/removetag: remove a tag\n\n/tags: list out the current tags\n\n/blacklistmefromtags: blacklist yourself from tags so the bot won't ping you if you trip off a tag\n\n/version: Check the version of the bot".to_owned(),
+            Command::help => HELP_MESSAGE.to_owned(),
             Command::command => "command".to_owned(),
-            Command::version => "My current version is ".to_owned() + env!("CARGO_PKG_VERSION")
+            Command::version => "My current version is ".to_owned() + env!("CARGO_PKG_VERSION"),
         },
         Err(_) => "not implemented :(".to_owned(),
     };
@@ -62,7 +72,7 @@ pub async fn command_responses(command: &ApplicationCommandInteraction, ctx: Con
 fn test_command() -> String {
     "here be tests".to_owned()
 }
-
+/// Create the slash commands
 pub async fn create_global_commands(ctx: &Context) {
     ApplicationCommand::set_global_application_commands(&ctx.http, |commands| {
         commands
@@ -112,8 +122,11 @@ pub async fn create_global_commands(ctx: &Context) {
     .unwrap();
 }
 
+/// For testing purposes
 pub async fn create_guild_commands(ctx: &Context) {
-    GuildId(724_690_339_054_486_107)
+    let testing_guild = 724_690_339_054_486_107;
+
+    GuildId(testing_guild)
         .set_application_commands(&ctx.http, |commands| {
             commands
                 .create_application_command(|command| {

@@ -2,10 +2,7 @@ use crate::*;
 use serenity::{
     async_trait,
     client::{Context, EventHandler},
-    framework::{
-        standard::macros::{group, hook},
-        StandardFramework,
-    },
+    framework::{standard::macros::hook, StandardFramework},
     http::Http,
     model::{interactions::Interaction, prelude::*},
     Client,
@@ -23,7 +20,7 @@ struct Handler {}
 
 #[async_trait]
 impl EventHandler for Handler {
-    /// Is called when the bot connects to discord.
+    /// Is called when the bot connects to discord
     async fn ready(&self, ctx: Context, ready: Ready) {
         println!("{} is connected!", ready.user.name);
 
@@ -33,7 +30,7 @@ impl EventHandler for Handler {
 
         join!(t1, t2, t3);
     }
-
+    /// Is called when a user starts an [`Interaction`]
     async fn interaction_create(&self, ctx: Context, interaction: Interaction) {
         match interaction.kind() {
             InteractionType::Ping => todo!(),
@@ -65,14 +62,11 @@ impl EventHandler for Handler {
     }
 }
 
-#[group]
-#[commands(ping)]
-struct General;
-
 /// Is called by the framework whenever a user sends a message in a server or in the bots DMs
 #[hook]
 async fn normal_message(ctx: &Context, msg: &Message) {
     should_add_message_to_markov_file(&msg, &ctx).await;
+
     let words_in_message = msg
         .content
         .to_lowercase()
@@ -87,23 +81,7 @@ async fn normal_message(ctx: &Context, msg: &Message) {
 
     if msg.mentions_me(&ctx.http).await.unwrap() && !msg.author.bot {
         if words_in_message.contains(&"help".to_owned()) {
-            msg.channel_id
-                .say(
-                    &ctx.http,
-                    "All of my commands are slash commands.\n\n
-                    /ping: Pong!\n
-                    /id: gives you the user id of the selected user\n
-                    /blacklistedmarkov: lists out the users the bot will not learn from\n
-                    /blacklistmarkov: blacklist yourself from the markov chain if you don't want the bot to store your messages and learn from them\n
-                    /setbotchannel: for admins only, set the channel the bot will talk in, if you don't want users using the bot anywhere else you'll have to do it with roles\n
-                    /createtag: create a tag that the bot will listen for and then respond to when it is said\n
-                    /removetag: remove a tag\n
-                    /tags: list out the current tags\n
-                    /blacklistmefromtags: blacklist yourself from tags so the bot won't ping you if you trip off a tag\n
-                    /version: Check the version of the bot",
-                )
-                .await
-                .unwrap();
+            msg.channel_id.say(&ctx.http, HELP_MESSAGE).await.unwrap();
             return;
         }
 
@@ -116,7 +94,7 @@ async fn normal_message(ctx: &Context, msg: &Message) {
             return;
         }
 
-        send_markov_text(ctx, msg).await;
+        send_markov_text(ctx, &msg.channel_id).await;
     }
 }
 
@@ -141,7 +119,6 @@ pub async fn start_client() {
 
     let framework = StandardFramework::new()
         .configure(|c| c.owners(owners).on_mention(Some(application_id)))
-        .group(&GENERAL_GROUP)
         .prefix_only(normal_message)
         .normal_message(normal_message);
 

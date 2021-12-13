@@ -114,9 +114,9 @@ pub async fn blacklist_user_from_listener(ctx: &Context, user: &User) -> String 
     }
 }
 
-///Checks for all the listened words in the message
+/// Checks for all the listened words in the message
 ///
-///If a listened word is found it returns the response
+/// If a listened word is found it returns the response
 pub async fn check_for_listened_words(
     ctx: &Context,
     words_in_message: &[String],
@@ -163,17 +163,16 @@ pub async fn check_for_listened_words(
 
         let listener_words = listener
             .split(' ')
-            .map(ToString::to_string)
-            .collect::<Vec<String>>();
+            .map(ToString::to_string);
 
-        if words_in_message.contains(&listener) && listener_words.len() < 2 {
+        if words_in_message.contains(listener) && listener_words.count() < 2 {
             return Some(response.to_owned());
         }
     }
 
     None
 }
-
+/// Create the tag slash commands
 pub fn create_listener_commands(
     commands: &mut serenity::builder::CreateApplicationCommands,
 ) -> &mut serenity::builder::CreateApplicationCommands {
