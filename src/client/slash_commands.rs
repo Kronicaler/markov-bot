@@ -15,13 +15,20 @@ use strum_macros::{Display, EnumString};
 pub enum Command {
     ping,
     id,
+    #[strum(serialize = "blacklisted-data")]
     blacklisteddata,
+    #[strum(serialize = "stop-saving-my-messages")]
     stopsavingmymessages,
+    #[strum(serialize = "continue-saving-my-messages")]
     continuesavingmymessages,
+    #[strum(serialize = "create-tag")]
     createtag,
+    #[strum(serialize = "remove-tag")]
     removetag,
     tags,
+    #[strum(serialize = "blacklist-me-from-tags")]
     blacklistmefromtags,
+    #[strum(serialize = "set-bot-channel")]
     setbotchannel,
     help,
     #[strum(serialize = "test-command")]
