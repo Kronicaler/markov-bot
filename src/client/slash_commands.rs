@@ -29,19 +29,24 @@ pub enum Command {
     version,
 }
 
-/// Check which slash command was triggered and call the appropriate function
+/// Check which slash command was triggered, call the appropriate function and return a response to the user
 pub async fn command_responses(command: &ApplicationCommandInteraction, ctx: Context) {
     let content = match Command::from_str(&command.data.name) {
         Ok(user_command) => match user_command {
             Command::ping => "Hey, I'm alive!".to_owned(),
             Command::id => id_command(command),
-            Command::blacklistedmarkov => blacklisted_command(&ctx).await,
+            Command::blacklistedmarkov => markov::blacklisted_users(&ctx).await,
             Command::blacklistmarkov => {
-                add_or_remove_user_from_markov_blacklist(
-                    &command.member.as_ref().unwrap().user,
-                    &ctx,
-                )
-                .await
+                let user = &command.member.as_ref().unwrap().user;
+                match markov::add_user_to_blacklist(&user, &ctx).await {
+                    Ok(_) => format!(
+                        "Added {}",
+                        user.nick_in(&ctx.http, &command.guild_id.unwrap())
+                            .await
+                            .unwrap_or_else(|| { command.member.as_ref().unwrap().user.name.clone() })
+                    ),
+                    Err(_) => "Something went wrong while adding you to the blacklist :(".to_owned(),
+                }
             }
             Command::testcommand => test_command(),
             Command::createtag => set_listener_command(&ctx, command).await,
@@ -57,6 +62,7 @@ pub async fn command_responses(command: &ApplicationCommandInteraction, ctx: Con
         },
         Err(_) => "not implemented :(".to_owned(),
     };
+
     if let Err(why) = command
         .create_interaction_response(&ctx.http, |response| {
             response
@@ -65,7 +71,7 @@ pub async fn command_responses(command: &ApplicationCommandInteraction, ctx: Con
         })
         .await
     {
-        println!("Cannot respond to slash command: {}", why);
+        eprintln!("Cannot respond to slash command: {}", why);
     }
 }
 

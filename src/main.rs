@@ -7,9 +7,8 @@ mod client;
 mod unit_tests;
 
 use client::*;
-use markov_strings::Markov;
-use rayon::prelude::*;
 use serenity::model::{id::GuildId, interactions::*};
+
 
 use std::{collections::HashSet, fs, panic};
 

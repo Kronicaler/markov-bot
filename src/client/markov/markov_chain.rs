@@ -1,97 +1,13 @@
-use crate::*;
-use markov_strings::Markov;
 use regex::{Captures, Regex};
-use serenity::{
-    client::Context,
-    model::{channel::Message, id::ChannelId, prelude::User},
-};
-use std::error::Error;
-use std::{fs, u64};
+use serenity::model::channel::Message;
+use std::u64;
 
-/// Checks if a message should be added to the Markov data set and if it should be added it adds it
-pub async fn should_add_message_to_markov_file(msg: &Message, ctx: &Context) {
-    if msg
-        .channel_id
-        .to_channel(&ctx.http)
-        .await
-        .unwrap()
-        .guild()
-        .is_some()
-    {
-        {
-            let markov_blacklisted_users = get_markov_blacklisted_users_lock(&ctx.data).await;
-            let markov_blacklisted_channels = get_markov_blacklisted_channels_lock(&ctx.data).await;
-
-            if !markov_blacklisted_channels.contains(&msg.channel_id.0)
-                && !markov_blacklisted_users.contains(&msg.author.id.0)
-                && !msg.mentions_me(&ctx.http).await.unwrap()
-                && msg.content.split(' ').count() >= 5
-            {
-                let filtered_message = filter_message_for_markov_file(msg);
-                //msg.reply(&ctx.http, &filtered_message).await.unwrap();
-                if !filtered_message.is_empty() && filtered_message.split(' ').count() >= 5 {
-                    append_to_markov_file(&filtered_message);
-                }
-            }
-        }
-    }
-}
-/// Sends a randomly generated sentence from the Markov chain to the channel
-pub async fn send_markov_text(ctx: &Context, channel_id: &ChannelId) {
-    let markov_lock = get_markov_chain_lock(&ctx.data).await;
-
-    let markov_chain = markov_lock.read().await;
-
-    match markov_chain.generate() {
-        Ok(markov_result) => {
-            let mut message = markov_result.text;
-            if cfg!(debug_assertions) {
-                message += " --debug";
-            }
-            channel_id.say(&ctx.http, message).await.unwrap();
-        }
-        Err(_) => {
-            channel_id.say(&ctx.http, "Try again later.").await.unwrap();
-        }
-    };
-}
-
-/// Initializes the Markov chain from [`MARKOV_EXPORT_PATH`]
-pub fn init_markov_debug() -> Result<Markov, Box<dyn Error>> {
-    let mut markov: Markov = serde_json::from_str(&fs::read_to_string(create_file_if_missing(
-        MARKOV_EXPORT_PATH,
-        &serde_json::to_string(&Markov::new().export())?,
-    )?)?)?;
-    markov.set_max_tries(200);
-    markov.set_filter(|r| {
-        if r.text.split(' ').count() >= 5 && r.refs.len() >= 2 {
-            return true;
-        }
-        false
-    });
-    Ok(markov)
-}
-
-/// Initializes the Markov chain from [`MARKOV_DATA_SET_PATH`]
-pub fn init_markov() -> Result<Markov, Box<dyn Error>> {
-    let mut markov_chain = Markov::new();
-    markov_chain.set_state_size(3).unwrap(); // Will never fail
-    markov_chain.set_max_tries(200);
-    markov_chain.set_filter(|r| {
-        if r.text.split(' ').count() >= 5 && r.refs.len() >= 2 {
-            return true;
-        }
-        false
-    });
-    let input_data = import_chain_from_file()?;
-    markov_chain.add_to_corpus(input_data);
-    Ok(markov_chain)
-}
+const MIN_NUM_OF_WORDS: usize = 5;
 
 /// Filters a message so it can be inserted into the Markov data set.
-/// 
+///
 /// Removes links, User IDs, emotes, animated emotes, non alphanumeric characters, line feeds, extra whitespace, and role IDs.
-/// 
+///
 /// Replaces uppercase letters with their lowercase variants.
 pub fn filter_message_for_markov_file(msg: &Message) -> String {
     let re = Regex::new(r#"(?:(?:https?|ftp)://|\b(?:[a-z\d]+\.))(?:(?:[^\s()<>]+|\((?:[^\s()<>]+|(?:\([^\s()<>]+\)))?\))+(?:\((?:[^\s()<>]+|(?:\(?:[^\s()<>]+\)))?\)|[^\s`!()\[\]{};:'".,<>?«»“”‘’]))?"#).unwrap();
@@ -101,7 +17,7 @@ pub fn filter_message_for_markov_file(msg: &Message) -> String {
     }
 
     let mut filtered_message = str;
-    
+
     let user_regex = Regex::new(r"<@!?(\d+)>").unwrap();
 
     let regexes_to_replace_with_whitespace: Vec<Regex> = vec![
@@ -159,14 +75,18 @@ pub fn filter_message_for_markov_file(msg: &Message) -> String {
         }
     }
 
+    if filtered_message.trim().split(' ').count() < MIN_NUM_OF_WORDS {
+        return "".to_owned();
+    }
+
     return filtered_message.trim().to_owned();
 }
 /// Filters a string so it can be inserted into the Markov data set.
-/// 
+///
 /// Removes links, User IDs, emotes, animated emotes, non alphanumeric characters, line feeds, extra whitespace, and role IDs.
-/// 
+///
 /// Replaces uppercase letters with their lowercase variants.
-pub fn filter_string_for_markov_file(msg: String) -> String {
+pub fn filter_string_for_markov_file(msg: &str) -> String {
     let re = Regex::new(r#"(?:(?:https?|ftp)://|\b(?:[a-z\d]+\.))(?:(?:[^\s()<>]+|\((?:[^\s()<>]+|(?:\([^\s()<>]+\)))?\))+(?:\((?:[^\s()<>]+|(?:\(?:[^\s()<>]+\)))?\)|[^\s`!()\[\]{};:'".,<>?«»“”‘’]))?"#).unwrap();
     let mut str = re.replace_all(&msg, "").into_owned();
     while str.ends_with(' ') {
@@ -208,53 +128,4 @@ pub fn filter_string_for_markov_file(msg: String) -> String {
     }
 
     return filtered_message.trim().to_owned();
-}
-
-pub async fn blacklist_user_command(msg: &Message, ctx: &Context) -> String {
-    let user = match get_first_mentioned_user(msg) {
-        Some(returned_user) => returned_user,
-        None => {
-            return "Please specify a user".to_owned();
-        }
-    };
-    add_or_remove_user_from_markov_blacklist(user, ctx).await
-}
-
-pub async fn blacklisted_command(ctx: &Context) -> String {
-    let mut blacklisted_usernames = Vec::new();
-    let blacklisted_users = get_markov_blacklisted_users_lock(&ctx.data).await;
-
-    for user_id in blacklisted_users.iter() {
-        blacklisted_usernames.push(ctx.http.get_user(*user_id).await.unwrap().name);
-    }
-
-    if blacklisted_usernames.is_empty() {
-        return "Currently there are no blacklisted users".to_owned();
-    }
-
-    let mut message = String::from("Blacklisted users: ");
-    for user_name in blacklisted_usernames {
-        message += &(user_name + ", ");
-    }
-    message.pop();
-    message.pop();
-    message
-}
-
-pub async fn add_or_remove_user_from_markov_blacklist(user: &User, ctx: &Context) -> String {
-    let blacklisted_users = get_markov_blacklisted_users_lock(&ctx.data).await;
-
-    if blacklisted_users.contains(&user.id.0) {
-        blacklisted_users.remove(&user.id.0);
-        match save_markov_blacklisted_users(&*blacklisted_users) {
-            Ok(_) => "Removed ".to_owned() + &user.name + " from the list of blacklisted users",
-            Err(_) => "Couldn't remove the user from the file".to_owned(),
-        }
-    } else {
-        blacklisted_users.insert(user.id.0);
-        match save_markov_blacklisted_users(&*blacklisted_users) {
-            Ok(_) => "Added ".to_owned() + &user.name + " to the list of blacklisted users",
-            Err(_) => "Couldn't add the user to the file".to_owned(),
-        }
-    }
 }

@@ -2,7 +2,7 @@ use crate::*;
 use serenity::{
     async_trait,
     client::{Context, EventHandler},
-    framework::{standard::macros::hook, StandardFramework},
+    framework::StandardFramework,
     http::Http,
     model::{interactions::Interaction, prelude::*},
     Client,
@@ -60,41 +60,33 @@ impl EventHandler for Handler {
             _ => {}
         }
     }
-}
 
-/// Is called by the framework whenever a user sends a message in a server or in the bots DMs
-#[hook]
-async fn normal_message(ctx: &Context, msg: &Message) {
-    should_add_message_to_markov_file(&msg, &ctx).await;
+    /// Is called by the framework whenever a user sends a message in a server or in the bots DMs
+    async fn message(&self, ctx: Context, msg: Message) {
+        markov::add_message_to_chain(&msg, &ctx).await.ok();
 
-    let words_in_message = msg
-        .content
-        .to_lowercase()
-        .split(' ')
-        .map(ToString::to_string)
-        .collect::<Vec<String>>();
+        let words_in_message = msg
+            .content
+            .to_lowercase()
+            .split(' ')
+            .map(ToString::to_string)
+            .collect::<Vec<String>>();
 
-    if let Some(response) = check_for_listened_words(ctx, &words_in_message, msg.author.id).await {
-        send_message_to_first_available_channel(ctx, msg, &response).await;
-        return;
-    }
-
-    if msg.mentions_me(&ctx.http).await.unwrap() && !msg.author.bot {
-        if words_in_message.contains(&"help".to_owned()) {
-            msg.channel_id.say(&ctx.http, HELP_MESSAGE).await.unwrap();
-            return;
-        }
-
-        if msg.author.id == OWNER_ID
-            && msg.content.to_lowercase().contains("blacklist user")
-            && msg.content.to_lowercase().contains("markov")
+        if let Some(response) =
+            check_for_listened_words(&ctx, &words_in_message, msg.author.id).await
         {
-            let message = blacklist_user_command(&msg, &ctx).await;
-            msg.channel_id.say(&ctx.http, message).await.unwrap();
+            send_message_to_first_available_channel(&ctx, &msg, &response).await;
             return;
         }
 
-        send_markov_text(ctx, &msg.channel_id).await;
+        if msg.mentions_me(&ctx.http).await.unwrap() && !msg.author.bot {
+            if words_in_message.contains(&"help".to_owned()) {
+                msg.channel_id.say(&ctx.http, HELP_MESSAGE).await.unwrap();
+                return;
+            }
+
+            markov::generate_sentence(&ctx).await;
+        }
     }
 }
 
@@ -117,10 +109,8 @@ pub async fn start_client() {
         Err(why) => panic!("Could not access application info: {:?}", why),
     };
 
-    let framework = StandardFramework::new()
-        .configure(|c| c.owners(owners).on_mention(Some(application_id)))
-        .prefix_only(normal_message)
-        .normal_message(normal_message);
+    let framework =
+        StandardFramework::new().configure(|c| c.owners(owners).on_mention(Some(application_id)));
 
     let mut client = Client::builder(token)
         .application_id(application_id.0)
