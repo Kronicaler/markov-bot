@@ -15,8 +15,9 @@ use strum_macros::{Display, EnumString};
 pub enum Command {
     ping,
     id,
-    blacklistedmarkov,
-    blacklistmarkov,
+    blacklisteddata,
+    stopsavingmymessages,
+    continuesavingmymessages,
     createtag,
     removetag,
     tags,
@@ -31,27 +32,22 @@ pub enum Command {
 
 /// Check which slash command was triggered, call the appropriate function and return a response to the user
 pub async fn command_responses(command: &ApplicationCommandInteraction, ctx: Context) {
+    let user = &command.member.as_ref().unwrap().user;
+
     let content = match Command::from_str(&command.data.name) {
         Ok(user_command) => match user_command {
             Command::ping => "Hey, I'm alive!".to_owned(),
             Command::id => id_command(command),
-            Command::blacklistedmarkov => markov::blacklisted_users(&ctx).await,
-            Command::blacklistmarkov => {
-                let user = &command.member.as_ref().unwrap().user;
-                match markov::add_user_to_blacklist(&user, &ctx).await {
-                    Ok(_) => format!(
-                        "Added {}",
-                        user.nick_in(&ctx.http, &command.guild_id.unwrap())
-                            .await
-                            .unwrap_or_else(|| {
-                                command.member.as_ref().unwrap().user.name.clone()
-                            })
-                    ),
-                    Err(_) => {
-                        "Something went wrong while adding you to the blacklist :(".to_owned()
-                    }
-                }
-            }
+            Command::blacklisteddata => markov::blacklisted_users(&ctx).await,
+            Command::stopsavingmymessages => match markov::add_user_to_blacklist(&user, &ctx).await {
+                Ok(_) => format!(
+                    "Added {} to data collection blacklist",
+                    user.nick_in(&ctx.http, &command.guild_id.unwrap())
+                        .await
+                        .unwrap_or_else(|| { command.member.as_ref().unwrap().user.name.clone() })
+                ),
+                Err(_) => "Something went wrong while adding you to the blacklist :(".to_owned(),
+            },
             Command::testcommand => test_command(),
             Command::createtag => set_listener_command(&ctx, command).await,
             Command::removetag => remove_listener_command(&ctx, command).await,
@@ -63,6 +59,19 @@ pub async fn command_responses(command: &ApplicationCommandInteraction, ctx: Con
             Command::help => HELP_MESSAGE.to_owned(),
             Command::command => "command".to_owned(),
             Command::version => "My current version is ".to_owned() + env!("CARGO_PKG_VERSION"),
+            Command::continuesavingmymessages => match markov::remove_user_from_blacklist(&user, &ctx)
+                .await
+            {
+                Ok(_) => format!(
+                    "removed {} from data collection blacklist",
+                    user.nick_in(&ctx.http, &command.guild_id.unwrap())
+                        .await
+                        .unwrap_or_else(|| { command.member.as_ref().unwrap().user.name.clone() })
+                ),
+                Err(_) => {
+                    "Something went wrong while removing you from the blacklist :(".to_owned()
+                }
+            },
         },
         Err(_) => "not implemented :(".to_owned(),
     };
@@ -102,29 +111,34 @@ pub async fn create_global_commands(ctx: &Context) {
                     })
             })
             .create_application_command(|command| {
-                command.name(Command::blacklistedmarkov).description(
-                    "Get the list of blacklisted users from the markov learning program",
+                command.name(Command::blacklisteddata).description(
+                    "Get the list of users who's messages aren't being saved",
                 )
             })
             .create_application_command(|command| {
-                command.name(Command::blacklistmarkov).description(
+                command.name(Command::stopsavingmymessages).description(
                     "Blacklist yourself if you don't want me to save and learn from your messages",
                 )
             })
             .create_application_command(|command| {
+                command.name(Command::continuesavingmymessages).description(
+                    "Remove yourself from the blacklist if you want me to save and learn from your messages",
+                )
+            })
+            .create_application_command(|command| {
                 command.name(Command::setbotchannel).description(
-                    "Set this channel as the channel where the bot will send messages in",
+                    "Set this channel as the channel where i will send messages in",
                 )
             })
             .create_application_command(|command| {
                 command
                     .name(Command::help)
-                    .description("Information about the bots commands")
+                    .description("Information about my commands")
             })
             .create_application_command(|command| {
                 command
                     .name(Command::version)
-                    .description("The current version of the bot")
+                    .description("My current version")
             });
         create_listener_commands(commands)
     })
