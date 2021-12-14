@@ -85,7 +85,8 @@ impl EventHandler for Handler {
                 return;
             }
 
-            markov::generate_sentence(&ctx).await;
+            msg.channel_id
+                .say(&ctx.http, markov::generate_sentence(&ctx).await).await.unwrap();
         }
     }
 }
