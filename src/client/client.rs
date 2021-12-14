@@ -63,6 +63,10 @@ impl EventHandler for Handler {
 
     /// Is called by the framework whenever a user sends a message in a server or in the bots DMs
     async fn message(&self, ctx: Context, msg: Message) {
+        if msg.author.bot {
+            return;
+        }
+
         markov::add_message_to_chain(&msg, &ctx).await.ok();
 
         let words_in_message = msg
@@ -86,7 +90,9 @@ impl EventHandler for Handler {
             }
 
             msg.channel_id
-                .say(&ctx.http, markov::generate_sentence(&ctx).await).await.unwrap();
+                .say(&ctx.http, markov::generate_sentence(&ctx).await)
+                .await
+                .unwrap();
         }
     }
 }
