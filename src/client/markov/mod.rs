@@ -1,7 +1,6 @@
 mod file_operations;
 pub mod global_data;
 mod markov_chain;
-pub use global_data::*;
 use markov_strings::Markov;
 use serenity::{
     client::Context,

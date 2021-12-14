@@ -53,10 +53,10 @@ pub async fn init_global_data_for_client(client: &Client) -> Result<(), Box<dyn 
     };
 
     let blacklisted_channels_in_file: DashSet<u64> = serde_json::from_str(&fs::read_to_string(
-        create_file_if_missing(markov::MARKOV_BLACKLISTED_CHANNELS_PATH, "[]")?,
+        create_file_if_missing(markov::global_data::MARKOV_BLACKLISTED_CHANNELS_PATH, "[]")?,
     )?)?;
     let blacklisted_users_in_file: DashSet<u64> = serde_json::from_str(&fs::read_to_string(
-        create_file_if_missing(markov::MARKOV_BLACKLISTED_USERS_PATH, "[]")?,
+        create_file_if_missing(markov::global_data::MARKOV_BLACKLISTED_USERS_PATH, "[]")?,
     )?)?;
     let action_response: DashMap<String, String> = serde_json::from_str(&fs::read_to_string(
         create_file_if_missing(LISTENER_RESPONSE_PATH, "{}")?,
@@ -68,9 +68,9 @@ pub async fn init_global_data_for_client(client: &Client) -> Result<(), Box<dyn 
         create_file_if_missing(BOT_CHANNEL_PATH, "{}")?,
     )?)?;
 
-    data.insert::<markov::MarkovChain>(Arc::new(RwLock::new(markov)));
-    data.insert::<markov::MarkovBlacklistedChannels>(Arc::new(blacklisted_channels_in_file));
-    data.insert::<markov::MarkovBlacklistedUsers>(Arc::new(blacklisted_users_in_file));
+    data.insert::<markov::global_data::MarkovChain>(Arc::new(RwLock::new(markov)));
+    data.insert::<markov::global_data::MarkovBlacklistedChannels>(Arc::new(blacklisted_channels_in_file));
+    data.insert::<markov::global_data::MarkovBlacklistedUsers>(Arc::new(blacklisted_users_in_file));
     data.insert::<ListenerResponse>(Arc::new(action_response));
     data.insert::<ListenerBlacklistedUsers>(Arc::new(user_listener_blacklist));
     data.insert::<BotChannelIds>(Arc::new(bot_channel));
