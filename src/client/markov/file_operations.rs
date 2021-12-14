@@ -42,7 +42,7 @@ pub fn clean_markov_file() {
 
     for message in filtered_messages {
         if let Err(why) = append_to_markov_file(&message) {
-            eprintln!("{}",why);
+            eprintln!("{}", why);
         }
     }
 }

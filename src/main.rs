@@ -9,7 +9,6 @@ mod unit_tests;
 use client::*;
 use serenity::model::{id::GuildId, interactions::*};
 
-
 use std::{collections::HashSet, fs, panic};
 
 /// Owner of the bot. Generally shouldn't be used for anything but local testing but this should actually just become an environment variable in the future

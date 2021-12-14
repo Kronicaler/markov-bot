@@ -161,9 +161,7 @@ pub async fn check_for_listened_words(
         let listener = entry.key();
         let response = entry.value();
 
-        let listener_words = listener
-            .split(' ')
-            .map(ToString::to_string);
+        let listener_words = listener.split(' ').map(ToString::to_string);
 
         if words_in_message.contains(listener) && listener_words.count() < 2 {
             return Some(response.to_owned());

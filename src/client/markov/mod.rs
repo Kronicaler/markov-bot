@@ -2,14 +2,12 @@ mod file_operations;
 pub mod global_data;
 mod markov_chain;
 pub use global_data::*;
-
-use std::{error::Error, fs};
-
 use markov_strings::Markov;
 use serenity::{
     client::Context,
     model::{channel::Message, prelude::User},
 };
+use std::{error::Error, fs};
 
 use self::{
     file_operations::{
@@ -155,7 +153,7 @@ pub async fn blacklisted_users(ctx: &Context) -> String {
         message += &(user_name + ", ");
     }
 
-	//remove the trailing comma and whitespace
+    //remove the trailing comma and whitespace
     message.pop();
     message.pop();
     message

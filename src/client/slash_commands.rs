@@ -43,9 +43,13 @@ pub async fn command_responses(command: &ApplicationCommandInteraction, ctx: Con
                         "Added {}",
                         user.nick_in(&ctx.http, &command.guild_id.unwrap())
                             .await
-                            .unwrap_or_else(|| { command.member.as_ref().unwrap().user.name.clone() })
+                            .unwrap_or_else(|| {
+                                command.member.as_ref().unwrap().user.name.clone()
+                            })
                     ),
-                    Err(_) => "Something went wrong while adding you to the blacklist :(".to_owned(),
+                    Err(_) => {
+                        "Something went wrong while adding you to the blacklist :(".to_owned()
+                    }
                 }
             }
             Command::testcommand => test_command(),
