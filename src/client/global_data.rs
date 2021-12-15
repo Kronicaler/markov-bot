@@ -1,11 +1,13 @@
 #![allow(dead_code)]
 use crate::*;
 use dashmap::{DashMap, DashSet};
-use serenity::{
-    prelude::{RwLock, TypeMap, TypeMapKey},
-    Client,
-};
+use serenity::{prelude::RwLock, Client};
 use std::{error::Error, sync::Arc};
+
+use super::tags::global_data::{
+    TagBlacklistedUsers, TagResponseChannelIds, Tags, BLACKLISTED_USERS_PATH, BOT_CHANNEL_PATH,
+    TAG_PATH,
+};
 
 pub const HELP_MESSAGE: &str = "All of my commands are slash commands.
 /ping: Pong!
@@ -19,25 +21,6 @@ pub const HELP_MESSAGE: &str = "All of my commands are slash commands.
 /tags: list out the current tags
 /blacklist-me-from-tags: blacklist yourself from tags so the bot won't ping you if you trip off a tag
 /version: Check the version of the bot";
-
-pub struct ListenerResponse;
-impl TypeMapKey for ListenerResponse {
-    type Value = Arc<DashMap<String, String>>;
-}
-pub const LISTENER_RESPONSE_PATH: &str = "data/action response.json";
-
-pub struct ListenerBlacklistedUsers;
-impl TypeMapKey for ListenerBlacklistedUsers {
-    type Value = Arc<DashSet<u64>>;
-}
-pub const LISTENER_BLACKLISTED_USERS_PATH: &str = "data/user listener blacklist.json";
-
-///Server, Channel
-pub struct BotChannelIds;
-impl TypeMapKey for BotChannelIds {
-    type Value = Arc<DashMap<u64, u64>>;
-}
-pub const BOT_CHANNEL_PATH: &str = "data/bot channel.json";
 
 /// Initialize the global data for the client so it can be used from multiple threads.
 ///
@@ -59,54 +42,24 @@ pub async fn init_global_data_for_client(client: &Client) -> Result<(), Box<dyn 
     let blacklisted_users_in_file: DashSet<u64> = serde_json::from_str(&fs::read_to_string(
         create_file_if_missing(markov::global_data::MARKOV_BLACKLISTED_USERS_PATH, "[]")?,
     )?)?;
-    let action_response: DashMap<String, String> = serde_json::from_str(&fs::read_to_string(
-        create_file_if_missing(LISTENER_RESPONSE_PATH, "{}")?,
+    let tags: DashMap<String, String> = serde_json::from_str(&fs::read_to_string(
+        create_file_if_missing(TAG_PATH, "{}")?,
     )?)?;
-    let user_listener_blacklist: DashSet<u64> = serde_json::from_str(&fs::read_to_string(
-        create_file_if_missing(LISTENER_BLACKLISTED_USERS_PATH, "[]")?,
+    let user_tag_blacklist: DashSet<u64> = serde_json::from_str(&fs::read_to_string(
+        create_file_if_missing(BLACKLISTED_USERS_PATH, "[]")?,
     )?)?;
     let bot_channel: DashMap<u64, u64> = serde_json::from_str(&fs::read_to_string(
         create_file_if_missing(BOT_CHANNEL_PATH, "{}")?,
     )?)?;
 
     data.insert::<markov::global_data::MarkovChain>(Arc::new(RwLock::new(markov)));
-    data.insert::<markov::global_data::MarkovBlacklistedChannels>(Arc::new(blacklisted_channels_in_file));
+    data.insert::<markov::global_data::MarkovBlacklistedChannels>(Arc::new(
+        blacklisted_channels_in_file,
+    ));
     data.insert::<markov::global_data::MarkovBlacklistedUsers>(Arc::new(blacklisted_users_in_file));
-    data.insert::<ListenerResponse>(Arc::new(action_response));
-    data.insert::<ListenerBlacklistedUsers>(Arc::new(user_listener_blacklist));
-    data.insert::<BotChannelIds>(Arc::new(bot_channel));
+    data.insert::<Tags>(Arc::new(tags));
+    data.insert::<TagBlacklistedUsers>(Arc::new(user_tag_blacklist));
+    data.insert::<TagResponseChannelIds>(Arc::new(bot_channel));
 
     Ok(())
-}
-
-pub async fn get_listener_response_lock(
-    data: &Arc<RwLock<TypeMap>>,
-) -> Arc<DashMap<String, String>> {
-    let listener_response_lock = data
-        .read()
-        .await
-        .get::<ListenerResponse>()
-        .expect("expected ListenerResponse in TypeMap")
-        .clone();
-    listener_response_lock
-}
-
-pub async fn get_listener_blacklisted_users_lock(data: &Arc<RwLock<TypeMap>>) -> Arc<DashSet<u64>> {
-    let listener_blacklisted_users_lock = data
-        .read()
-        .await
-        .get::<ListenerBlacklistedUsers>()
-        .expect("expected ListenerBlacklistedUsers in TypeMap")
-        .clone();
-    listener_blacklisted_users_lock
-}
-
-pub async fn get_bot_channel_id_lock(data: &Arc<RwLock<TypeMap>>) -> Arc<DashMap<u64, u64>> {
-    let bot_channel_ids_lock = data
-        .read()
-        .await
-        .get::<BotChannelIds>()
-        .expect("expected MarkovChain in TypeMap")
-        .clone();
-    bot_channel_ids_lock
 }

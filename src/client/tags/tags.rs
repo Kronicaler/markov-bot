@@ -1,4 +1,3 @@
-use crate::*;
 use regex::Regex;
 use serenity::{
     client::Context,
@@ -12,12 +11,24 @@ use serenity::{
     },
 };
 
-pub async fn list_listeners(ctx: &Context) -> String {
-    let listener_response = get_listener_response_lock(&ctx.data).await;
+use crate::{
+    client::{tags::file_operations::save_user_tag_blacklist_to_file, Command},
+    OWNER_ID,
+};
+
+use super::{
+    file_operations::{save_tag_response_channel, save_tag_to_file},
+    global_data::{
+        get_tag_response_channel_id_lock, get_tags_blacklisted_users_lock, get_tags_lock,
+    },
+};
+
+pub async fn list_tags(ctx: &Context) -> String {
+    let tag = get_tags_lock(&ctx.data).await;
 
     let mut message = String::new();
 
-    for entry in listener_response.iter() {
+    for entry in tag.iter() {
         message += &format!("{}, ", entry.key());
     }
     message.pop();
@@ -26,10 +37,7 @@ pub async fn list_listeners(ctx: &Context) -> String {
     message
 }
 
-pub async fn remove_listener_command(
-    ctx: &Context,
-    command: &ApplicationCommandInteraction,
-) -> String {
+pub async fn remove_tag_command(ctx: &Context, command: &ApplicationCommandInteraction) -> String {
     let listener = command
         .data
         .options
@@ -38,12 +46,12 @@ pub async fn remove_listener_command(
         .resolved
         .as_ref()
         .unwrap();
-    let listener_response = get_listener_response_lock(&ctx.data).await;
+    let tag = get_tags_lock(&ctx.data).await;
 
     if let ApplicationCommandInteractionDataOptionValue::String(listener) = listener {
-        if listener_response.contains_key(listener) {
-            listener_response.remove(listener);
-            save_listener_response_to_file(&listener_response);
+        if tag.contains_key(listener) {
+            tag.remove(listener);
+            save_tag_to_file(&tag);
             return "Successfully removed the tag".to_owned();
         }
         return "That tag doesn't exist".to_owned();
@@ -52,10 +60,7 @@ pub async fn remove_listener_command(
     "Something went wrong".to_owned()
 }
 
-pub async fn set_listener_command(
-    ctx: &Context,
-    command: &ApplicationCommandInteraction,
-) -> String {
+pub async fn create_tag(ctx: &Context, command: &ApplicationCommandInteraction) -> String {
     let listener = command
         .data
         .options
@@ -87,29 +92,29 @@ pub async fn set_listener_command(
                 return "can't add a mention".to_owned();
             }
 
-            let listener_response = get_listener_response_lock(&ctx.data).await;
+            let tags = get_tags_lock(&ctx.data).await;
 
-            listener_response.insert(
+            tags.insert(
                 listener.to_lowercase().trim().to_owned(),
                 response.trim().to_owned(),
             );
-            save_listener_response_to_file(&listener_response);
+            save_tag_to_file(&tags);
             return "Set tag".to_owned();
         }
     }
     "Couldn't set tag".to_owned()
 }
 
-pub async fn blacklist_user_from_listener(ctx: &Context, user: &User) -> String {
-    let users_blacklisted_from_listener = get_listener_blacklisted_users_lock(&ctx.data).await;
+pub async fn blacklist_user_from_tags(ctx: &Context, user: &User) -> String {
+    let users_blacklisted_from_tags = get_tags_blacklisted_users_lock(&ctx.data).await;
 
-    if users_blacklisted_from_listener.contains(&user.id.0) {
-        users_blacklisted_from_listener.remove(&user.id.0);
-        save_user_listener_blacklist_to_file(&users_blacklisted_from_listener);
+    if users_blacklisted_from_tags.contains(&user.id.0) {
+        users_blacklisted_from_tags.remove(&user.id.0);
+        save_user_tag_blacklist_to_file(&users_blacklisted_from_tags);
         format!("Removed {} from the blacklist", &user.name)
     } else {
-        users_blacklisted_from_listener.insert(user.id.0);
-        save_user_listener_blacklist_to_file(&users_blacklisted_from_listener);
+        users_blacklisted_from_tags.insert(user.id.0);
+        save_user_tag_blacklist_to_file(&users_blacklisted_from_tags);
         format!("Added {} to the tag blacklist", &user.name)
     }
 }
@@ -122,14 +127,14 @@ pub async fn check_for_listened_words(
     words_in_message: &[String],
     user_id: UserId,
 ) -> Option<String> {
-    let listener_response = get_listener_response_lock(&ctx.data).await;
-    let listener_blacklisted_users = get_listener_blacklisted_users_lock(&ctx.data).await;
+    let tags = get_tags_lock(&ctx.data).await;
+    let tag_blacklisted_users = get_tags_blacklisted_users_lock(&ctx.data).await;
 
-    if listener_blacklisted_users.contains(&user_id.0) {
+    if tag_blacklisted_users.contains(&user_id.0) {
         return None;
     }
 
-    for entry in listener_response.iter() {
+    for entry in tags.iter() {
         let listener = entry.key();
         let response = entry.value();
 
@@ -157,7 +162,7 @@ pub async fn check_for_listened_words(
         }
     }
 
-    for entry in listener_response.iter() {
+    for entry in tags.iter() {
         let listener = entry.key();
         let response = entry.value();
 
@@ -171,7 +176,7 @@ pub async fn check_for_listened_words(
     None
 }
 /// Create the tag slash commands
-pub fn create_listener_commands(
+pub fn create_tag_commands(
     commands: &mut serenity::builder::CreateApplicationCommands,
 ) -> &mut serenity::builder::CreateApplicationCommands {
     commands.create_application_command(|command| {
@@ -198,4 +203,25 @@ pub fn create_listener_commands(
         .create_application_command(|command|{
             command.name(Command::blacklistmefromtags).description("The bot won't respond to your messages if you trip off a tag")
         })
+}
+
+pub async fn set_tag_response_channel(
+    ctx: &Context,
+    command: &ApplicationCommandInteraction,
+) -> String {
+    let member = command.member.as_ref().unwrap();
+    let member_perms = member.permissions.unwrap();
+
+    if !member_perms.administrator() && member.user.id != OWNER_ID {
+        return "You need to have the Administrator permission to invoke this command".to_owned();
+    }
+
+    let guild_id = command.guild_id.unwrap().0;
+    let channel_id = command.channel_id.0;
+    let bot_channel_ids = get_tag_response_channel_id_lock(&ctx.data).await;
+    bot_channel_ids.insert(guild_id, channel_id);
+    match save_tag_response_channel(&bot_channel_ids) {
+        Ok(_) => "Successfully set this channel as the bot channel".to_owned(),
+        Err(_) => "Something went wrong setting bot channel".to_owned(),
+    }
 }

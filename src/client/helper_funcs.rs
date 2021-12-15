@@ -15,6 +15,10 @@ use serenity::{
     prelude::Mentionable,
 };
 
+use super::tags::{
+    file_operations::save_tag_response_channel, global_data::get_tag_response_channel_id_lock,
+};
+
 pub fn id_command(command: &ApplicationCommandInteraction) -> String {
     let options = command
         .data
@@ -48,7 +52,7 @@ If that fails then it sends the message to the bot channel if one is set
 If that fails then it iterates through every channel in the guild until it finds one it can send a message in
 */
 pub async fn send_message_to_first_available_channel(ctx: &Context, msg: &Message, message: &str) {
-    let bot_channels = get_bot_channel_id_lock(&ctx.data).await;
+    let bot_channels = get_tag_response_channel_id_lock(&ctx.data).await;
     let bot_channel_id = bot_channels.get(&msg.guild_id.unwrap().0);
 
     if msg.channel_id.say(&ctx.http, message).await.is_err() {
@@ -109,23 +113,5 @@ pub async fn send_message_to_first_available_channel(ctx: &Context, msg: &Messag
                 Err(_) => continue,
             }
         }
-    }
-}
-
-pub async fn set_bot_channel(ctx: &Context, command: &ApplicationCommandInteraction) -> String {
-    let member = command.member.as_ref().unwrap();
-    let member_perms = member.permissions.unwrap();
-
-    if !member_perms.administrator() && member.user.id != OWNER_ID {
-        return "You need to have the Administrator permission to invoke this command".to_owned();
-    }
-
-    let guild_id = command.guild_id.unwrap().0;
-    let channel_id = command.channel_id.0;
-    let bot_channel_ids = get_bot_channel_id_lock(&ctx.data).await;
-    bot_channel_ids.insert(guild_id, channel_id);
-    match save_bot_channel(&bot_channel_ids) {
-        Ok(_) => "Successfully set this channel as the bot channel".to_owned(),
-        Err(_) => "Something went wrong setting bot channel".to_owned(),
     }
 }

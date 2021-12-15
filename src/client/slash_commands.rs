@@ -9,6 +9,10 @@ use serenity::{
 };
 use strum_macros::{Display, EnumString};
 
+use super::tags::tags::{
+    blacklist_user_from_tags, create_tag, create_tag_commands, list_tags, remove_tag_command,
+};
+
 /// All the slash commands the bot has implemented
 #[allow(non_camel_case_types)]
 #[derive(Display, EnumString)]
@@ -28,8 +32,8 @@ pub enum Command {
     tags,
     #[strum(serialize = "blacklist-me-from-tags")]
     blacklistmefromtags,
-    #[strum(serialize = "set-bot-channel")]
-    setbotchannel,
+    #[strum(serialize = "set-tag-response-channel")]
+    settagresponsechannel,
     help,
     #[strum(serialize = "test-command")]
     testcommand,
@@ -46,7 +50,8 @@ pub async fn command_responses(command: &ApplicationCommandInteraction, ctx: Con
             Command::ping => "Hey, I'm alive!".to_owned(),
             Command::id => id_command(command),
             Command::blacklisteddata => markov::blacklisted_users(&ctx).await,
-            Command::stopsavingmymessages => match markov::add_user_to_blacklist(&user, &ctx).await {
+            Command::stopsavingmymessages => match markov::add_user_to_blacklist(&user, &ctx).await
+            {
                 Ok(_) => format!(
                     "Added {} to data collection blacklist",
                     user.nick_in(&ctx.http, &command.guild_id.unwrap())
@@ -56,29 +61,31 @@ pub async fn command_responses(command: &ApplicationCommandInteraction, ctx: Con
                 Err(_) => "Something went wrong while adding you to the blacklist :(".to_owned(),
             },
             Command::testcommand => test_command(),
-            Command::createtag => set_listener_command(&ctx, command).await,
-            Command::removetag => remove_listener_command(&ctx, command).await,
-            Command::tags => list_listeners(&ctx).await,
+            Command::createtag => create_tag(&ctx, command).await,
+            Command::removetag => remove_tag_command(&ctx, command).await,
+            Command::tags => list_tags(&ctx).await,
             Command::blacklistmefromtags => {
-                blacklist_user_from_listener(&ctx, &command.member.clone().unwrap().user).await
+                blacklist_user_from_tags(&ctx, &command.member.clone().unwrap().user).await
             }
-            Command::setbotchannel => set_bot_channel(&ctx, command).await,
+            Command::settagresponsechannel => set_tag_response_channel(&ctx, command).await,
             Command::help => HELP_MESSAGE.to_owned(),
             Command::command => "command".to_owned(),
             Command::version => "My current version is ".to_owned() + env!("CARGO_PKG_VERSION"),
-            Command::continuesavingmymessages => match markov::remove_user_from_blacklist(&user, &ctx)
-                .await
-            {
-                Ok(_) => format!(
-                    "removed {} from data collection blacklist",
-                    user.nick_in(&ctx.http, &command.guild_id.unwrap())
-                        .await
-                        .unwrap_or_else(|| { command.member.as_ref().unwrap().user.name.clone() })
-                ),
-                Err(_) => {
-                    "Something went wrong while removing you from the blacklist :(".to_owned()
+            Command::continuesavingmymessages => {
+                match markov::remove_user_from_blacklist(&user, &ctx).await {
+                    Ok(_) => format!(
+                        "removed {} from data collection blacklist",
+                        user.nick_in(&ctx.http, &command.guild_id.unwrap())
+                            .await
+                            .unwrap_or_else(|| {
+                                command.member.as_ref().unwrap().user.name.clone()
+                            })
+                    ),
+                    Err(_) => {
+                        "Something went wrong while removing you from the blacklist :(".to_owned()
+                    }
                 }
-            },
+            }
         },
         Err(_) => "not implemented :(".to_owned(),
     };
@@ -133,8 +140,8 @@ pub async fn create_global_commands(ctx: &Context) {
                 )
             })
             .create_application_command(|command| {
-                command.name(Command::setbotchannel).description(
-                    "Set this channel as the channel where i will send messages in",
+                command.name(Command::settagresponsechannel).description(
+                    "Set this channel as the channel where i will reply to tags",
                 )
             })
             .create_application_command(|command| {
@@ -147,7 +154,7 @@ pub async fn create_global_commands(ctx: &Context) {
                     .name(Command::version)
                     .description("My current version")
             });
-        create_listener_commands(commands)
+        create_tag_commands(commands)
     })
     .await
     .unwrap();

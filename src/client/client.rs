@@ -11,6 +11,8 @@ use std::env;
 use strum_macros::{Display, EnumString};
 use tokio::join;
 
+use super::tags::tags::{blacklist_user_from_tags, check_for_listened_words};
+
 #[derive(Display, EnumString)]
 pub enum ButtonIds {
     BlacklistMeFromTags,
@@ -42,7 +44,7 @@ impl EventHandler for Handler {
                 let button = interaction.message_component().unwrap();
 
                 if button.data.custom_id == ButtonIds::BlacklistMeFromTags.to_string() {
-                    let response = blacklist_user_from_listener(&ctx, &button.user).await;
+                    let response = blacklist_user_from_tags(&ctx, &button.user).await;
 
                     button
                         .create_interaction_response(&ctx.http, |r| {
