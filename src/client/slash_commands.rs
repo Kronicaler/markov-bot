@@ -10,7 +10,7 @@ use serenity::{
 use strum_macros::{Display, EnumString};
 
 use super::tags::tags::{
-    blacklist_user_from_tags, create_tag, create_tag_commands, list_tags, remove_tag_command,
+    blacklist_user_from_tags, create_tag, create_tag_commands, list_tags, remove_tag_command, set_tag_response_channel,
 };
 
 /// All the slash commands the bot has implemented

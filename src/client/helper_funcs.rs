@@ -16,7 +16,7 @@ use serenity::{
 };
 
 use super::tags::{
-    file_operations::save_tag_response_channel, global_data::get_tag_response_channel_id_lock,
+    global_data::get_tag_response_channel_id_lock,
 };
 
 pub fn id_command(command: &ApplicationCommandInteraction) -> String {
