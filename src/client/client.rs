@@ -62,7 +62,6 @@ impl EventHandler for Handler {
                         .expect("couldn't create response");
                 }
             }
-            InteractionType::Unknown => todo!(),
             _ => {}
         }
     }
@@ -89,9 +88,17 @@ impl EventHandler for Handler {
             return;
         }
 
-        if msg.mentions_me(&ctx.http).await.expect("Couldn't read cache") && !msg.author.bot {
+        if msg
+            .mentions_me(&ctx.http)
+            .await
+            .expect("Couldn't read cache")
+            && !msg.author.bot
+        {
             if words_in_message.contains(&"help".to_owned()) {
-                msg.channel_id.say(&ctx.http, HELP_MESSAGE).await.expect("Couldn't send message");
+                msg.channel_id
+                    .say(&ctx.http, HELP_MESSAGE)
+                    .await
+                    .expect("Couldn't send message");
                 return;
             }
 
@@ -132,7 +139,9 @@ pub async fn start_client() {
         .await
         .expect("Error creating client");
 
-    init_global_data_for_client(&client).await.expect("Couldn't initialize global data");
+    init_global_data_for_client(&client)
+        .await
+        .expect("Couldn't initialize global data");
 
     client.start().await.expect("Couldn't start the client");
 }
