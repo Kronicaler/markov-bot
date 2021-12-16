@@ -37,11 +37,15 @@ impl EventHandler for Handler {
         match interaction.kind() {
             InteractionType::Ping => todo!(),
             InteractionType::ApplicationCommand => {
-                let command = interaction.application_command().unwrap();
+                let command = interaction.application_command().expect(
+                    "it's already known that this is an ApplicationCommand and shouldn't break",
+                );
                 command_responses(&command, ctx).await;
             }
             InteractionType::MessageComponent => {
-                let button = interaction.message_component().unwrap();
+                let button = interaction.message_component().expect(
+                    "it's already known that this is a message component and shouldn't break",
+                );
 
                 if button.data.custom_id == ButtonIds::BlacklistMeFromTags.to_string() {
                     let response = blacklist_user_from_tags(&ctx, &button.user).await;
@@ -55,7 +59,7 @@ impl EventHandler for Handler {
                             })
                         })
                         .await
-                        .unwrap();
+                        .expect("couldn't create response");
                 }
             }
             InteractionType::Unknown => todo!(),
@@ -85,16 +89,16 @@ impl EventHandler for Handler {
             return;
         }
 
-        if msg.mentions_me(&ctx.http).await.unwrap() && !msg.author.bot {
+        if msg.mentions_me(&ctx.http).await.expect("Couldn't read cache") && !msg.author.bot {
             if words_in_message.contains(&"help".to_owned()) {
-                msg.channel_id.say(&ctx.http, HELP_MESSAGE).await.unwrap();
+                msg.channel_id.say(&ctx.http, HELP_MESSAGE).await.expect("Couldn't send message");
                 return;
             }
 
             msg.channel_id
                 .say(&ctx.http, markov::generate_sentence(&ctx).await)
                 .await
-                .unwrap();
+                .expect("Couldn't send message");
         }
     }
 }
@@ -128,7 +132,7 @@ pub async fn start_client() {
         .await
         .expect("Error creating client");
 
-    init_global_data_for_client(&client).await.unwrap();
+    init_global_data_for_client(&client).await.expect("Couldn't initialize global data");
 
-    client.start().await.unwrap();
+    client.start().await.expect("Couldn't start the client");
 }

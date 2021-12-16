@@ -43,10 +43,10 @@ pub async fn remove_tag(ctx: &Context, command: &ApplicationCommandInteraction) 
         .data
         .options
         .get(0)
-        .expect("expected listener")
+        .expect("Expected listener option")
         .resolved
         .as_ref()
-        .unwrap();
+        .expect("Expected listener value");
     let tag = get_tags_lock(&ctx.data).await;
 
     if let ApplicationCommandInteractionDataOptionValue::String(listener) = listener {
@@ -66,23 +66,23 @@ pub async fn create_tag(ctx: &Context, command: &ApplicationCommandInteraction) 
         .data
         .options
         .get(0)
-        .expect("expected listener")
+        .expect("Expected listener option")
         .resolved
         .as_ref()
-        .unwrap();
+        .expect("Expected listener value");
     let response = command
         .data
         .options
         .get(1)
-        .expect("expected response")
+        .expect("Expected response option")
         .resolved
         .as_ref()
-        .unwrap();
+        .expect("Expected response value");
 
     if let ApplicationCommandInteractionDataOptionValue::String(listener) = listener {
         if let ApplicationCommandInteractionDataOptionValue::String(response) = response {
-            let user_regex = Regex::new(r"<@!?(\d+)>").unwrap();
-            let role_regex = Regex::new(r"<@&(\d+)>").unwrap();
+            let user_regex = Regex::new(r"<@!?(\d+)>").expect("Invalid regular expression");
+            let role_regex = Regex::new(r"<@&(\d+)>").expect("Invalid regular expression");
             if user_regex.is_match(response)
                 || user_regex.is_match(listener)
                 || role_regex.is_match(response)
@@ -210,17 +210,22 @@ pub async fn set_tag_response_channel(
     ctx: &Context,
     command: &ApplicationCommandInteraction,
 ) -> String {
-    let member = command.member.as_ref().unwrap();
-    let member_perms = member.permissions.unwrap();
+    let guild_id = match command.guild_id{
+        Some(guild_id) => guild_id,
+        None => return "You can only use this command in a server".to_owned(),
+    };
+
+
+    let member = command.member.as_ref().expect("Expected member");
+    let member_perms = member.permissions.expect("Couldn't get member permissions");
 
     if !member_perms.administrator() && member.user.id != OWNER_ID {
         return "You need to have the Administrator permission to invoke this command".to_owned();
     }
 
-    let guild_id = command.guild_id.unwrap().0;
     let channel_id = command.channel_id.0;
     let bot_channel_ids = get_tag_response_channel_id_lock(&ctx.data).await;
-    bot_channel_ids.insert(guild_id, channel_id);
+    bot_channel_ids.insert(guild_id.0, channel_id);
     match save_tag_response_channel(&bot_channel_ids) {
         Ok(_) => "Successfully set this channel as the bot channel".to_owned(),
         Err(_) => "Something went wrong setting bot channel".to_owned(),

@@ -10,7 +10,8 @@ use serenity::{
 use strum_macros::{Display, EnumString};
 
 use super::tags::{
-    blacklist_user_from_tags, create_tag, create_tag_commands, list_tags, set_tag_response_channel, remove_tag,
+    blacklist_user_from_tags, create_tag, create_tag_commands, list_tags, remove_tag,
+    set_tag_response_channel,
 };
 
 /// All the slash commands the bot has implemented
@@ -43,7 +44,7 @@ pub enum Command {
 
 /// Check which slash command was triggered, call the appropriate function and return a response to the user
 pub async fn command_responses(command: &ApplicationCommandInteraction, ctx: Context) {
-    let user = &command.member.as_ref().unwrap().user;
+    let user = &command.user;
 
     let content = match Command::from_str(&command.data.name) {
         Ok(user_command) => match user_command {
@@ -54,9 +55,14 @@ pub async fn command_responses(command: &ApplicationCommandInteraction, ctx: Con
             {
                 Ok(_) => format!(
                     "Added {} to data collection blacklist",
-                    user.nick_in(&ctx.http, &command.guild_id.unwrap())
-                        .await
-                        .unwrap_or_else(|| { command.member.as_ref().unwrap().user.name.clone() })
+                    match command.guild_id {
+                        Some(guild_id) => user
+                            .nick_in(&ctx.http, guild_id)
+                            .await
+                            .or(Some(user.name.clone()))
+                            .expect("Should always have Some value"),
+                        None => user.name.clone(),
+                    }
                 ),
                 Err(_) => "Something went wrong while adding you to the blacklist :(".to_owned(),
             },
@@ -64,9 +70,7 @@ pub async fn command_responses(command: &ApplicationCommandInteraction, ctx: Con
             Command::createtag => create_tag(&ctx, command).await,
             Command::removetag => remove_tag(&ctx, command).await,
             Command::tags => list_tags(&ctx).await,
-            Command::blacklistmefromtags => {
-                blacklist_user_from_tags(&ctx, &command.member.clone().unwrap().user).await
-            }
+            Command::blacklistmefromtags => blacklist_user_from_tags(&ctx, user).await,
             Command::settagresponsechannel => set_tag_response_channel(&ctx, command).await,
             Command::help => HELP_MESSAGE.to_owned(),
             Command::command => "command".to_owned(),
@@ -75,11 +79,14 @@ pub async fn command_responses(command: &ApplicationCommandInteraction, ctx: Con
                 match markov::remove_user_from_blacklist(&user, &ctx).await {
                     Ok(_) => format!(
                         "removed {} from data collection blacklist",
-                        user.nick_in(&ctx.http, &command.guild_id.unwrap())
-                            .await
-                            .unwrap_or_else(|| {
-                                command.member.as_ref().unwrap().user.name.clone()
-                            })
+                        match command.guild_id {
+                            Some(guild_id) => user
+                                .nick_in(&ctx.http, guild_id)
+                                .await
+                                .or(Some(user.name.clone()))
+                                .expect("Should always have Some value"),
+                            None => user.name.clone(),
+                        }
                     ),
                     Err(_) => {
                         "Something went wrong while removing you from the blacklist :(".to_owned()
@@ -157,7 +164,7 @@ pub async fn create_global_commands(ctx: &Context) {
         create_tag_commands(commands)
     })
     .await
-    .unwrap();
+    .expect("Couldn't create global slash commands");
 }
 
 /// For testing purposes
@@ -209,5 +216,5 @@ pub async fn create_guild_commands(ctx: &Context) {
                 })
         })
         .await
-        .unwrap();
+        .expect("Couldn't create guild test commands");
 }

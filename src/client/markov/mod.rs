@@ -9,14 +9,12 @@ use serenity::{
 use std::{error::Error, fs};
 
 use self::{
-    file_operations::{
-        import_chain_from_file, save_markov_blacklisted_users,
-    },
+    file_operations::{import_chain_from_file, save_markov_blacklisted_users},
     global_data::{
         get_markov_blacklisted_channels_lock, get_markov_blacklisted_users_lock,
         get_markov_chain_lock, MARKOV_EXPORT_PATH,
     },
-    markov_chain::{filter_message_for_markov_file},
+    markov_chain::filter_message_for_markov_file,
 };
 
 use super::file_operations::create_file_if_missing;
@@ -27,7 +25,7 @@ pub async fn add_message_to_chain(msg: &Message, ctx: &Context) -> Result<bool, 
         .channel_id
         .to_channel(&ctx.http)
         .await
-        .unwrap()
+        .expect("Couldn't get channel")
         .guild()
         .is_some()
     {
@@ -39,7 +37,10 @@ pub async fn add_message_to_chain(msg: &Message, ctx: &Context) -> Result<bool, 
 
     if markov_blacklisted_channels.contains(&msg.channel_id.0)
         || markov_blacklisted_users.contains(&msg.author.id.0)
-        || msg.mentions_me(&ctx.http).await.unwrap()
+        || msg
+            .mentions_me(&ctx.http)
+            .await
+            .expect("Couldn't fetch mention from cache")
     {
         return Ok(false);
     }
@@ -81,7 +82,7 @@ pub async fn generate_sentence(ctx: &Context) -> String {
 /// Initializes the Markov chain from [`MARKOV_DATA_SET_PATH`]
 pub fn init() -> Result<Markov, Box<dyn Error>> {
     let mut markov_chain = Markov::new();
-    markov_chain.set_state_size(3).unwrap(); // Will never fail
+    markov_chain.set_state_size(3).expect("Will never fail");
     markov_chain.set_max_tries(200);
     markov_chain.set_filter(|r| {
         if r.text.split(' ').count() >= 5 && r.refs.len() >= 2 {
@@ -128,7 +129,13 @@ pub async fn blacklisted_users(ctx: &Context) -> String {
     let blacklisted_users = get_markov_blacklisted_users_lock(&ctx.data).await;
 
     for user_id in blacklisted_users.iter() {
-        blacklisted_usernames.push(ctx.http.get_user(*user_id).await.unwrap().name);
+        blacklisted_usernames.push(
+            ctx.http
+                .get_user(*user_id)
+                .await
+                .expect("Couldn't get user")
+                .name,
+        );
     }
 
     if blacklisted_usernames.is_empty() {

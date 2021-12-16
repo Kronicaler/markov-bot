@@ -10,7 +10,7 @@ const MIN_NUM_OF_WORDS: usize = 5;
 ///
 /// Replaces uppercase letters with their lowercase variants.
 pub fn filter_message_for_markov_file(msg: &Message) -> String {
-    let re = Regex::new(r#"(?:(?:https?|ftp)://|\b(?:[a-z\d]+\.))(?:(?:[^\s()<>]+|\((?:[^\s()<>]+|(?:\([^\s()<>]+\)))?\))+(?:\((?:[^\s()<>]+|(?:\(?:[^\s()<>]+\)))?\)|[^\s`!()\[\]{};:'".,<>?«»“”‘’]))?"#).unwrap();
+    let re = Regex::new(r#"(?:(?:https?|ftp)://|\b(?:[a-z\d]+\.))(?:(?:[^\s()<>]+|\((?:[^\s()<>]+|(?:\([^\s()<>]+\)))?\))+(?:\((?:[^\s()<>]+|(?:\(?:[^\s()<>]+\)))?\)|[^\s`!()\[\]{};:'".,<>?«»“”‘’]))?"#).expect("Invalid regular expression");
     let mut str = re.replace_all(&msg.content, "").into_owned();
     while str.ends_with(' ') {
         str.pop();
@@ -18,19 +18,20 @@ pub fn filter_message_for_markov_file(msg: &Message) -> String {
 
     let mut filtered_message = str;
 
-    let user_regex = Regex::new(r"<@!?(\d+)>").unwrap();
+    let user_regex = Regex::new(r"<@!?(\d+)>").expect("Invalid regular expression");
 
     let regexes_to_replace_with_whitespace: Vec<Regex> = vec![
-        Regex::new(r"<:?(\w+:)(\d+)>").unwrap(),  //emote regex
-        Regex::new(r"<a:?(\w+:)(\d+)>").unwrap(), //animated emote regex
-        Regex::new(r#"[,.!"\#$()=?*<>{}\[\]\\\|Łł@*;:+~ˇ^˘°˛`´˝]"#).unwrap(), //non alphanumeric regex
-        Regex::new(r"^(\d{18})$").unwrap(), //remaining numbers from users regex
-        Regex::new(r"\n").unwrap(),         //line feed regex
-        Regex::new(r"[ ]{3}|[ ]{2}").unwrap(), //double and triple whitespace regex
-        Regex::new(r"<@&(\d+)>").unwrap(),  // role regex
+        Regex::new(r"<:?(\w+:)(\d+)>").expect("Invalid regular expression"), //emote regex
+        Regex::new(r"<a:?(\w+:)(\d+)>").expect("Invalid regular expression"), //animated emote regex
+        Regex::new(r#"[,.!"\#$()=?*<>{}\[\]\\\|Łł@*;:+~ˇ^˘°˛`´˝]"#)
+            .expect("Invalid regular expression"), //non alphanumeric regex
+        Regex::new(r"^(\d{18})$").expect("Invalid regular expression"), //remaining numbers from users regex
+        Regex::new(r"\n").expect("Invalid regular expression"),         //line feed regex
+        Regex::new(r"[ ]{3}|[ ]{2}").expect("Invalid regular expression"), //double and triple whitespace regex
+        Regex::new(r"<@&(\d+)>").expect("Invalid regular expression"),     // role regex
     ];
 
-    let upper_case_regex = Regex::new(r"[A-Z][a-z0-9_-]{1,}").unwrap();
+    let upper_case_regex = Regex::new(r"[A-Z][a-z0-9_-]{1,}").expect("Invalid regular expression");
 
     loop {
         let mut number_of_matches: u16 = 0;
@@ -47,12 +48,12 @@ pub fn filter_message_for_markov_file(msg: &Message) -> String {
                             user_id += &char.to_string();
                         }
                     }
-                    let user_id = user_id.parse::<u64>().unwrap();
+                    let user_id = user_id.parse::<u64>().expect("Couldn't parse user id");
                     let user = &msg
                         .mentions
                         .iter()
                         .find(|&user| user.id.0 == user_id)
-                        .unwrap()
+                        .expect("Couldn't find user mention in message")
                         .name;
                     " ".to_owned() + user + " "
                 })
@@ -87,7 +88,7 @@ pub fn filter_message_for_markov_file(msg: &Message) -> String {
 ///
 /// Replaces uppercase letters with their lowercase variants.
 pub fn filter_string_for_markov_file(msg: &str) -> String {
-    let re = Regex::new(r#"(?:(?:https?|ftp)://|\b(?:[a-z\d]+\.))(?:(?:[^\s()<>]+|\((?:[^\s()<>]+|(?:\([^\s()<>]+\)))?\))+(?:\((?:[^\s()<>]+|(?:\(?:[^\s()<>]+\)))?\)|[^\s`!()\[\]{};:'".,<>?«»“”‘’]))?"#).unwrap();
+    let re = Regex::new(r#"(?:(?:https?|ftp)://|\b(?:[a-z\d]+\.))(?:(?:[^\s()<>]+|\((?:[^\s()<>]+|(?:\([^\s()<>]+\)))?\))+(?:\((?:[^\s()<>]+|(?:\(?:[^\s()<>]+\)))?\)|[^\s`!()\[\]{};:'".,<>?«»“”‘’]))?"#).expect("Invalid regular expression");
     let mut str = re.replace_all(&msg, "").into_owned();
     while str.ends_with(' ') {
         str.pop();
@@ -96,16 +97,17 @@ pub fn filter_string_for_markov_file(msg: &str) -> String {
     let mut filtered_message = str;
 
     let regexes_to_replace_with_whitespace: Vec<Regex> = vec![
-        Regex::new(r"<:?(\w+:)(\d+)>").unwrap(),  //emote regex
-        Regex::new(r"<a:?(\w+:)(\d+)>").unwrap(), //animated emote regex
-        Regex::new(r#"[,.!"\#$()=?*<>{}\[\]\\\|Łł@*;:+~ˇ^˘°˛`´˝]"#).unwrap(), //non alphanumeric regex
-        Regex::new(r"^(\d{18})$").unwrap(), //remaining numbers from users regex
-        Regex::new(r"\n").unwrap(),         //line feed regex
-        Regex::new(r"[ ]{3}|[ ]{2}").unwrap(), //double and triple whitespace regex
-        Regex::new(r"<@&(\d+)>").unwrap(),  // role regex
+        Regex::new(r"<:?(\w+:)(\d+)>").expect("Invalid regular expression"), //emote regex
+        Regex::new(r"<a:?(\w+:)(\d+)>").expect("Invalid regular expression"), //animated emote regex
+        Regex::new(r#"[,.!"\#$()=?*<>{}\[\]\\\|Łł@*;:+~ˇ^˘°˛`´˝]"#)
+            .expect("Invalid regular expression"), //non alphanumeric regex
+        Regex::new(r"^(\d{18})$").expect("Invalid regular expression"), //remaining numbers from users regex
+        Regex::new(r"\n").expect("Invalid regular expression"),         //line feed regex
+        Regex::new(r"[ ]{3}|[ ]{2}").expect("Invalid regular expression"), //double and triple whitespace regex
+        Regex::new(r"<@&(\d+)>").expect("Invalid regular expression"),     // role regex
     ];
 
-    let upper_case_regex = Regex::new(r"[A-Z][a-z0-9_-]{1,}").unwrap();
+    let upper_case_regex = Regex::new(r"[A-Z][a-z0-9_-]{1,}").expect("Invalid regular expression");
 
     loop {
         let mut number_of_matches: u16 = 0;

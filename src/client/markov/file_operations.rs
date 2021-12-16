@@ -49,7 +49,10 @@ pub fn clean_markov_file() {
 
 #[allow(dead_code)]
 pub fn export_to_markov_file(export: &ImportExport) -> Result<(), std::io::Error> {
-    fs::write(MARKOV_EXPORT_PATH, serde_json::to_string(&export).unwrap())
+    fs::write(
+        MARKOV_EXPORT_PATH,
+        serde_json::to_string(&export).expect("Serialization failed"),
+    )
 }
 
 /// Reads the Markov data set from [`MARKOV_DATA_SET_PATH`]
@@ -70,6 +73,6 @@ pub fn save_markov_blacklisted_users(
 ) -> Result<(), std::io::Error> {
     fs::write(
         MARKOV_BLACKLISTED_USERS_PATH,
-        serde_json::to_string(blacklisted_users).unwrap(),
+        serde_json::to_string(blacklisted_users).expect("Serialization failed"),
     )
 }

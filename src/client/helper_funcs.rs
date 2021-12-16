@@ -14,9 +14,7 @@ use serenity::{
     prelude::Mentionable,
 };
 
-use super::tags::{
-    global_data::get_tag_response_channel_id_lock,
-};
+use super::tags::global_data::get_tag_response_channel_id_lock;
 
 pub fn user_id_command(command: &ApplicationCommandInteraction) -> String {
     let options = command
@@ -43,7 +41,7 @@ If that fails then it iterates through every channel in the guild until it finds
 */
 pub async fn send_message_to_first_available_channel(ctx: &Context, msg: &Message, message: &str) {
     let bot_channels = get_tag_response_channel_id_lock(&ctx.data).await;
-    let bot_channel_id = bot_channels.get(&msg.guild_id.unwrap().0);
+    let bot_channel_id = bot_channels.get(&msg.guild_id.expect("Couldn't get the guild id").0);
 
     if msg.channel_id.say(&ctx.http, message).await.is_err() {
         //try sending message to bot channel
@@ -67,7 +65,7 @@ pub async fn send_message_to_first_available_channel(ctx: &Context, msg: &Messag
                             .content(msg.author.mention().to_string() + " " + message)
                     })
                     .await
-                    .unwrap();
+                    .expect("Couldn't send message");
                 return;
             }
         }
@@ -76,7 +74,7 @@ pub async fn send_message_to_first_available_channel(ctx: &Context, msg: &Messag
         let channels: Vec<GuildChannel> = msg
             .guild(&ctx.cache)
             .await
-            .unwrap()
+            .expect("Couldn't retrieve guild from cache")
             .channels
             .iter()
             .map(|(_, channel)| channel.clone())

@@ -14,9 +14,9 @@ pub fn create_file_if_missing<'a>(
 
 pub fn create_data_folders() {
     if !Path::new("data").exists() {
-        fs::create_dir("data").unwrap();
+        fs::create_dir("data").expect("Couldn't create directory data ");
     };
     if !Path::new("data/markov data").exists() {
-        fs::create_dir("data/markov data").unwrap();
+        fs::create_dir("data/markov data").expect("Couldn't create directory data/markov data");
     };
 }
