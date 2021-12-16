@@ -19,7 +19,7 @@ use super::tags::{
     global_data::get_tag_response_channel_id_lock,
 };
 
-pub fn id_command(command: &ApplicationCommandInteraction) -> String {
+pub fn user_id_command(command: &ApplicationCommandInteraction) -> String {
     let options = command
         .data
         .options

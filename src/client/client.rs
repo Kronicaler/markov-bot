@@ -11,7 +11,7 @@ use std::env;
 use strum_macros::{Display, EnumString};
 use tokio::join;
 
-use super::tags::tags::{blacklist_user_from_tags, check_for_listened_words};
+use super::tags::{blacklist_user_from_tags, check_for_listened_words};
 
 #[derive(Display, EnumString)]
 pub enum ButtonIds {

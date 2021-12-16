@@ -9,8 +9,8 @@ use serenity::{
 };
 use strum_macros::{Display, EnumString};
 
-use super::tags::tags::{
-    blacklist_user_from_tags, create_tag, create_tag_commands, list_tags, remove_tag_command, set_tag_response_channel,
+use super::tags::{
+    blacklist_user_from_tags, create_tag, create_tag_commands, list_tags, set_tag_response_channel, remove_tag,
 };
 
 /// All the slash commands the bot has implemented
@@ -48,7 +48,7 @@ pub async fn command_responses(command: &ApplicationCommandInteraction, ctx: Con
     let content = match Command::from_str(&command.data.name) {
         Ok(user_command) => match user_command {
             Command::ping => "Hey, I'm alive!".to_owned(),
-            Command::id => id_command(command),
+            Command::id => user_id_command(command),
             Command::blacklisteddata => markov::blacklisted_users(&ctx).await,
             Command::stopsavingmymessages => match markov::add_user_to_blacklist(&user, &ctx).await
             {
@@ -62,7 +62,7 @@ pub async fn command_responses(command: &ApplicationCommandInteraction, ctx: Con
             },
             Command::testcommand => test_command(),
             Command::createtag => create_tag(&ctx, command).await,
-            Command::removetag => remove_tag_command(&ctx, command).await,
+            Command::removetag => remove_tag(&ctx, command).await,
             Command::tags => list_tags(&ctx).await,
             Command::blacklistmefromtags => {
                 blacklist_user_from_tags(&ctx, &command.member.clone().unwrap().user).await
