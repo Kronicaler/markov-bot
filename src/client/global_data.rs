@@ -1,4 +1,3 @@
-#![allow(dead_code)]
 use crate::*;
 use dashmap::{DashMap, DashSet};
 use serenity::{prelude::RwLock, Client};
