@@ -10,28 +10,16 @@ use std::{error::Error, fs};
 
 use self::{
     file_operations::{
-        append_to_markov_file, import_chain_from_file, save_markov_blacklisted_users,
+        import_chain_from_file, save_markov_blacklisted_users,
     },
     global_data::{
         get_markov_blacklisted_channels_lock, get_markov_blacklisted_users_lock,
         get_markov_chain_lock, MARKOV_EXPORT_PATH,
     },
-    markov_chain::{filter_message_for_markov_file, filter_string_for_markov_file},
+    markov_chain::{filter_message_for_markov_file},
 };
 
 use super::file_operations::create_file_if_missing;
-
-pub fn add_string_to_chain(str: &str) -> Result<bool, std::io::Error> {
-    let filtered_str = filter_string_for_markov_file(str);
-
-    if filtered_str.is_empty() {
-        return Ok(false);
-    }
-
-    append_to_markov_file(&filtered_str)?;
-
-    Ok(true)
-}
 
 pub async fn add_message_to_chain(msg: &Message, ctx: &Context) -> Result<bool, std::io::Error> {
     // if the message was not sent in a guild

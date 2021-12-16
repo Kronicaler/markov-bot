@@ -10,7 +10,6 @@ use serenity::{
             },
             message_component::ButtonStyle,
         },
-        prelude::User,
     },
     prelude::Mentionable,
 };
@@ -35,19 +34,10 @@ pub fn user_id_command(command: &ApplicationCommandInteraction) -> String {
     }
 }
 
-pub fn get_first_mentioned_user(msg: &Message) -> Option<&User> {
-    for user in &msg.mentions {
-        if user.bot {
-            continue;
-        }
-        return Option::Some(user);
-    }
-    None
-}
 /**
 It first tries to send a message in the same channel.
 
-If that fails then it sends the message to the bot channel if one is set
+If that fails then it sends the message to the tag response channel if one is set
 
 If that fails then it iterates through every channel in the guild until it finds one it can send a message in
 */

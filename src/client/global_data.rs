@@ -15,11 +15,11 @@ pub const HELP_MESSAGE: &str = "All of my commands are slash commands.
 /blacklisted-data: lists out the users the bot will not learn from
 /stop-saving-my-messages: blacklist yourself if you don't want the bot to store your messages and learn from them
 /continue-saving-my-messages: unblacklist yourself if you want the bot to save and learn from your messages
-/set-bot-channel: for admins only, set the channel the bot will talk in, if you don't want users using the bot anywhere else you'll have to do it with roles
 /create-tag: create a tag that the bot will listen for and then respond to when it is said
 /remove-tag: remove a tag
 /tags: list out the current tags
 /blacklist-me-from-tags: blacklist yourself from tags so the bot won't ping you if you trip off a tag
+/set-tag-response-channel: for admins only, set the channel the bot will talk in, if you don't want users using the bot anywhere else you'll have to do it with roles
 /version: Check the version of the bot";
 
 /// Initialize the global data for the client so it can be used from multiple threads.
