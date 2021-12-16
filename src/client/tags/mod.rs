@@ -210,11 +210,10 @@ pub async fn set_tag_response_channel(
     ctx: &Context,
     command: &ApplicationCommandInteraction,
 ) -> String {
-    let guild_id = match command.guild_id{
+    let guild_id = match command.guild_id {
         Some(guild_id) => guild_id,
         None => return "You can only use this command in a server".to_owned(),
     };
-
 
     let member = command.member.as_ref().expect("Expected member");
     let member_perms = member.permissions.expect("Couldn't get member permissions");
