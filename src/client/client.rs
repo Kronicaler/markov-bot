@@ -20,6 +20,7 @@ pub enum ButtonIds {
 
 struct Handler {}
 
+// If you want intellisense while working on the functions in this implementation, comment out this trait. It's a quirk of Rust and rust-analyzer and can't be fixed.
 #[async_trait]
 impl EventHandler for Handler {
     /// Is called when the bot connects to discord
