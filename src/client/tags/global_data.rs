@@ -3,9 +3,11 @@ use std::sync::Arc;
 use dashmap::{DashMap, DashSet};
 use serenity::prelude::{RwLock, TypeMap, TypeMapKey};
 
+pub type Listener=String;
+pub type Response=String;
 pub struct Tags;
 impl TypeMapKey for Tags {
-    type Value = Arc<DashMap<String, String>>;
+    type Value = Arc<DashMap<Listener, Response>>;
 }
 pub const TAG_PATH: &str = "data/action response.json";
 

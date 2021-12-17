@@ -120,10 +120,12 @@ pub async fn blacklist_user_from_tags(ctx: &Context, user: &User) -> String {
     }
 }
 
-/// Checks for all the listened words in the message
+/// Checks for all the tag [`Listeners`][L] in the message
 ///
-/// If a listened word is found it returns the response
-pub async fn check_for_listened_words(
+/// If a [`Listener`][L] is found it returns the response for that [`Listener`][L]
+/// 
+/// [L]: self::global_data::Listener
+pub async fn check_for_tag_listeners(
     ctx: &Context,
     words_in_message: &[String],
     user_id: UserId,

@@ -11,7 +11,7 @@ use std::env;
 use strum_macros::{Display, EnumString};
 use tokio::join;
 
-use super::tags::{blacklist_user_from_tags, check_for_listened_words};
+use super::tags::{blacklist_user_from_tags, check_for_tag_listeners};
 
 #[derive(Display, EnumString)]
 pub enum ButtonIds {
@@ -83,9 +83,9 @@ impl EventHandler for Handler {
             .collect::<Vec<String>>();
 
         if let Some(response) =
-            check_for_listened_words(&ctx, &words_in_message, msg.author.id).await
+            check_for_tag_listeners(&ctx, &words_in_message, msg.author.id).await
         {
-            send_message_to_first_available_channel(&ctx, &msg, &response).await;
+            respond_to_tag(&ctx, &msg, &response).await;
             return;
         }
 
