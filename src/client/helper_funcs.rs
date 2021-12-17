@@ -32,45 +32,47 @@ pub fn user_id_command(command: &ApplicationCommandInteraction) -> String {
     }
 }
 
-/**
-It first tries to send a message in the same channel.
+/// It first checks if a tag response channel exists for the server the message is in.
+///
+/// If there is it sends the response there.
+///
+/// If there is no tag response channel set then it first tries to send a message in the same channel.
+/// If that fails then it sends the message to the tag response channel if one is set
+/// If that fails then it iterates through every channel in the guild until it finds one it can send a message in
+pub async fn respond_to_tag(ctx: &Context, msg: &Message, message: &str) {
+    let tag_response_channels = get_tag_response_channel_id_lock(&ctx.data).await;
+    let tag_response_channel_id =
+        tag_response_channels.get(&msg.guild_id.expect("Couldn't get the guild id").0);
 
-If that fails then it sends the message to the tag response channel if one is set
-
-If that fails then it iterates through every channel in the guild until it finds one it can send a message in
-*/
-pub async fn send_message_to_first_available_channel(ctx: &Context, msg: &Message, message: &str) {
-    let bot_channels = get_tag_response_channel_id_lock(&ctx.data).await;
-    let bot_channel_id = bot_channels.get(&msg.guild_id.expect("Couldn't get the guild id").0);
-
-    if msg.channel_id.say(&ctx.http, message).await.is_err() {
-        //try sending message to bot channel
-        if let Some(channel_id) = bot_channel_id {
-            let bot_channel = ctx.cache.guild_channel(*channel_id).await;
-            if let Some(channel) = bot_channel {
-                channel
-                    .send_message(&ctx.http, |m| {
-                        if rand::random::<f32>() < 0.05 {
-                            m.components(|c| {
-                                c.create_action_row(|a| {
-                                    a.create_button(|b| {
-                                        b.label("Stop pinging me")
-                                            .style(ButtonStyle::Primary)
-                                            .custom_id(ButtonIds::BlacklistMeFromTags)
-                                    })
+    //If the server has a tag response channel send the response there
+    if let Some(channel_id) = tag_response_channel_id {
+        let bot_channel = ctx.cache.guild_channel(*channel_id).await;
+        if let Some(channel) = bot_channel {
+            channel
+                .send_message(&ctx.http, |m| {
+                    if rand::random::<f32>() < 0.05 {
+                        m.components(|c| {
+                            c.create_action_row(|a| {
+                                a.create_button(|b| {
+                                    b.label("Stop pinging me")
+                                        .style(ButtonStyle::Primary)
+                                        .custom_id(ButtonIds::BlacklistMeFromTags)
                                 })
-                            });
-                        }
-                        m.allowed_mentions(|m| m.parse(ParseValue::Users))
-                            .content(msg.author.mention().to_string() + " " + message)
-                    })
-                    .await
-                    .expect("Couldn't send message");
-                return;
-            }
+                            })
+                        });
+                    }
+                    m.allowed_mentions(|m| m.parse(ParseValue::Users))
+                        .content(msg.author.mention().to_string() + " " + message)
+                })
+                .await
+                .expect("Couldn't send message");
         }
+        return;
+    }
 
-        //iterate until it manages to send a message
+    //Try sending a message to the channel the tag listener was tripped off
+    if msg.channel_id.say(&ctx.http, message).await.is_err() {
+        //If sending a message fails iterate through the servers channels until it manages to send a message
         let channels: Vec<GuildChannel> = msg
             .guild(&ctx.cache)
             .await
