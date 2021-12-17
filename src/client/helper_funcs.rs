@@ -46,23 +46,32 @@ pub async fn respond_to_tag(ctx: &Context, msg: &Message, message: &str) {
 
     //If the server has a tag response channel send the response there
     if let Some(channel_id) = tag_response_channel_id {
-        let bot_channel = ctx.cache.guild_channel(*channel_id).await;
-        if let Some(channel) = bot_channel {
-            channel
+        let tag_response_channel = ctx.cache.guild_channel(*channel_id).await;
+        if let Some(tag_response_channel) = tag_response_channel {
+            tag_response_channel
                 .send_message(&ctx.http, |m| {
-                    if rand::random::<f32>() < 0.05 {
-                        m.components(|c| {
-                            c.create_action_row(|a| {
-                                a.create_button(|b| {
-                                    b.label("Stop pinging me")
-                                        .style(ButtonStyle::Primary)
-                                        .custom_id(ButtonIds::BlacklistMeFromTags)
+                    
+                    let response_content = if msg.channel_id == tag_response_channel.id {
+                        message.to_owned()
+                    } else {
+                        // Create this button only if the user is pinged
+                        if rand::random::<f32>() < 0.05 {
+                            m.components(|c| {
+                                c.create_action_row(|a| {
+                                    a.create_button(|b| {
+                                        b.label("Stop pinging me")
+                                            .style(ButtonStyle::Primary)
+                                            .custom_id(ButtonIds::BlacklistMeFromTags)
+                                    })
                                 })
-                            })
-                        });
-                    }
+                            });
+                        }
+
+                        msg.author.mention().to_string() + " " + message
+                    };
+
                     m.allowed_mentions(|m| m.parse(ParseValue::Users))
-                        .content(msg.author.mention().to_string() + " " + message)
+                        .content(response_content)
                 })
                 .await
                 .expect("Couldn't send message");
