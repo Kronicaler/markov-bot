@@ -226,7 +226,7 @@ pub async fn set_tag_response_channel(
     let bot_channel_ids = get_tag_response_channel_id_lock(&ctx.data).await;
     bot_channel_ids.insert(guild_id.0, channel_id);
     match save_tag_response_channel(&bot_channel_ids) {
-        Ok(_) => "Successfully set this channel as the bot channel".to_owned(),
-        Err(_) => "Something went wrong setting bot channel".to_owned(),
+        Ok(_) => "Successfully set this channel as the tag response channel".to_owned(),
+        Err(_) => "Something went wrong setting the tag response channel".to_owned(),
     }
 }
