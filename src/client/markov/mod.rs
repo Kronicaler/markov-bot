@@ -79,7 +79,7 @@ pub async fn generate_sentence(ctx: &Context) -> String {
         }
     };
 }
-/// Initializes the Markov chain from [`MARKOV_DATA_SET_PATH`]
+/// Initializes the Markov chain from [`MARKOV_DATA_SET_PATH`][global_data::MARKOV_DATA_SET_PATH]
 pub fn init() -> Result<Markov, Box<dyn Error>> {
     let mut markov_chain = Markov::new();
     markov_chain.set_state_size(3).expect("Will never fail");

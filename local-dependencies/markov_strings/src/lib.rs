@@ -335,7 +335,7 @@ impl Markov {
 
     /// Sets the maximum number of times the generator will try to generate a result.
     ///
-    /// If [`Markov::generate`] fails [max_tries] times to generate a sentence,
+    /// If [`Markov::generate`] fails `max_tries` times to generate a sentence,
     /// it returns an [`ErrorType.TriesExceeded`](enum.ErrorType.html#variant.TriesExceeded).
     ///
     /// Default value: `100`
