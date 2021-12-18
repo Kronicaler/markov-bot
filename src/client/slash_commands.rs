@@ -168,8 +168,10 @@ pub async fn create_global_commands(ctx: &Context) {
 }
 
 /// For testing purposes
+/// 
+/// TODO: call only when it's run in debug mode 
 pub async fn create_guild_commands(ctx: &Context) {
-    let testing_guild = 724_690_339_054_486_107;
+    let testing_guild = 724_690_339_054_486_107; // TODO: make into an optional environment variable
 
     GuildId(testing_guild)
         .set_application_commands(&ctx.http, |commands| {
