@@ -1,12 +1,14 @@
 mod file_operations;
-pub mod global_data;
+mod global_data;
 mod markov_chain;
+use dashmap::DashSet;
 use markov_strings::Markov;
 use serenity::{
     client::Context,
     model::{channel::Message, prelude::User},
+    prelude::RwLock,
 };
-use std::{error::Error, fs};
+use std::{error::Error, fs, sync::Arc};
 
 use self::{
     file_operations::{import_chain_from_file, save_markov_blacklisted_users},
@@ -147,4 +149,20 @@ pub async fn blacklisted_users(ctx: &Context) -> String {
     message.pop();
     message.pop();
     message
+}
+
+pub fn init_markov_data(
+    data: &mut tokio::sync::RwLockWriteGuard<serenity::prelude::TypeMap>,
+    markov: markov_strings::Markov,
+) -> Result<(), Box<dyn Error>> {
+    let blacklisted_channels_in_file: DashSet<u64> = serde_json::from_str(&fs::read_to_string(
+        create_file_if_missing(global_data::MARKOV_BLACKLISTED_CHANNELS_PATH, "[]")?,
+    )?)?;
+    let blacklisted_users_in_file: DashSet<u64> = serde_json::from_str(&fs::read_to_string(
+        create_file_if_missing(global_data::MARKOV_BLACKLISTED_USERS_PATH, "[]")?,
+    )?)?;
+    data.insert::<global_data::MarkovChain>(Arc::new(RwLock::new(markov)));
+    data.insert::<global_data::MarkovBlacklistedChannels>(Arc::new(blacklisted_channels_in_file));
+    data.insert::<global_data::MarkovBlacklistedUsers>(Arc::new(blacklisted_users_in_file));
+    Ok(())
 }

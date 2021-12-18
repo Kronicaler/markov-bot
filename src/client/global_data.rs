@@ -1,6 +1,6 @@
 use crate::*;
 use dashmap::{DashMap, DashSet};
-use serenity::{prelude::RwLock, Client};
+use serenity::{Client};
 use std::{error::Error, sync::Arc};
 
 use super::tags::global_data::{
@@ -35,12 +35,8 @@ pub async fn init_global_data_for_client(client: &Client) -> Result<(), Box<dyn 
         markov::init()?
     };
 
-    let blacklisted_channels_in_file: DashSet<u64> = serde_json::from_str(&fs::read_to_string(
-        create_file_if_missing(markov::global_data::MARKOV_BLACKLISTED_CHANNELS_PATH, "[]")?,
-    )?)?;
-    let blacklisted_users_in_file: DashSet<u64> = serde_json::from_str(&fs::read_to_string(
-        create_file_if_missing(markov::global_data::MARKOV_BLACKLISTED_USERS_PATH, "[]")?,
-    )?)?;
+    markov::init_markov_data(&mut data, markov)?;
+
     let tags: DashMap<String, String> = serde_json::from_str(&fs::read_to_string(
         create_file_if_missing(TAG_PATH, "{}")?,
     )?)?;
@@ -51,11 +47,6 @@ pub async fn init_global_data_for_client(client: &Client) -> Result<(), Box<dyn 
         create_file_if_missing(BOT_CHANNEL_PATH, "{}")?,
     )?)?;
 
-    data.insert::<markov::global_data::MarkovChain>(Arc::new(RwLock::new(markov)));
-    data.insert::<markov::global_data::MarkovBlacklistedChannels>(Arc::new(
-        blacklisted_channels_in_file,
-    ));
-    data.insert::<markov::global_data::MarkovBlacklistedUsers>(Arc::new(blacklisted_users_in_file));
     data.insert::<Tags>(Arc::new(tags));
     data.insert::<TagBlacklistedUsers>(Arc::new(user_tag_blacklist));
     data.insert::<TagResponseChannelIds>(Arc::new(bot_channel));
