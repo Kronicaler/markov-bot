@@ -1,12 +1,9 @@
 use crate::*;
-use dashmap::{DashMap, DashSet};
-use serenity::{Client};
-use std::{error::Error, sync::Arc};
 
-use super::tags::global_data::{
-    TagBlacklistedUsers, TagResponseChannelIds, Tags, BLACKLISTED_USERS_PATH, BOT_CHANNEL_PATH,
-    TAG_PATH,
-};
+use serenity::{Client};
+use std::{error::Error};
+
+use super::{tags::init_tags_data, markov::init_markov_data};
 
 pub const HELP_MESSAGE: &str = "All of my commands are slash commands.
 /ping: Pong!
@@ -35,21 +32,11 @@ pub async fn init_global_data_for_client(client: &Client) -> Result<(), Box<dyn 
         markov::init()?
     };
 
-    markov::init_markov_data(&mut data, markov)?;
+    init_markov_data(&mut data, markov)?;
 
-    let tags: DashMap<String, String> = serde_json::from_str(&fs::read_to_string(
-        create_file_if_missing(TAG_PATH, "{}")?,
-    )?)?;
-    let user_tag_blacklist: DashSet<u64> = serde_json::from_str(&fs::read_to_string(
-        create_file_if_missing(BLACKLISTED_USERS_PATH, "[]")?,
-    )?)?;
-    let bot_channel: DashMap<u64, u64> = serde_json::from_str(&fs::read_to_string(
-        create_file_if_missing(BOT_CHANNEL_PATH, "{}")?,
-    )?)?;
-
-    data.insert::<Tags>(Arc::new(tags));
-    data.insert::<TagBlacklistedUsers>(Arc::new(user_tag_blacklist));
-    data.insert::<TagResponseChannelIds>(Arc::new(bot_channel));
+    init_tags_data(data)?;
 
     Ok(())
 }
+
+

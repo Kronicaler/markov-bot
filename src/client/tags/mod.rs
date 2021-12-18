@@ -1,10 +1,13 @@
 mod file_operations;
-pub mod global_data;
+mod global_data;
+
+use std::{sync::Arc, fs, error::Error};
 
 use crate::{
     client::{tags::file_operations::save_user_tag_blacklist_to_file, Command},
     OWNER_ID,
 };
+use dashmap::{DashMap, DashSet};
 use regex::Regex;
 use serenity::{
     client::Context,
@@ -18,7 +21,9 @@ use serenity::{
     }, prelude::Mentionable, builder::ParseValue,
 };
 
-use super::ButtonIds;
+use self::global_data::{TAG_PATH, BLACKLISTED_USERS_PATH, BOT_CHANNEL_PATH, Tags, TagBlacklistedUsers, TagResponseChannelIds};
+
+use super::{ButtonIds, create_file_if_missing};
 use {
     file_operations::{save_tag_response_channel, save_tag_to_file},
     global_data::{
@@ -316,5 +321,21 @@ pub async fn respond_to_tag(ctx: &Context, msg: &Message, message: &str) {
             }
         }
     }
+}
+
+pub fn init_tags_data(mut data: tokio::sync::RwLockWriteGuard<serenity::prelude::TypeMap>) -> Result<(), Box<dyn Error>> {
+    let tags: DashMap<String, String> = serde_json::from_str(&fs::read_to_string(
+        create_file_if_missing(TAG_PATH, "{}")?,
+    )?)?;
+    let user_tag_blacklist: DashSet<u64> = serde_json::from_str(&fs::read_to_string(
+        create_file_if_missing(BLACKLISTED_USERS_PATH, "[]")?,
+    )?)?;
+    let bot_channel: DashMap<u64, u64> = serde_json::from_str(&fs::read_to_string(
+        create_file_if_missing(BOT_CHANNEL_PATH, "{}")?,
+    )?)?;
+    data.insert::<Tags>(Arc::new(tags));
+    data.insert::<TagBlacklistedUsers>(Arc::new(user_tag_blacklist));
+    data.insert::<TagResponseChannelIds>(Arc::new(bot_channel));
+    Ok(())
 }
 
