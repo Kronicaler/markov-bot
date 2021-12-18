@@ -89,7 +89,7 @@ pub fn filter_message_for_markov_file(msg: &Message) -> String {
 /// Replaces uppercase letters with their lowercase variants.
 pub fn filter_string_for_markov_file(msg: &str) -> String {
     let re = Regex::new(r#"(?:(?:https?|ftp)://|\b(?:[a-z\d]+\.))(?:(?:[^\s()<>]+|\((?:[^\s()<>]+|(?:\([^\s()<>]+\)))?\))+(?:\((?:[^\s()<>]+|(?:\(?:[^\s()<>]+\)))?\)|[^\s`!()\[\]{};:'".,<>?«»“”‘’]))?"#).expect("Invalid regular expression");
-    let mut str = re.replace_all(&msg, "").into_owned();
+    let mut str = re.replace_all(msg, "").into_owned();
     while str.ends_with(' ') {
         str.pop();
     }

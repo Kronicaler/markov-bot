@@ -51,7 +51,7 @@ pub async fn command_responses(command: &ApplicationCommandInteraction, ctx: Con
             Command::ping => "Hey, I'm alive!".to_owned(),
             Command::id => user_id_command(command),
             Command::blacklisteddata => markov::blacklisted_users(&ctx).await,
-            Command::stopsavingmymessages => match markov::add_user_to_blacklist(&user, &ctx).await
+            Command::stopsavingmymessages => match markov::add_user_to_blacklist(user, &ctx).await
             {
                 Ok(_) => format!(
                     "Added {} to data collection blacklist",
@@ -59,7 +59,7 @@ pub async fn command_responses(command: &ApplicationCommandInteraction, ctx: Con
                         Some(guild_id) => user
                             .nick_in(&ctx.http, guild_id)
                             .await
-                            .or(Some(user.name.clone()))
+                            .or_else(|| Some(user.name.clone()))
                             .expect("Should always have Some value"),
                         None => user.name.clone(),
                     }
@@ -76,14 +76,14 @@ pub async fn command_responses(command: &ApplicationCommandInteraction, ctx: Con
             Command::command => "command".to_owned(),
             Command::version => "My current version is ".to_owned() + env!("CARGO_PKG_VERSION"),
             Command::continuesavingmymessages => {
-                match markov::remove_user_from_blacklist(&user, &ctx).await {
+                match markov::remove_user_from_blacklist(user, &ctx).await {
                     Ok(_) => format!(
                         "removed {} from data collection blacklist",
                         match command.guild_id {
                             Some(guild_id) => user
                                 .nick_in(&ctx.http, guild_id)
                                 .await
-                                .or(Some(user.name.clone()))
+                                .or_else(|| Some(user.name.clone()))
                                 .expect("Should always have Some value"),
                             None => user.name.clone(),
                         }

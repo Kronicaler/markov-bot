@@ -21,13 +21,13 @@ use super::file_operations::create_file_if_missing;
 
 pub async fn add_message_to_chain(msg: &Message, ctx: &Context) -> Result<bool, std::io::Error> {
     // if the message was not sent in a guild
-    if !msg
+    if msg
         .channel_id
         .to_channel(&ctx.http)
         .await
         .expect("Couldn't get channel")
         .guild()
-        .is_some()
+        .is_none()
     {
         return Ok(false);
     }
@@ -48,9 +48,9 @@ pub async fn add_message_to_chain(msg: &Message, ctx: &Context) -> Result<bool, 
     let filtered_message = filter_message_for_markov_file(msg);
     if !filtered_message.is_empty() {
         file_operations::append_to_markov_file(&filtered_message)?;
-        return Ok(true);
+        Ok(true)
     } else {
-        return Ok(false);
+        Ok(false)
     }
 }
 
@@ -65,19 +65,15 @@ pub async fn generate_sentence(ctx: &Context) -> String {
             if cfg!(debug_assertions) {
                 message += " --debug";
             }
-            return message;
+            message
         }
-        Err(why) => {
-            return match why {
-                markov_strings::ErrorType::CorpusEmpty => "The corpus is empty, try again later!",
-                markov_strings::ErrorType::TriesExceeded => {
-                    "couldn't generate a sentence, try again!"
-                }
-                _ => "Try again later.",
-            }
-            .to_owned();
+        Err(why) => match why {
+            markov_strings::ErrorType::CorpusEmpty => "The corpus is empty, try again later!",
+            markov_strings::ErrorType::TriesExceeded => "couldn't generate a sentence, try again!",
+            _ => "Try again later.",
         }
-    };
+        .to_owned(),
+    }
 }
 /// Initializes the Markov chain from [`MARKOV_DATA_SET_PATH`][global_data::MARKOV_DATA_SET_PATH]
 pub fn init() -> Result<Markov, Box<dyn Error>> {
