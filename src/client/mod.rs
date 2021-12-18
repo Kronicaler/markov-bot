@@ -42,7 +42,7 @@ impl EventHandler for Handler {
 
         let t1 = ctx.set_activity(Activity::watching("https://github.com/TheKroni/markov-bot"));
         let t2 = create_global_commands(&ctx);
-        let t3 = create_guild_commands(&ctx);
+        let t3 = create_test_commands(&ctx);
 
         join!(t1, t2, t3);
     }

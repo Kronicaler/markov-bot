@@ -167,10 +167,10 @@ pub async fn create_global_commands(ctx: &Context) {
     .expect("Couldn't create global slash commands");
 }
 
-/// For testing purposes
+/// For testing purposes. Creates commands for a specific guild
 /// 
 /// TODO: call only when it's run in debug mode 
-pub async fn create_guild_commands(ctx: &Context) {
+pub async fn create_test_commands(ctx: &Context) {
     let testing_guild = 724_690_339_054_486_107; // TODO: make into an optional environment variable
 
     GuildId(testing_guild)
