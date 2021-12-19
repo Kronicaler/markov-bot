@@ -1,6 +1,7 @@
 mod file_operations;
 mod global_data;
 
+pub use global_data::Tag;
 use std::{error::Error, fs, sync::Arc};
 
 use crate::{
@@ -29,13 +30,13 @@ use serenity::{
 use tokio::sync::RwLockWriteGuard;
 
 use self::global_data::{
-    TagBlacklistedUsers, TagResponseChannelIds, Tags, BLACKLISTED_USERS_PATH, BOT_CHANNEL_PATH,
-    TAG_PATH,
+    TagBlacklistedUsers, TagResponseChannelIds, TagsContainer, BLACKLISTED_USERS_PATH,
+    BOT_CHANNEL_PATH, TAG_PATH,
 };
 
 use super::{create_file_if_missing, ButtonIds};
 use {
-    file_operations::{save_tag_response_channel, save_tag_to_file},
+    file_operations::{save_tag_response_channel, save_tags_to_file},
     global_data::{
         get_tag_response_channel_id_lock, get_tags_blacklisted_users_lock, get_tags_lock,
     },
@@ -46,8 +47,8 @@ pub async fn list_tags(ctx: &Context) -> String {
 
     let mut message = String::new();
 
-    for entry in tag.iter() {
-        message += &format!("{}, ", entry.key());
+    for tag in tag.iter() {
+        message += &format!("{}, ", tag.listener);
     }
     message.pop();
     message.pop();
@@ -64,15 +65,17 @@ pub async fn remove_tag(ctx: &Context, command: &ApplicationCommandInteraction) 
         .resolved
         .as_ref()
         .expect("Expected listener value");
-    let tag = get_tags_lock(&ctx.data).await;
+    let tags = get_tags_lock(&ctx.data).await;
 
     if let ApplicationCommandInteractionDataOptionValue::String(listener) = listener {
-        if tag.contains_key(listener) {
-            tag.remove(listener);
-            save_tag_to_file(&tag);
-            return "Successfully removed the tag".to_owned();
+        for tag in tags.as_ref().iter() {
+            if &tag.listener == listener {
+                tags.remove(&tag);
+                save_tags_to_file(&tags);
+                return "Successfully removed the tag".to_owned();
+            }
         }
-        return "That tag doesn't exist".to_owned();
+        return "Couldn't find the tag".to_owned();
     }
 
     "Something went wrong".to_owned()
@@ -112,11 +115,15 @@ pub async fn create_tag(ctx: &Context, command: &ApplicationCommandInteraction) 
 
             let tags = get_tags_lock(&ctx.data).await;
 
-            tags.insert(
-                listener.to_lowercase().trim().to_owned(),
-                response.trim().to_owned(),
-            );
-            save_tag_to_file(&tags);
+            let tag = Tag {
+                listener: listener.to_lowercase().trim().to_owned(),
+                response: response.trim().to_owned(),
+                creator_name: command.user.name.to_owned(),
+                creator_id: command.user.id.0,
+            };
+
+            tags.insert(tag);
+            save_tags_to_file(&tags);
             return "Set tag".to_owned();
         }
     }
@@ -154,9 +161,9 @@ pub async fn check_for_tag_listeners(
         return None;
     }
 
-    for entry in tags.iter() {
-        let listener = entry.key();
-        let response = entry.value();
+    for tag in tags.iter() {
+        let listener = &tag.listener;
+        let response = &tag.response;
 
         let listener_words = listener
             .split(' ')
@@ -182,9 +189,9 @@ pub async fn check_for_tag_listeners(
         }
     }
 
-    for entry in tags.iter() {
-        let listener = entry.key();
-        let response = entry.value();
+    for tag in tags.iter() {
+        let listener = &tag.listener;
+        let response = &tag.response;
 
         let listener_words = listener.split(' ').map(ToString::to_string);
 
@@ -333,16 +340,16 @@ pub async fn respond_to_tag(ctx: &Context, msg: &Message, message: &str) {
 }
 
 pub fn init_tags_data(mut data: RwLockWriteGuard<TypeMap>) -> Result<(), Box<dyn Error>> {
-    let tags: DashMap<String, String> = serde_json::from_str(&fs::read_to_string(
-        create_file_if_missing(TAG_PATH, "{}")?,
-    )?)?;
+    let tags: DashSet<Tag> = serde_json::from_str(&fs::read_to_string(create_file_if_missing(
+        TAG_PATH, "[]",
+    )?)?)?;
     let user_tag_blacklist: DashSet<u64> = serde_json::from_str(&fs::read_to_string(
         create_file_if_missing(BLACKLISTED_USERS_PATH, "[]")?,
     )?)?;
     let bot_channel: DashMap<u64, u64> = serde_json::from_str(&fs::read_to_string(
         create_file_if_missing(BOT_CHANNEL_PATH, "{}")?,
     )?)?;
-    data.insert::<Tags>(Arc::new(tags));
+    data.insert::<TagsContainer>(Arc::new(tags));
     data.insert::<TagBlacklistedUsers>(Arc::new(user_tag_blacklist));
     data.insert::<TagResponseChannelIds>(Arc::new(bot_channel));
     Ok(())

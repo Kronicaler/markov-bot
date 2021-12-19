@@ -20,6 +20,7 @@ strum = "0.23.0"
 strum_macros = "0.23.1"
 rand = "0.8.4"
 dashmap = {version="5.0.0", features=["serde"] }
+serde = "1.0.132"
 
 [patch.crates-io]
 markov_strings = { path = "local-dependencies/markov_strings" }
