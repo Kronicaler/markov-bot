@@ -1,7 +1,7 @@
 mod file_operations;
 mod global_data;
 
-use std::{sync::Arc, fs, error::Error};
+use std::{error::Error, fs, sync::Arc};
 
 use crate::{
     client::{tags::file_operations::save_user_tag_blacklist_to_file, Command},
@@ -10,20 +10,30 @@ use crate::{
 use dashmap::{DashMap, DashSet};
 use regex::Regex;
 use serenity::{
+    builder::ParseValue,
     client::Context,
     model::{
+        channel::{GuildChannel, Message},
         id::UserId,
-        interactions::{application_command::{
-            ApplicationCommandInteraction, ApplicationCommandInteractionDataOptionValue,
-            ApplicationCommandOptionType,
-        }, message_component::ButtonStyle},
-        prelude::User, channel::{Message, GuildChannel},
-    }, prelude::Mentionable, builder::ParseValue,
+        interactions::{
+            application_command::{
+                ApplicationCommandInteraction, ApplicationCommandInteractionDataOptionValue,
+                ApplicationCommandOptionType,
+            },
+            message_component::ButtonStyle,
+        },
+        prelude::User,
+    },
+    prelude::{Mentionable, TypeMap},
+};
+use tokio::sync::RwLockWriteGuard;
+
+use self::global_data::{
+    TagBlacklistedUsers, TagResponseChannelIds, Tags, BLACKLISTED_USERS_PATH, BOT_CHANNEL_PATH,
+    TAG_PATH,
 };
 
-use self::global_data::{TAG_PATH, BLACKLISTED_USERS_PATH, BOT_CHANNEL_PATH, Tags, TagBlacklistedUsers, TagResponseChannelIds};
-
-use super::{ButtonIds, create_file_if_missing};
+use super::{create_file_if_missing, ButtonIds};
 use {
     file_operations::{save_tag_response_channel, save_tag_to_file},
     global_data::{
@@ -130,7 +140,7 @@ pub async fn blacklist_user_from_tags(ctx: &Context, user: &User) -> String {
 /// Checks for all the tag [`Listeners`][L] in the message
 ///
 /// If a [`Listener`][L] is found it returns the response for that [`Listener`][L]
-/// 
+///
 /// [L]: self::global_data::Listener
 pub async fn check_for_tag_listeners(
     ctx: &Context,
@@ -258,7 +268,6 @@ pub async fn respond_to_tag(ctx: &Context, msg: &Message, message: &str) {
         if let Some(tag_response_channel) = tag_response_channel {
             tag_response_channel
                 .send_message(&ctx.http, |m| {
-                    
                     let response_content = if msg.channel_id == tag_response_channel.id {
                         message.to_owned()
                     } else {
@@ -323,7 +332,7 @@ pub async fn respond_to_tag(ctx: &Context, msg: &Message, message: &str) {
     }
 }
 
-pub fn init_tags_data(mut data: tokio::sync::RwLockWriteGuard<serenity::prelude::TypeMap>) -> Result<(), Box<dyn Error>> {
+pub fn init_tags_data(mut data: RwLockWriteGuard<TypeMap>) -> Result<(), Box<dyn Error>> {
     let tags: DashMap<String, String> = serde_json::from_str(&fs::read_to_string(
         create_file_if_missing(TAG_PATH, "{}")?,
     )?)?;
@@ -338,4 +347,3 @@ pub fn init_tags_data(mut data: tokio::sync::RwLockWriteGuard<serenity::prelude:
     data.insert::<TagResponseChannelIds>(Arc::new(bot_channel));
     Ok(())
 }
-

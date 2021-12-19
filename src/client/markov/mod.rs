@@ -6,9 +6,10 @@ use markov_strings::Markov;
 use serenity::{
     client::Context,
     model::{channel::Message, prelude::User},
-    prelude::RwLock,
+    prelude::{RwLock, TypeMap},
 };
 use std::{error::Error, fs, sync::Arc};
+use tokio::sync::RwLockWriteGuard;
 
 use self::{
     file_operations::{import_chain_from_file, save_markov_blacklisted_users},
@@ -152,7 +153,7 @@ pub async fn blacklisted_users(ctx: &Context) -> String {
 }
 
 pub fn init_markov_data(
-    data: &mut tokio::sync::RwLockWriteGuard<serenity::prelude::TypeMap>,
+    data: &mut RwLockWriteGuard<TypeMap>,
     markov: markov_strings::Markov,
 ) -> Result<(), Box<dyn Error>> {
     let blacklisted_channels_in_file: DashSet<u64> = serde_json::from_str(&fs::read_to_string(
