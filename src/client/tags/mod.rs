@@ -4,10 +4,7 @@ mod global_data;
 pub use global_data::Tag;
 use std::{error::Error, fs, sync::Arc};
 
-use crate::{
-    client::{tags::file_operations::save_user_tag_blacklist_to_file, Command},
-    OWNER_ID,
-};
+use crate::client::{tags::file_operations::save_user_tag_blacklist_to_file, Command};
 use dashmap::{DashMap, DashSet};
 use regex::Regex;
 use serenity::{
@@ -244,7 +241,16 @@ pub async fn set_tag_response_channel(
     let member = command.member.as_ref().expect("Expected member");
     let member_perms = member.permissions.expect("Couldn't get member permissions");
 
-    if !member_perms.administrator() && member.user.id != OWNER_ID {
+    if !member_perms.administrator()
+        && member.user.id
+            != ctx
+                .http
+                .get_current_application_info()
+                .await
+                .expect("Couldn't fetch the owner id")
+                .owner
+                .id
+    {
         return "You need to have the Administrator permission to invoke this command".to_owned();
     }
 

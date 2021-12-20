@@ -11,9 +11,6 @@ use serenity::model::{id::GuildId, interactions::*};
 
 use std::{collections::HashSet, panic};
 
-/// Owner of the bot. Generally shouldn't be used for anything but local testing but this should actually just become an environment variable in the future
-const OWNER_ID: u64 = 594_772_815_283_093_524;
-
 #[tokio::main]
 async fn main() {
     create_data_folders();

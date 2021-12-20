@@ -38,6 +38,8 @@ struct Handler {}
 impl EventHandler for Handler {
     /// Is called when the bot connects to discord
     async fn ready(&self, ctx: Context, ready: Ready) {
+        leave_unknown_guilds(&ready, &ctx).await;
+
         println!("{} is connected!", ready.user.name);
 
         let t1 = ctx.set_activity(Activity::watching("https://github.com/TheKroni/markov-bot"));
