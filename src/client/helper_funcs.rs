@@ -1,6 +1,12 @@
-use serenity::{model::{interactions::application_command::{
-    ApplicationCommandInteraction, ApplicationCommandInteractionDataOptionValue,
-}, prelude::Ready}, client::Context};
+use serenity::{
+    client::Context,
+    model::{
+        interactions::application_command::{
+            ApplicationCommandInteraction, ApplicationCommandInteractionDataOptionValue,
+        },
+        prelude::Ready,
+    },
+};
 
 pub fn user_id_command(command: &ApplicationCommandInteraction) -> String {
     let options = command
@@ -19,26 +25,46 @@ pub fn user_id_command(command: &ApplicationCommandInteraction) -> String {
 }
 
 pub async fn leave_unknown_guilds(ready: &Ready, ctx: &Context) {
+    let bot_owner = ctx
+        .http
+        .get_current_application_info()
+        .await
+        .expect("couldn't get application info")
+        .owner;
     for guild in &ready.guilds {
-        match guild
-            .id()
-            .member(
-                &ctx.http,
-                ctx.http
-                    .get_current_application_info()
-                    .await
-                    .expect("couldn't get application info")
-                    .owner
-                    .id,
-            )
-            .await
-        {
-            Err(_) => guild
-                .id()
-                .leave(&ctx.http)
-                .await
-                .expect("couldn't leave guild"),
-            _ => {}
-        };
+        let bot_owner_in_guild = guild.id().member(&ctx.http, bot_owner.id).await;
+
+        match bot_owner_in_guild {
+            Ok(_) => {}
+            Err(why) => match why {
+                serenity::Error::Http(_) => {
+                    println!("Couldn't find user in guild");
+                    guild
+                        .id()
+                        .leave(&ctx.http)
+                        .await
+                        .expect("Couldn't leave guild");
+                    println!(
+                        "Left guild {} owned by {}",
+                        guild
+                            .id()
+                            .name(&ctx.cache)
+                            .await
+                            .unwrap_or("NO_NAME".to_owned()),
+                        guild
+                            .id()
+                            .to_guild_cached(&ctx.cache)
+                            .await
+                            .expect("Couldn't fetch server from cache")
+                            .owner_id
+                            .to_user(&ctx.http)
+                            .await
+                            .expect("Couldn't fetch owner of guild")
+                            .tag()
+                    )
+                }
+                _ => {}
+            },
+        }
     }
 }

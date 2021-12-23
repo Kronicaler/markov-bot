@@ -69,6 +69,7 @@ pub async fn remove_tag(ctx: &Context, command: &ApplicationCommandInteraction) 
             if &tag.listener == listener {
                 tags.remove(&tag);
                 save_tags_to_file(&tags);
+                println!("{} removed tag {}", command.user.name, tag.listener);
                 return "Successfully removed the tag".to_owned();
             }
         }
