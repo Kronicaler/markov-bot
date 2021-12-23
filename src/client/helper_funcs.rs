@@ -24,6 +24,7 @@ pub fn user_id_command(command: &ApplicationCommandInteraction) -> String {
     }
 }
 
+/// Leaves all guilds in which it can't find the bot owner
 pub async fn leave_unknown_guilds(ready: &Ready, ctx: &Context) {
     let bot_owner = ctx
         .http
