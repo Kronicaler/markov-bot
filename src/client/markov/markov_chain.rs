@@ -9,7 +9,7 @@ const MIN_NUM_OF_WORDS: usize = 5;
 /// Removes links, User IDs, emotes, animated emotes, non alphanumeric characters, line feeds, extra whitespace, and role IDs.
 ///
 /// Replaces uppercase letters with their lowercase variants.
-pub fn filter_message_for_markov_file(msg: &Message) -> String {
+pub fn filter_message_for_markov_file(msg: &Message) -> Option<String> {
     let re = Regex::new(r#"(?:(?:https?|ftp)://|\b(?:[a-z\d]+\.))(?:(?:[^\s()<>]+|\((?:[^\s()<>]+|(?:\([^\s()<>]+\)))?\))+(?:\((?:[^\s()<>]+|(?:\(?:[^\s()<>]+\)))?\)|[^\s`!()\[\]{};:'".,<>?«»“”‘’]))?"#).expect("Invalid regular expression");
     let mut str = re.replace_all(&msg.content, "").into_owned();
     while str.ends_with(' ') {
@@ -77,10 +77,10 @@ pub fn filter_message_for_markov_file(msg: &Message) -> String {
     }
 
     if filtered_message.trim().split(' ').count() < MIN_NUM_OF_WORDS {
-        return "".to_owned();
+        return None;
     }
 
-    return filtered_message.trim().to_owned();
+    return Some(filtered_message.trim().to_owned());
 }
 /// Filters a string so it can be inserted into the Markov data set.
 ///

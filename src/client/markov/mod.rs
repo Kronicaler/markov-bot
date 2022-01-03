@@ -49,7 +49,7 @@ pub async fn add_message_to_chain(msg: &Message, ctx: &Context) -> Result<bool, 
     }
 
     let filtered_message = filter_message_for_markov_file(msg);
-    if !filtered_message.is_empty() {
+    if let Some(filtered_message) = filtered_message {
         file_operations::append_to_markov_file(&filtered_message)?;
         Ok(true)
     } else {
