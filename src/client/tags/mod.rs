@@ -65,7 +65,7 @@ pub async fn remove_tag(ctx: &Context, command: &ApplicationCommandInteraction) 
     let tags = get_tags_lock(&ctx.data).await;
 
     if let ApplicationCommandInteractionDataOptionValue::String(listener) = listener {
-        for tag in tags.as_ref().iter() {
+        for tag in tags.as_ref().clone().iter() {
             if &tag.listener == listener {
                 tags.remove(&tag);
                 save_tags_to_file(&tags);
