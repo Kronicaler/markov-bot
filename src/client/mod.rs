@@ -108,7 +108,6 @@ impl EventHandler for Handler {
             .mentions_me(&ctx.http)
             .await
             .expect("Couldn't read cache")
-            && !msg.author.bot
         {
             if words_in_message.contains(&"help".to_owned()) {
                 msg.channel_id
