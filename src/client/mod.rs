@@ -5,10 +5,10 @@ pub mod markov;
 pub mod slash_commands;
 pub mod tags;
 
-pub use file_operations::*;
-pub use global_data::*;
-pub use helper_funcs::*;
-pub use slash_commands::*;
+use file_operations::*;
+use global_data::*;
+use helper_funcs::*;
+use slash_commands::*;
 
 use self::tags::respond_to_tag;
 use super::tags::{blacklist_user_from_tags, check_for_tag_listeners};

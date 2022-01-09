@@ -1,6 +1,9 @@
-use super::tags::{
-    blacklist_user_from_tags, create_tag, create_tag_commands, list_tags, remove_tag,
-    set_tag_response_channel,
+use super::{
+    helper_funcs::user_id_command,
+    tags::{
+        blacklist_user_from_tags, create_tag, create_tag_commands, list_tags, remove_tag,
+        set_tag_response_channel,
+    },
 };
 use crate::*;
 use serenity::{
@@ -73,7 +76,7 @@ pub async fn command_responses(command: &ApplicationCommandInteraction, ctx: Con
             Command::tags => list_tags(&ctx).await,
             Command::blacklistmefromtags => blacklist_user_from_tags(&ctx, user).await,
             Command::settagresponsechannel => set_tag_response_channel(&ctx, command).await,
-            Command::help => HELP_MESSAGE.to_owned(),
+            Command::help => global_data::HELP_MESSAGE.to_owned(),
             Command::command => "command".to_owned(),
             Command::version => "My current version is ".to_owned() + env!("CARGO_PKG_VERSION"),
             Command::continuesavingmymessages => {
