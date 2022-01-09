@@ -8,7 +8,6 @@ mod unit_tests;
 
 use client::*;
 use serenity::model::{id::GuildId, interactions::*};
-use std::{collections::HashSet, panic};
 
 #[tokio::main]
 async fn main() {

@@ -12,12 +12,9 @@ pub use slash_commands::*;
 
 use self::tags::respond_to_tag;
 use super::tags::{blacklist_user_from_tags, check_for_tag_listeners};
-use crate::*;
 use serenity::{
     async_trait,
     client::{Context, EventHandler},
-    framework::StandardFramework,
-    http::Http,
     model::{interactions::Interaction, prelude::*},
     Client,
 };
@@ -130,24 +127,8 @@ pub async fn start_client() {
         .parse()
         .expect("Couldn't parse the APPLICATION_ID");
 
-    let http = Http::new_with_token(&token);
-
-    let owners = match http.get_current_application_info().await {
-        Ok(info) => {
-            let mut owners = HashSet::new();
-            owners.insert(info.owner.id);
-
-            owners
-        }
-        Err(why) => panic!("Could not access application info: {:?}", why),
-    };
-
-    let framework =
-        StandardFramework::new().configure(|c| c.owners(owners).on_mention(Some(application_id)));
-
     let mut client = Client::builder(token)
         .application_id(application_id.0)
-        .framework(framework)
         .event_handler(Handler {})
         .await
         .expect("Error creating client");
