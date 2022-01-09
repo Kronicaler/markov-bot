@@ -1,11 +1,14 @@
 mod file_operations;
 mod global_data;
 
-pub use global_data::Tag;
-use std::{error::Error, fs, sync::Arc};
-
+use self::global_data::{
+    TagBlacklistedUsers, TagResponseChannelIds, TagsContainer, BLACKLISTED_USERS_PATH,
+    BOT_CHANNEL_PATH, TAG_PATH,
+};
+use super::{create_file_if_missing, ButtonIds};
 use crate::client::{tags::file_operations::save_user_tag_blacklist_to_file, Command};
 use dashmap::{DashMap, DashSet};
+pub use global_data::Tag;
 use regex::Regex;
 use serenity::{
     builder::ParseValue,
@@ -24,14 +27,8 @@ use serenity::{
     },
     prelude::{Mentionable, TypeMap},
 };
+use std::{error::Error, fs, sync::Arc};
 use tokio::sync::RwLockWriteGuard;
-
-use self::global_data::{
-    TagBlacklistedUsers, TagResponseChannelIds, TagsContainer, BLACKLISTED_USERS_PATH,
-    BOT_CHANNEL_PATH, TAG_PATH,
-};
-
-use super::{create_file_if_missing, ButtonIds};
 use {
     file_operations::{save_tag_response_channel, save_tags_to_file},
     global_data::{

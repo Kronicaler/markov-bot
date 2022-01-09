@@ -1,18 +1,15 @@
+use super::{
+    global_data::{MARKOV_BLACKLISTED_USERS_PATH, MARKOV_DATA_SET_PATH, MARKOV_EXPORT_PATH},
+    markov_chain::filter_string_for_markov_file,
+};
+use crate::client::file_operations::create_file_if_missing;
+use dashmap::DashSet;
+use markov_strings::{ImportExport, InputData};
+use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use std::{
     error::Error,
     fs::{self, OpenOptions},
     io::Write,
-};
-
-use dashmap::DashSet;
-use markov_strings::{ImportExport, InputData};
-use rayon::iter::{IntoParallelIterator, ParallelIterator};
-
-use crate::client::file_operations::create_file_if_missing;
-
-use super::{
-    global_data::{MARKOV_BLACKLISTED_USERS_PATH, MARKOV_DATA_SET_PATH, MARKOV_EXPORT_PATH},
-    markov_chain::filter_string_for_markov_file,
 };
 
 /// Append a sentence to the markov file

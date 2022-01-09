@@ -1,15 +1,6 @@
 mod file_operations;
 mod global_data;
 mod markov_chain;
-use dashmap::DashSet;
-use markov_strings::Markov;
-use serenity::{
-    client::Context,
-    model::{channel::Message, prelude::User},
-    prelude::{RwLock, TypeMap},
-};
-use std::{error::Error, fs, sync::Arc};
-use tokio::sync::RwLockWriteGuard;
 
 use self::{
     file_operations::{import_chain_from_file, save_markov_blacklisted_users},
@@ -19,8 +10,16 @@ use self::{
     },
     markov_chain::filter_message_for_markov_file,
 };
-
 use super::file_operations::create_file_if_missing;
+use dashmap::DashSet;
+use markov_strings::Markov;
+use serenity::{
+    client::Context,
+    model::{channel::Message, prelude::User},
+    prelude::{RwLock, TypeMap},
+};
+use std::{error::Error, fs, sync::Arc};
+use tokio::sync::RwLockWriteGuard;
 
 pub async fn add_message_to_chain(msg: &Message, ctx: &Context) -> Result<bool, std::io::Error> {
     // if the message was not sent in a guild

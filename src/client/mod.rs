@@ -10,6 +10,8 @@ pub use global_data::*;
 pub use helper_funcs::*;
 pub use slash_commands::*;
 
+use self::tags::respond_to_tag;
+use super::tags::{blacklist_user_from_tags, check_for_tag_listeners};
 use crate::*;
 use serenity::{
     async_trait,
@@ -22,10 +24,6 @@ use serenity::{
 use std::env;
 use strum_macros::{Display, EnumString};
 use tokio::join;
-
-use self::tags::respond_to_tag;
-
-use super::tags::{blacklist_user_from_tags, check_for_tag_listeners};
 
 #[derive(Display, EnumString)]
 pub enum ButtonIds {

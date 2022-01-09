@@ -1,9 +1,7 @@
+use super::{markov::init_markov_data, tags::init_tags_data};
 use crate::*;
-
-use serenity::{Client};
-use std::{error::Error};
-
-use super::{tags::init_tags_data, markov::init_markov_data};
+use serenity::Client;
+use std::error::Error;
 
 pub const HELP_MESSAGE: &str = "All of my commands are slash commands.
 /ping: Pong!
@@ -38,5 +36,3 @@ pub async fn init_global_data_for_client(client: &Client) -> Result<(), Box<dyn 
 
     Ok(())
 }
-
-

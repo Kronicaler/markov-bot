@@ -1,8 +1,8 @@
-use std::sync::Arc;
-
 use dashmap::{DashMap, DashSet};
 use serde::{Deserialize, Serialize};
 use serenity::prelude::{RwLock, TypeMap, TypeMapKey};
+use std::sync::Arc;
+
 #[derive(Hash, Eq, PartialEq, Clone, Serialize, Deserialize)]
 pub struct Tag {
     pub listener: String,

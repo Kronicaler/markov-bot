@@ -1,11 +1,9 @@
-use std::fs;
-
-use dashmap::{DashMap, DashSet};
-
 use super::{
     global_data::{BLACKLISTED_USERS_PATH, BOT_CHANNEL_PATH, TAG_PATH},
     Tag,
 };
+use dashmap::{DashMap, DashSet};
+use std::fs;
 
 pub fn save_user_tag_blacklist_to_file(blacklist: &DashSet<u64>) {
     fs::write(

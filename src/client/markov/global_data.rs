@@ -1,8 +1,7 @@
-use std::sync::Arc;
-
 use dashmap::DashSet;
 use markov_strings::Markov;
 use serenity::prelude::{RwLock, TypeMap, TypeMapKey};
+use std::sync::Arc;
 
 pub struct MarkovChain;
 impl TypeMapKey for MarkovChain {

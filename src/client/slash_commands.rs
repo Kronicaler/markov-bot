@@ -1,5 +1,7 @@
-use std::str::FromStr;
-
+use super::tags::{
+    blacklist_user_from_tags, create_tag, create_tag_commands, list_tags, remove_tag,
+    set_tag_response_channel,
+};
 use crate::*;
 use serenity::{
     client::Context,
@@ -7,12 +9,8 @@ use serenity::{
         ApplicationCommand, ApplicationCommandInteraction, ApplicationCommandOptionType,
     },
 };
+use std::str::FromStr;
 use strum_macros::{Display, EnumString};
-
-use super::tags::{
-    blacklist_user_from_tags, create_tag, create_tag_commands, list_tags, remove_tag,
-    set_tag_response_channel,
-};
 
 /// All the slash commands the bot has implemented
 #[allow(non_camel_case_types)]
@@ -51,21 +49,24 @@ pub async fn command_responses(command: &ApplicationCommandInteraction, ctx: Con
             Command::ping => "Hey, I'm alive!".to_owned(),
             Command::id => user_id_command(command),
             Command::blacklisteddata => markov::blacklisted_users(&ctx).await,
-            Command::stopsavingmymessages => match markov::add_user_to_blacklist(user, &ctx).await
-            {
-                Ok(_) => format!(
-                    "Added {} to data collection blacklist",
-                    match command.guild_id {
-                        Some(guild_id) => user
-                            .nick_in(&ctx.http, guild_id)
-                            .await
-                            .or_else(|| Some(user.name.clone()))
-                            .expect("Should always have Some value"),
-                        None => user.name.clone(),
+            Command::stopsavingmymessages => {
+                match markov::add_user_to_blacklist(user, &ctx).await {
+                    Ok(_) => format!(
+                        "Added {} to data collection blacklist",
+                        match command.guild_id {
+                            Some(guild_id) => user
+                                .nick_in(&ctx.http, guild_id)
+                                .await
+                                .or_else(|| Some(user.name.clone()))
+                                .expect("Should always have Some value"),
+                            None => user.name.clone(),
+                        }
+                    ),
+                    Err(_) => {
+                        "Something went wrong while adding you to the blacklist :(".to_owned()
                     }
-                ),
-                Err(_) => "Something went wrong while adding you to the blacklist :(".to_owned(),
-            },
+                }
+            }
             Command::testcommand => test_command(),
             Command::createtag => create_tag(&ctx, command).await,
             Command::removetag => remove_tag(&ctx, command).await,
@@ -168,8 +169,8 @@ pub async fn create_global_commands(ctx: &Context) {
 }
 
 /// For testing purposes. Creates commands for a specific guild
-/// 
-/// TODO: call only when it's run in debug mode 
+///
+/// TODO: call only when it's run in debug mode
 pub async fn create_test_commands(ctx: &Context) {
     let testing_guild = 724_690_339_054_486_107; // TODO: make into an optional environment variable
 
