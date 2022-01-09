@@ -82,7 +82,7 @@ impl EventHandler for Handler {
         }
     }
 
-    /// Is called by the framework whenever a user sends a message in a server or in the bots DMs
+    /// Is called by the framework whenever a user sends a message in a guild or in the bots DMs
     async fn message(&self, ctx: Context, msg: Message) {
         if msg.author.bot {
             return;

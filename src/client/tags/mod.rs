@@ -264,7 +264,7 @@ pub async fn set_tag_response_channel(
     }
 }
 
-/// It first checks if a tag response channel exists for the server the message is in.
+/// It first checks if a tag response channel exists for the guild the message is in.
 ///
 /// If there is it sends the response there.
 ///
@@ -276,7 +276,7 @@ pub async fn respond_to_tag(ctx: &Context, msg: &Message, message: &str) {
     let tag_response_channel_id =
         tag_response_channels.get(&msg.guild_id.expect("Couldn't get the guild id").0);
 
-    //If the server has a tag response channel send the response there
+    //If the guild has a tag response channel send the response there
     if let Some(channel_id) = tag_response_channel_id {
         let tag_response_channel = ctx.cache.guild_channel(*channel_id).await;
         if let Some(tag_response_channel) = tag_response_channel {
@@ -312,7 +312,7 @@ pub async fn respond_to_tag(ctx: &Context, msg: &Message, message: &str) {
 
     //Try sending a message to the channel the tag listener was tripped off
     if msg.channel_id.say(&ctx.http, message).await.is_err() {
-        //If sending a message fails iterate through the servers channels until it manages to send a message
+        //If sending a message fails iterate through the guild channels until it manages to send a message
         let channels: Vec<GuildChannel> = msg
             .guild(&ctx.cache)
             .await

@@ -22,7 +22,7 @@ impl TypeMapKey for TagBlacklistedUsers {
 }
 pub const BLACKLISTED_USERS_PATH: &str = "data/user listener blacklist.json";
 
-///Server, Channel
+///Guild, Channel
 pub struct TagResponseChannelIds;
 impl TypeMapKey for TagResponseChannelIds {
     type Value = Arc<DashMap<u64, u64>>;
