@@ -109,7 +109,7 @@ pub async fn command_responses(command: &ApplicationCommandInteraction, ctx: Con
         })
         .await
     {
-        eprintln!("Cannot respond to slash command: {}", why);
+        eprintln!("Cannot respond to slash command: {why}");
     }
 }
 

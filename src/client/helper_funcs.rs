@@ -40,24 +40,27 @@ pub async fn leave_unknown_guilds(ready: &Ready, ctx: &Context) {
         if let Err(serenity::Error::Http(_)) = bot_owner_in_guild {
             println!("Couldn't find bot owner in guild");
 
-            guild_id.leave(&ctx.http).await.expect("Couldn't leave guild");
+            guild_id
+                .leave(&ctx.http)
+                .await
+                .expect("Couldn't leave guild");
 
-            println!(
-                "Left guild {} owned by {}",
-                guild_id
-                    .name(&ctx.cache)
-                    .await
-                    .unwrap_or_else(|| "NO_NAME".to_owned()),
-                guild_id
-                    .to_guild_cached(&ctx.cache)
-                    .await
-                    .expect("Couldn't fetch guild from cache")
-                    .owner_id
-                    .to_user(&ctx.http)
-                    .await
-                    .expect("Couldn't fetch owner of guild")
-                    .tag()
-            )
+            let guild_name = guild_id
+                .name(&ctx.cache)
+                .await
+                .unwrap_or_else(|| "NO_NAME".to_owned());
+
+            let guild_owner = guild_id
+                .to_guild_cached(&ctx.cache)
+                .await
+                .expect("Couldn't fetch guild from cache")
+                .owner_id
+                .to_user(&ctx.http)
+                .await
+                .expect("Couldn't fetch owner of guild")
+                .tag();
+
+            println!("Left guild {guild_name} owned by {guild_owner}",)
         }
     }
 }
