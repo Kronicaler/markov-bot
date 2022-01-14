@@ -10,7 +10,10 @@ const MIN_NUM_OF_WORDS: usize = 5;
 ///
 /// Replaces uppercase letters with their lowercase variants.
 pub fn filter_message_for_markov_file(msg: &Message) -> Option<String> {
-    let re = Regex::new(r#"(?:(?:https?|ftp)://|\b(?:[a-z\d]+\.))(?:(?:[^\s()<>]+|\((?:[^\s()<>]+|(?:\([^\s()<>]+\)))?\))+(?:\((?:[^\s()<>]+|(?:\(?:[^\s()<>]+\)))?\)|[^\s`!()\[\]{};:'".,<>?«»“”‘’]))?"#).expect("Invalid regular expression");
+    let re = 
+    Regex::new(r#"(?:(?:https?|ftp)://|\b(?:[a-z\d]+\.))(?:(?:[^\s()<>]+|\((?:[^\s()<>]+|(?:\([^\s()<>]+\)))?\))+(?:\((?:[^\s()<>]+|(?:\(?:[^\s()<>]+\)))?\)|[^\s`!()\[\]{};:'".,<>?«»“”‘’]))?"#)
+    .expect("Invalid regular expression");
+    
     let mut str = re.replace_all(&msg.content, "").into_owned();
     while str.ends_with(' ') {
         str.pop();
@@ -88,7 +91,10 @@ pub fn filter_message_for_markov_file(msg: &Message) -> Option<String> {
 ///
 /// Replaces uppercase letters with their lowercase variants.
 pub fn filter_string_for_markov_file(msg: &str) -> String {
-    let re = Regex::new(r#"(?:(?:https?|ftp)://|\b(?:[a-z\d]+\.))(?:(?:[^\s()<>]+|\((?:[^\s()<>]+|(?:\([^\s()<>]+\)))?\))+(?:\((?:[^\s()<>]+|(?:\(?:[^\s()<>]+\)))?\)|[^\s`!()\[\]{};:'".,<>?«»“”‘’]))?"#).expect("Invalid regular expression");
+    let re = 
+    Regex::new(r#"(?:(?:https?|ftp)://|\b(?:[a-z\d]+\.))(?:(?:[^\s()<>]+|\((?:[^\s()<>]+|(?:\([^\s()<>]+\)))?\))+(?:\((?:[^\s()<>]+|(?:\(?:[^\s()<>]+\)))?\)|[^\s`!()\[\]{};:'".,<>?«»“”‘’]))?"#)
+    .expect("Invalid regular expression");
+
     let mut str = re.replace_all(msg, "").into_owned();
     while str.ends_with(' ') {
         str.pop();
