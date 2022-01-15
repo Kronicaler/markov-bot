@@ -8,8 +8,8 @@ authors = ["Kroni"]
 edition = "2021"
 
 [dependencies]
-serenity = { version="0.10.9", default-features = false, features = ["cache", "client", "gateway", "rustls_backend", "model", "unstable_discord_api"] }
-tokio = { version = "1.8.0", features = ["macros", "rt-multi-thread"] }
+serenity = { version="0.10.9", default-features = false, features = ["cache", "client", "gateway", "rustls_backend", "model", "unstable_discord_api", "voice"] }
+tokio = { version = "1.8.0", features = ["macros", "rt-multi-thread", "signal"] }
 serde_json = "1.0"
 regex = "1.5.4"
 markov_strings = "0.1.4"
@@ -21,6 +21,7 @@ strum_macros = "0.23.1"
 rand = "0.8.4"
 dashmap = {version="5.0.0", features=["serde"] }
 serde = "1.0.132"
+songbird = {version="0.2", features=["builtin-queue", "serenity"]}
 
 [patch.crates-io]
 markov_strings = { path = "local-dependencies/markov_strings" }

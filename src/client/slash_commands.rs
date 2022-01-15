@@ -41,6 +41,14 @@ pub enum Command {
     testcommand,
     command,
     version,
+
+    // =====VOICE=====
+    join,
+    play,
+    skip,
+    stop,
+    playing,
+    queue,
 }
 
 /// Check which slash command was triggered, call the appropriate function and return a response to the user
@@ -97,6 +105,14 @@ pub async fn command_responses(command: &ApplicationCommandInteraction, ctx: Con
                     }
                 }
             }
+
+            // ===== VOICE =====
+            Command::join => voice::join(&ctx, command).await,
+            Command::play => voice::play(&ctx, command).await,
+            Command::skip => voice::skip(&ctx, command).await,
+            Command::stop => voice::stop(&ctx, command).await,
+            Command::playing => voice::playing(&ctx, command).await,
+            Command::queue => voice::queue(&ctx, command).await,
         },
         Err(_) => "not implemented :(".to_owned(),
     };
@@ -175,11 +191,12 @@ pub async fn create_global_commands(ctx: &Context) {
 ///
 /// TODO: call only when it's run in debug mode
 pub async fn create_test_commands(ctx: &Context) {
-    let testing_guild = 724_690_339_054_486_107; // TODO: make into an optional environment variable
+    let testing_guild = 920111941253492776; // TODO: make into an optional environment variable
 
     GuildId(testing_guild)
         .set_application_commands(&ctx.http, |commands| {
             commands
+
                 .create_application_command(|command| {
                     command
                         .name(Command::command)
@@ -220,6 +237,58 @@ pub async fn create_test_commands(ctx: &Context) {
                         .name(Command::testcommand)
                         .description("test command".to_owned())
                 })
+
+
+            // ===== VOICE =====
+
+            //join voice channel
+            .create_application_command(|command|{
+                command
+                    .name(Command::join)
+                    .description("join voice channel")
+            })
+
+            //play from youtube
+            .create_application_command(|command|{
+                command
+                    .name(Command::play)
+                    .description("play song from youtube")
+                    .create_option(|option| {
+                        option
+                            .name("query")
+                            .description("what to search youtube for")
+                            .kind(ApplicationCommandOptionType::String)
+                            .required(true)
+                        })
+            })
+
+            //skip a song
+            .create_application_command(|command|{
+                command
+                    .name(Command::skip)
+                    .description("skip the current song")
+            })
+
+            //stop playing
+            .create_application_command(|command|{
+                command
+                    .name(Command::stop)
+                    .description("stop playing and clear the queue")
+            })
+
+            //get info of current song
+            .create_application_command(|command|{
+                command
+                    .name(Command::playing)
+                    .description("get info for current song")
+            })
+            
+            //get queue
+            .create_application_command(|command|{
+                command
+                    .name(Command::queue)
+                    .description("get the current queue")
+            })
         })
         .await
         .expect("Couldn't create guild test commands");
