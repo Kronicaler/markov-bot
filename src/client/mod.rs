@@ -19,10 +19,10 @@ use serenity::{
     model::{interactions::Interaction, prelude::*},
     Client,
 };
+use songbird::SerenityInit;
 use std::env;
 use strum_macros::{Display, EnumString};
 use tokio::join;
-use songbird::SerenityInit;
 
 #[derive(Display, EnumString)]
 pub enum ButtonIds {

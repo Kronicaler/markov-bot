@@ -196,7 +196,6 @@ pub async fn create_test_commands(ctx: &Context) {
     GuildId(testing_guild)
         .set_application_commands(&ctx.http, |commands| {
             commands
-
                 .create_application_command(|command| {
                     command
                         .name(Command::command)
@@ -237,58 +236,50 @@ pub async fn create_test_commands(ctx: &Context) {
                         .name(Command::testcommand)
                         .description("test command".to_owned())
                 })
-
-
-            // ===== VOICE =====
-
-            //join voice channel
-            .create_application_command(|command|{
-                command
-                    .name(Command::join)
-                    .description("join voice channel")
-            })
-
-            //play from youtube
-            .create_application_command(|command|{
-                command
-                    .name(Command::play)
-                    .description("play song from youtube")
-                    .create_option(|option| {
-                        option
-                            .name("query")
-                            .description("what to search youtube for")
-                            .kind(ApplicationCommandOptionType::String)
-                            .required(true)
+                // ===== VOICE =====
+                //join voice channel
+                .create_application_command(|command| {
+                    command
+                        .name(Command::join)
+                        .description("join voice channel")
+                })
+                //play from youtube
+                .create_application_command(|command| {
+                    command
+                        .name(Command::play)
+                        .description("play song from youtube")
+                        .create_option(|option| {
+                            option
+                                .name("query")
+                                .description("what to search youtube for")
+                                .kind(ApplicationCommandOptionType::String)
+                                .required(true)
                         })
-            })
-
-            //skip a song
-            .create_application_command(|command|{
-                command
-                    .name(Command::skip)
-                    .description("skip the current song")
-            })
-
-            //stop playing
-            .create_application_command(|command|{
-                command
-                    .name(Command::stop)
-                    .description("stop playing and clear the queue")
-            })
-
-            //get info of current song
-            .create_application_command(|command|{
-                command
-                    .name(Command::playing)
-                    .description("get info for current song")
-            })
-            
-            //get queue
-            .create_application_command(|command|{
-                command
-                    .name(Command::queue)
-                    .description("get the current queue")
-            })
+                })
+                //skip a song
+                .create_application_command(|command| {
+                    command
+                        .name(Command::skip)
+                        .description("skip the current song")
+                })
+                //stop playing
+                .create_application_command(|command| {
+                    command
+                        .name(Command::stop)
+                        .description("stop playing and clear the queue")
+                })
+                //get info of current song
+                .create_application_command(|command| {
+                    command
+                        .name(Command::playing)
+                        .description("get info for current song")
+                })
+                //get queue
+                .create_application_command(|command| {
+                    command
+                        .name(Command::queue)
+                        .description("get the current queue")
+                })
         })
         .await
         .expect("Couldn't create guild test commands");
