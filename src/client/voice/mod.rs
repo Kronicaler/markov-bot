@@ -58,7 +58,8 @@ pub async fn join(ctx: &Context, command: &ApplicationCommandInteraction) -> Str
                 });
                 m
             })
-            .await.expect("Couldn't send message");
+            .await
+            .expect("Couldn't send message");
     } else {
         println!("unable to fetch the guild from the cache");
     }
@@ -83,8 +84,16 @@ pub async fn play(ctx: &Context, command: &ApplicationCommandInteraction) -> Str
         _ => panic!("expected a string"),
     };
 
+    command
+        .create_interaction_response(&ctx.http, |f| {
+            f.kind(serenity::model::interactions::InteractionResponseType::ChannelMessageWithSource)
+                .interaction_response_data(|message| message.content("Searching..."))
+        })
+        .await
+        .expect("Couldn't send response");
+
     //create manager
-    let manager = songbird::get(ctx).await.expect("songbird error").clone();
+    let manager = songbird::get(&ctx).await.expect("songbird error").clone();
 
     //if the guild is found
     if let Some(_guild) = cache.guild(guild_id.unwrap()).await {
@@ -100,6 +109,7 @@ pub async fn play(ctx: &Context, command: &ApplicationCommandInteraction) -> Str
                     return String::from("couldn't source anything");
                 }
             };
+
 
             //create embed
             //title
@@ -117,34 +127,37 @@ pub async fn play(ctx: &Context, command: &ApplicationCommandInteraction) -> Str
             let duration = format!("{}:{:02}", minutes, seconds);
             //color
             let colour = Colour::from_rgb(149, 8, 2);
-            let _ = command
+            
+            command
                 .channel_id
                 .send_message(&ctx.http, |m| {
                     m.embed(|e| {
-                        e.title(title);
-                        e.colour(colour);
-                        e.description(channel);
-                        e.field("duration: ", duration, false);
-                        e.thumbnail(thumbnail);
-                        e.url(url);
-                        e
+                        e.title(title)
+                            .colour(colour)
+                            .description(channel)
+                            .field("duration: ", duration, false)
+                            .thumbnail(thumbnail)
+                            .url(url)
                     });
                     m
                 })
-                .await;
+                .await
+                .expect("Couldn't send message");
+
+                command.delete_original_interaction_response(&ctx.http).await.expect("Couldn't delete response");
 
             //add to queue
             let (mut audio, _) = create_player(source);
             audio.set_volume(0.5);
             handler.enqueue(audio);
-
+            
         //if not in a voice channel
         } else {
             return String::from("Must be in a voice channel to use that command!");
         }
     }
 
-    String::from("Adding to queue:")
+    String::from("")
 }
 
 ///skip the track

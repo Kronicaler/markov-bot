@@ -117,6 +117,10 @@ pub async fn command_responses(command: &ApplicationCommandInteraction, ctx: Con
         Err(_) => "not implemented :(".to_owned(),
     };
 
+    if content == "" {
+        return;
+    }
+
     if let Err(why) = command
         .create_interaction_response(&ctx.http, |response| {
             response
