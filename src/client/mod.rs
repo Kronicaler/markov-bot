@@ -4,6 +4,7 @@ pub mod helper_funcs;
 pub mod markov;
 pub mod slash_commands;
 pub mod tags;
+pub mod voice;
 
 use file_operations::*;
 use global_data::*;
@@ -21,6 +22,7 @@ use serenity::{
 use std::env;
 use strum_macros::{Display, EnumString};
 use tokio::join;
+use songbird::SerenityInit;
 
 #[derive(Display, EnumString)]
 pub enum ButtonIds {
@@ -130,6 +132,7 @@ pub async fn start_client() {
     let mut client = Client::builder(token)
         .application_id(application_id.0)
         .event_handler(Handler {})
+        .register_songbird()
         .await
         .expect("Error creating client");
 
