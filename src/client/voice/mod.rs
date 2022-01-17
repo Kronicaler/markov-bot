@@ -48,10 +48,6 @@ pub async fn join(ctx: &Context, command: &ApplicationCommandInteraction) -> Str
         //embed
         let _ = command.channel_id.send_message(&ctx.http, |m| {
         let colour = Colour::from_rgb(149, 8, 2);
-        assert_eq!(colour.r(), 149);
-        assert_eq!(colour.g(), 8);
-        assert_eq!(colour.b(), 2);
-        assert_eq!(colour.tuple(), (149, 8, 2));
         m.embed(|e| {
             e.title(format!("Joined {}", name));
             e.colour(colour);
@@ -115,10 +111,6 @@ pub async fn play(ctx: &Context, command: &ApplicationCommandInteraction) -> Str
             let duration = format!("{}:{:02}", minutes, seconds);
             //color
             let colour = Colour::from_rgb(149, 8, 2);
-            assert_eq!(colour.r(), 149);
-            assert_eq!(colour.g(), 8);
-            assert_eq!(colour.b(), 2);
-            assert_eq!(colour.tuple(), (149, 8, 2));
             let _ = command.channel_id.send_message(&ctx.http, |m| {
                 m.embed(|e| {
                     e.title(title);
@@ -169,10 +161,6 @@ pub async fn skip(ctx: &Context, command: &ApplicationCommandInteraction) -> Str
             }
             let title = format!("Song skipped, {} left in queue.", queuesize);
             let colour = Colour::from_rgb(149, 8, 2);
-            assert_eq!(colour.r(), 149);
-            assert_eq!(colour.g(), 8);
-            assert_eq!(colour.b(), 2);
-            assert_eq!(colour.tuple(), (149, 8, 2));
             let _ = command.channel_id.send_message(&ctx.http, |m| {
                 m.embed(|e| {
                     e.title(title);
@@ -209,10 +197,6 @@ pub async fn stop(ctx: &Context, command: &ApplicationCommandInteraction) -> Str
     //embed
     let _ = command.channel_id.send_message(&ctx.http, |m| {
     let colour = Colour::from_rgb(149, 8, 2);
-    assert_eq!(colour.r(), 149);
-    assert_eq!(colour.g(), 8);
-    assert_eq!(colour.b(), 2);
-    assert_eq!(colour.tuple(), (149, 8, 2));
     m.embed(|e| {
         e.title(String::from("Stopped playing, the queue has been cleared."));
         e.colour(colour);
