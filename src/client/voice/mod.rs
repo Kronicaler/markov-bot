@@ -87,13 +87,13 @@ pub async fn play(ctx: &Context, command: &ApplicationCommandInteraction) -> Res
         _ => panic!("expected a string"),
     };
 
-    command
-        .create_interaction_response(&ctx.http, |f| {
-            f.kind(serenity::model::interactions::InteractionResponseType::ChannelMessageWithSource)
-                .interaction_response_data(|message| message.content("Searching..."))
-        })
-        .await
-        .expect("Couldn't send response");
+    // command
+    //     .create_interaction_response(&ctx.http, |f| {
+    //         f.kind(serenity::model::interactions::InteractionResponseType::ChannelMessageWithSource)
+    //             .interaction_response_data(|message| message.content("Searching..."))
+    //     })
+    //     .await
+    //     .expect("Couldn't send response");
 
     //create manager
     let manager = songbird::get(ctx).await.expect("songbird error").clone();
@@ -139,10 +139,10 @@ pub async fn play(ctx: &Context, command: &ApplicationCommandInteraction) -> Res
                 .url(url)
                 .clone();
 
-            command
-                .delete_original_interaction_response(&ctx.http)
-                .await
-                .expect("Couldn't delete response");
+            // command
+            //     .delete_original_interaction_response(&ctx.http)
+            //     .await
+            //     .expect("Couldn't delete response");
 
             //add to queue
             let (mut audio, _) = create_player(source);

@@ -7,7 +7,7 @@ mod client;
 mod unit_tests;
 
 use client::*;
-use serenity::model::{id::GuildId, interactions::*};
+use serenity::model::{id::GuildId};
 
 #[tokio::main]
 async fn main() {

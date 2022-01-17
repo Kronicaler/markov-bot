@@ -8,9 +8,9 @@ use super::{
 use crate::*;
 use serenity::{
     client::Context,
-    model::interactions::application_command::{
+    model::interactions::{application_command::{
         ApplicationCommand, ApplicationCommandInteraction, ApplicationCommandOptionType,
-    }, builder::CreateEmbed,
+    }, InteractionResponseType}, builder::CreateEmbed,
 };
 use std::str::FromStr;
 use strum_macros::{Display, EnumString};
