@@ -47,7 +47,7 @@ pub async fn join(ctx: &Context, command: &ApplicationCommandInteraction) -> Str
             .await;
 
         //embed
-        let _ = command
+        command
             .channel_id
             .send_message(&ctx.http, |m| {
                 let colour = Colour::from_rgb(149, 8, 2);
@@ -58,7 +58,7 @@ pub async fn join(ctx: &Context, command: &ApplicationCommandInteraction) -> Str
                 });
                 m
             })
-            .await;
+            .await.expect("Couldn't send message");
     } else {
         println!("unable to fetch the guild from the cache");
     }
