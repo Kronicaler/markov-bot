@@ -1,19 +1,15 @@
 use super::{
-    helper_funcs::user_id_command,
+    helper_funcs::{ping_command, user_id_command},
     tags::{
-        blacklist_user_from_tags, create_tag, create_tag_commands, list_tags, remove_tag,
+        blacklist_user_from_tags_command, create_tag, create_tag_commands, list_tags, remove_tag,
         set_tag_response_channel,
     },
 };
 use crate::*;
 use serenity::{
-    builder::CreateEmbed,
     client::Context,
-    model::interactions::{
-        application_command::{
-            ApplicationCommand, ApplicationCommandInteraction, ApplicationCommandOptionType,
-        },
-        InteractionResponseType,
+    model::interactions::application_command::{
+        ApplicationCommand, ApplicationCommandInteraction, ApplicationCommandOptionType,
     },
 };
 use std::str::FromStr;
@@ -41,9 +37,6 @@ pub enum Command {
     #[strum(serialize = "set-tag-response-channel")]
     settagresponsechannel,
     help,
-    #[strum(serialize = "test-command")]
-    testcommand,
-    command,
     version,
 
     // =====VOICE=====
@@ -54,114 +47,56 @@ pub enum Command {
     queue,
 }
 
-pub enum ResponseType {
-    Content(String),
-    EditWithContent(String),
-    EditWithEmbed(CreateEmbed),
-}
-
 /// Check which slash command was triggered, call the appropriate function and return a response to the user
 pub async fn command_responses(command: &ApplicationCommandInteraction, ctx: Context) {
     let user = &command.user;
 
-    let content: ResponseType = match Command::from_str(&command.data.name) {
+    match Command::from_str(&command.data.name) {
         Ok(user_command) => match user_command {
-            Command::ping => ResponseType::Content("Hey, I'm alive!".to_owned()),
-            Command::id => ResponseType::Content(user_id_command(command)),
-            Command::blacklisteddata => {
-                ResponseType::Content(markov::blacklisted_users(&ctx).await)
-            }
+            Command::ping => ping_command(ctx, command).await,
+            Command::id => user_id_command(ctx, command).await,
+            Command::blacklisteddata => markov::blacklisted_users(ctx, command).await,
             Command::stopsavingmymessages => {
-                match markov::add_user_to_blacklist(user, &ctx).await {
-                    Ok(_) => ResponseType::Content(format!(
-                        "Added {} to data collection blacklist",
-                        match command.guild_id {
-                            Some(guild_id) => user
-                                .nick_in(&ctx.http, guild_id)
-                                .await
-                                .or_else(|| Some(user.name.clone()))
-                                .expect("Should always have Some value"),
-                            None => user.name.clone(),
-                        }
-                    )),
-                    Err(_) => ResponseType::Content(
-                        "Something went wrong while adding you to the blacklist :(".to_owned(),
-                    ),
-                }
+                markov::add_user_to_blacklist(user, &ctx, command).await
             }
-            Command::testcommand => ResponseType::Content(test_command()),
-            Command::createtag => ResponseType::Content(create_tag(&ctx, command).await),
-            Command::removetag => ResponseType::Content(remove_tag(&ctx, command).await),
-            Command::tags => ResponseType::Content(list_tags(&ctx).await),
+            Command::createtag => create_tag(&ctx, command).await,
+            Command::removetag => remove_tag(&ctx, command).await,
+            Command::tags => list_tags(&ctx, command).await,
             Command::blacklistmefromtags => {
-                ResponseType::Content(blacklist_user_from_tags(&ctx, user).await)
+                blacklist_user_from_tags_command(&ctx, user, command).await
             }
-            Command::settagresponsechannel => {
-                ResponseType::Content(set_tag_response_channel(&ctx, command).await)
-            }
-            Command::help => ResponseType::Content(global_data::HELP_MESSAGE.to_owned()),
-            Command::command => ResponseType::Content("command".to_owned()),
-            Command::version => ResponseType::Content(
-                "My current version is ".to_owned() + env!("CARGO_PKG_VERSION"),
-            ),
+            Command::settagresponsechannel => set_tag_response_channel(&ctx, command).await,
+            Command::help => command
+                .create_interaction_response(ctx.http, |r| {
+                    r.interaction_response_data(|d| d.content(global_data::HELP_MESSAGE))
+                })
+                .await
+                .expect("Error creating interaction response"),
+            Command::version => command
+                .create_interaction_response(ctx.http, |r| {
+                    r.interaction_response_data(|d| {
+                        d.content("My current version is ".to_owned() + env!("CARGO_PKG_VERSION"))
+                    })
+                })
+                .await
+                .expect("Error creating interaction response"),
             Command::continuesavingmymessages => {
-                match markov::remove_user_from_blacklist(user, &ctx).await {
-                    Ok(_) => ResponseType::Content(format!(
-                        "removed {} from data collection blacklist",
-                        match command.guild_id {
-                            Some(guild_id) => user
-                                .nick_in(&ctx.http, guild_id)
-                                .await
-                                .or_else(|| Some(user.name.clone()))
-                                .expect("Should always have Some value"),
-                            None => user.name.clone(),
-                        }
-                    )),
-                    Err(_) => ResponseType::Content(
-                        "Something went wrong while removing you from the blacklist :(".to_owned(),
-                    ),
-                }
+                markov::remove_user_from_blacklist(user, &ctx, command).await
             }
 
             // ===== VOICE =====
             Command::play => voice::play(&ctx, command).await,
-            Command::skip => ResponseType::Content(voice::skip(&ctx, command).await),
-            Command::stop => ResponseType::Content(voice::stop(&ctx, command).await),
-            Command::playing => ResponseType::Content(voice::playing(&ctx, command).await),
-            Command::queue => ResponseType::Content(voice::queue(&ctx, command).await),
+            Command::skip => voice::skip(&ctx, command).await,
+            Command::stop => voice::stop(&ctx, command).await,
+            Command::playing => voice::playing(&ctx, command).await,
+            Command::queue => voice::queue(&ctx, command).await,
         },
-        Err(_) => ResponseType::Content("not implemented :(".to_owned()),
-    };
-
-    match content {
-        ResponseType::Content(str) => {
-            command
-                .create_interaction_response(&ctx.http, |response| {
-                    response
-                        .kind(InteractionResponseType::ChannelMessageWithSource)
-                        .interaction_response_data(|message| message.content(str))
-                })
-                .await
-                .expect("Couldn't create interaction response");
-        }
-        ResponseType::EditWithContent(str) => {
-            command
-                .edit_original_interaction_response(&ctx.http, |m| m.content(str))
-                .await
-                .expect("Couldn't edit original response with content");
-        }
-        ResponseType::EditWithEmbed(embed) => {
-            command
-                .edit_original_interaction_response(&ctx.http, |m| m.add_embed(embed))
-                .await
-                .expect("Couldn't edit original response with embed");
+        Err(why) => {
+            eprintln!("Cannot respond to slash command {why}");
         }
     };
 }
 
-fn test_command() -> String {
-    "here be tests".to_owned()
-}
 /// Create the slash commands
 pub async fn create_global_commands(ctx: &Context) {
     ApplicationCommand::set_global_application_commands(&ctx.http, |commands| {
@@ -221,51 +156,11 @@ pub async fn create_global_commands(ctx: &Context) {
 ///
 /// TODO: call only when it's run in debug mode
 pub async fn create_test_commands(ctx: &Context) {
-    let testing_guild = 238633570439004162; // TODO: make into an optional environment variable
+    let testing_guild = 248167504910745600; // TODO: make into an optional environment variable
 
     GuildId(testing_guild)
         .set_application_commands(&ctx.http, |commands| {
             commands
-                .create_application_command(|command| {
-                    command
-                        .name(Command::command)
-                        .description("this is a command")
-                        .create_option(|option| {
-                            option
-                                .name("option")
-                                .description("this is an option")
-                                .kind(ApplicationCommandOptionType::SubCommand)
-                                .create_sub_option(|suboption| {
-                                    suboption
-                                        .name("suboption")
-                                        .description("this is a suboption")
-                                        .kind(ApplicationCommandOptionType::Boolean)
-                                })
-                                .create_sub_option(|suboption| {
-                                    suboption
-                                        .name("suboption2")
-                                        .description("this is a suboption")
-                                        .kind(ApplicationCommandOptionType::Boolean)
-                                })
-                        })
-                        .create_option(|option| {
-                            option
-                                .name("option2")
-                                .description("this is an option")
-                                .kind(ApplicationCommandOptionType::SubCommand)
-                                .create_sub_option(|suboption| {
-                                    suboption
-                                        .name("suboption3")
-                                        .description("this is a suboption")
-                                        .kind(ApplicationCommandOptionType::Boolean)
-                                })
-                        })
-                })
-                .create_application_command(|command| {
-                    command
-                        .name(Command::testcommand)
-                        .description("test command".to_owned())
-                })
                 // ===== VOICE =====
                 //play from youtube
                 .create_application_command(|command| {

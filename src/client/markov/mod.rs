@@ -15,7 +15,10 @@ use dashmap::DashSet;
 use markov_strings::Markov;
 use serenity::{
     client::Context,
-    model::{channel::Message, prelude::User},
+    model::{
+        channel::Message, interactions::application_command::ApplicationCommandInteraction,
+        prelude::User,
+    },
     prelude::{RwLock, TypeMap},
 };
 use std::{error::Error, fs, sync::Arc};
@@ -108,21 +111,62 @@ pub fn init_debug() -> Result<Markov, Box<dyn Error>> {
     Ok(markov)
 }
 
-pub async fn add_user_to_blacklist(user: &User, ctx: &Context) -> Result<(), std::io::Error> {
+pub async fn add_user_to_blacklist(
+    user: &User,
+    ctx: &Context,
+    command: &ApplicationCommandInteraction,
+) {
     let blacklisted_users = get_markov_blacklisted_users_lock(&ctx.data).await;
 
     blacklisted_users.insert(user.id.0);
-    save_markov_blacklisted_users(&*blacklisted_users)
+
+    let response = match save_markov_blacklisted_users(&*blacklisted_users) {
+        Ok(_) => format!(
+            "Added {} to data collection blacklist",
+            match command.guild_id {
+                Some(guild_id) => user
+                    .nick_in(&ctx.http, guild_id)
+                    .await
+                    .or_else(|| Some(user.name.clone()))
+                    .expect("Should always have Some value"),
+                None => user.name.clone(),
+            }
+        ),
+        Err(_) => "Something went wrong while adding you to the blacklist :(".to_owned(),
+    };
+
+    command.create_interaction_response(&ctx.http, |r| {
+        r.interaction_response_data(|d| d.content(response))
+    }).await.expect("Error creating interaction response");
 }
 
-pub async fn remove_user_from_blacklist(user: &User, ctx: &Context) -> Result<(), std::io::Error> {
+pub async fn remove_user_from_blacklist(user: &User, ctx: &Context,command: &ApplicationCommandInteraction) {
     let blacklisted_users = get_markov_blacklisted_users_lock(&ctx.data).await;
 
     blacklisted_users.remove(&user.id.0);
-    save_markov_blacklisted_users(&*blacklisted_users)
+    let response = match save_markov_blacklisted_users(&*blacklisted_users) {
+        Ok(_) => format!(
+            "removed {} from data collection blacklist",
+            match command.guild_id {
+                Some(guild_id) => user
+                    .nick_in(&ctx.http, guild_id)
+                    .await
+                    .or_else(|| Some(user.name.clone()))
+                    .expect("Should always have Some value"),
+                None => user.name.clone(),
+            }
+        ),
+        Err(_) => {
+            "Something went wrong while removing you from the blacklist :(".to_owned()
+        }
+    };
+
+    command.create_interaction_response(&ctx.http, |r| {
+        r.interaction_response_data(|d| d.content(response))
+    }).await.expect("Error creating interaction response");
 }
 
-pub async fn blacklisted_users(ctx: &Context) -> String {
+pub async fn blacklisted_users(ctx: Context, command: &ApplicationCommandInteraction) {
     let mut blacklisted_usernames = Vec::new();
     let blacklisted_users = get_markov_blacklisted_users_lock(&ctx.data).await;
 
@@ -137,7 +181,10 @@ pub async fn blacklisted_users(ctx: &Context) -> String {
     }
 
     if blacklisted_usernames.is_empty() {
-        return "Currently there are no blacklisted users".to_owned();
+        command.create_interaction_response(ctx.http, |r| {
+            r.interaction_response_data(|d| d.content("Currently there are no blacklisted users"))
+        }).await.expect("Error creating interaction response");
+        return;
     }
 
     let mut message = String::from("Blacklisted users: ");
@@ -148,7 +195,9 @@ pub async fn blacklisted_users(ctx: &Context) -> String {
     //remove the trailing comma and whitespace
     message.pop();
     message.pop();
-    message
+    command.create_interaction_response(ctx.http, |r| {
+        r.interaction_response_data(|d| d.content(message))
+    }).await.expect("Error creating interaction response");
 }
 
 pub fn init_markov_data(

@@ -8,7 +8,7 @@ use serenity::{
     },
 };
 
-pub fn user_id_command(command: &ApplicationCommandInteraction) -> String {
+pub async fn user_id_command(ctx: Context, command: &ApplicationCommandInteraction) {
     let options = command
         .data
         .options
@@ -17,11 +17,28 @@ pub fn user_id_command(command: &ApplicationCommandInteraction) -> String {
         .resolved
         .as_ref()
         .expect("Expected user object");
-    if let ApplicationCommandInteractionDataOptionValue::User(user, _member) = options {
-        format!("{}'s id is {}", user, user.id)
-    } else {
-        "Please provide a valid user".to_owned()
-    }
+    let response =
+        if let ApplicationCommandInteractionDataOptionValue::User(user, _member) = options {
+            format!("{}'s id is {}", user, user.id)
+        } else {
+            "Please provide a valid user".to_owned()
+        };
+
+    command
+        .create_interaction_response(ctx.http, |r| {
+            r.interaction_response_data(|d| d.content(response))
+        })
+        .await
+        .expect("Couldnt create interaction response");
+}
+
+pub async fn ping_command(ctx: Context, command: &ApplicationCommandInteraction) {
+    command
+        .create_interaction_response(&ctx.http, |r| {
+            r.interaction_response_data(|d| d.content("Pong!"))
+        })
+        .await
+        .expect("Couldn't create interaction response");
 }
 
 /// Leaves all guilds in which it can't find the bot owner
@@ -30,7 +47,7 @@ pub async fn leave_unknown_guilds(ready: &Ready, ctx: &Context) {
         .http
         .get_current_application_info()
         .await
-        .expect("couldn't get application info")
+        .expect("Couldn't get application info")
         .owner;
     for guild_status in &ready.guilds {
         let guild_id = guild_status.id();

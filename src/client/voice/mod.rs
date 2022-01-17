@@ -1,4 +1,3 @@
-use serenity::builder::CreateEmbed;
 /*
  * voice.rs, LsangnaBoi 2022
  * voice channel functionality
@@ -13,10 +12,8 @@ use serenity::{
 use songbird::model::id::GuildId;
 use songbird::{create_player, input::ytdl_search};
 
-use super::slash_commands::ResponseType;
-
 ///play song from youtube
-pub async fn play(ctx: &Context, command: &ApplicationCommandInteraction) -> ResponseType {
+pub async fn play(ctx: &Context, command: &ApplicationCommandInteraction) {
     //get the guild ID, cache, and query
     let guild_id = command.guild_id.expect("Couldn't get guild ID");
     let user_id = command.user.id;
@@ -57,9 +54,15 @@ pub async fn play(ctx: &Context, command: &ApplicationCommandInteraction) -> Res
     let connect_to = match channel_id {
         Some(channel) => channel,
         None => {
-            return ResponseType::EditWithContent(String::from(
-                "You must be in a voice channel to use this command!",
-            ));
+            command
+                .create_interaction_response(&ctx.http, |r| {
+                    r.interaction_response_data(|d| {
+                        d.content("You must be in a voice channel to use this command!")
+                    })
+                })
+                .await
+                .expect("Error creating interaction response");
+            return;
         }
     };
 
@@ -76,7 +79,15 @@ pub async fn play(ctx: &Context, command: &ApplicationCommandInteraction) -> Res
             Ok(source) => source,
             Err(why) => {
                 println!("Err starting source: {:?}", why);
-                return ResponseType::EditWithContent(String::from("couldn't source anything"));
+                command
+                    .create_interaction_response(&ctx.http, |r| {
+                        r.interaction_response_data(|d| {
+                            d.content("Coulnd't find the video on Youtube")
+                        })
+                    })
+                    .await
+                    .expect("Error creating interaction response");
+                return;
             }
         };
 
@@ -98,36 +109,38 @@ pub async fn play(ctx: &Context, command: &ApplicationCommandInteraction) -> Res
         let colour = Colour::from_rgb(149, 8, 2);
 
         command
-            .delete_original_interaction_response(&ctx.http)
+            .edit_original_interaction_response(&ctx.http, |r| {
+                r.create_embed(|e| {
+                    e.title(title)
+                        .colour(colour)
+                        .description(channel)
+                        .field("duration: ", duration, false)
+                        .thumbnail(thumbnail)
+                        .url(url)
+                })
+            })
             .await
-            .expect("Couldn't delete response");
-
+            .expect("Error creating interaction response");
         //add to queue
         let (mut audio, _) = create_player(source);
         audio.set_volume(0.5);
         handler.enqueue(audio);
 
-        return ResponseType::EditWithEmbed(
-            CreateEmbed::default()
-                .title(title)
-                .colour(colour)
-                .description(channel)
-                .field("duration: ", duration, false)
-                .thumbnail(thumbnail)
-                .url(url)
-                .clone(),
-        );
-
-    //if not in a voice channel
+        //if not in a voice channel
     } else {
-        ResponseType::EditWithContent(String::from(
-            "Must be in a voice channel to use that command!",
-        ))
+        command
+            .create_interaction_response(&ctx.http, |r| {
+                r.interaction_response_data(|d| {
+                    d.content("Must be in a voice channel to use that command!")
+                })
+            })
+            .await
+            .expect("Error creating interaction response");
     }
 }
 
 ///skip the track
-pub async fn skip(ctx: &Context, command: &ApplicationCommandInteraction) -> String {
+pub async fn skip(ctx: &Context, command: &ApplicationCommandInteraction) {
     let cache = &ctx.cache;
     let guild_id = command.guild_id;
     if let Some(_guild) = cache.guild(guild_id.unwrap()).await {
@@ -149,7 +162,7 @@ pub async fn skip(ctx: &Context, command: &ApplicationCommandInteraction) -> Str
             }
             let title = format!("Song skipped, {} left in queue.", queuesize);
             let colour = Colour::from_rgb(149, 8, 2);
-            let _ = command
+            command
                 .channel_id
                 .send_message(&ctx.http, |m| {
                     m.embed(|e| {
@@ -159,16 +172,23 @@ pub async fn skip(ctx: &Context, command: &ApplicationCommandInteraction) -> Str
                     });
                     m
                 })
-                .await;
+                .await
+                .expect("Error creating interaction response");
         } else {
-            return String::from("Must be in a voice channel to use that command!");
+            command
+                .create_interaction_response(&ctx.http, |r| {
+                    r.interaction_response_data(|d| {
+                        d.content("Must be in a voice channel to use that command!")
+                    })
+                })
+                .await
+                .expect("Error creating interaction response");
         }
     }
-    String::from("Skipping song...")
 }
 
 ///stop playing
-pub async fn stop(ctx: &Context, command: &ApplicationCommandInteraction) -> String {
+pub async fn stop(ctx: &Context, command: &ApplicationCommandInteraction) {
     let cache = &ctx.cache;
     let guild_id = command.guild_id;
     if let Some(_guild) = cache.guild(guild_id.unwrap()).await {
@@ -182,27 +202,36 @@ pub async fn stop(ctx: &Context, command: &ApplicationCommandInteraction) -> Str
             let queue = handler.queue();
             let _ = queue.stop();
         } else {
-            return String::from("Must be in a voice channel to use that command!");
+            command
+                .create_interaction_response(&ctx.http, |r| {
+                    r.interaction_response_data(|d| {
+                        d.content("Must be in a voice channel to use that command!")
+                    })
+                })
+                .await
+                .expect("Error creating interaction response");
+            return;
         }
     }
     //embed
-    let _ = command
-        .channel_id
-        .send_message(&ctx.http, |m| {
+
+    command
+        .create_interaction_response(&ctx.http, |m| {
             let colour = Colour::from_rgb(149, 8, 2);
-            m.embed(|e| {
-                e.title(String::from("Stopped playing, the queue has been cleared."));
-                e.colour(colour);
-                e
+            m.interaction_response_data(|d| {
+                d.create_embed(|e| {
+                    e.title(String::from("Stopped playing, the queue has been cleared."))
+                        .colour(colour)
+                })
             });
             m
         })
-        .await;
-    String::from("stopping...")
+        .await
+        .expect("Error creating interaction response");
 }
 
 ///current song
-pub async fn playing(ctx: &Context, command: &ApplicationCommandInteraction) -> String {
+pub async fn playing(ctx: &Context, command: &ApplicationCommandInteraction) {
     let cache = &ctx.cache;
     let guild_id = command.guild_id;
     if let Some(_guild) = cache.guild(guild_id.unwrap()).await {
@@ -232,34 +261,36 @@ pub async fn playing(ctx: &Context, command: &ApplicationCommandInteraction) -> 
             let duration = format!("{}:{:02}", minutes, seconds);
             //color
             let colour = Colour::from_rgb(149, 8, 2);
-            assert_eq!(colour.r(), 149);
-            assert_eq!(colour.g(), 8);
-            assert_eq!(colour.b(), 2);
-            assert_eq!(colour.tuple(), (149, 8, 2));
-            let _ = command
-                .channel_id
-                .send_message(&ctx.http, |m| {
-                    m.embed(|e| {
-                        e.title(title);
-                        e.colour(colour);
-                        e.description(channel);
-                        e.field("duration: ", duration, false);
-                        e.thumbnail(thumbnail);
-                        e.url(url);
-                        e
-                    });
-                    m
+            command
+                .create_interaction_response(&ctx.http, |m| {
+                    m.interaction_response_data(|d| {
+                        d.create_embed(|e| {
+                            e.title(title)
+                                .colour(colour)
+                                .description(channel)
+                                .field("duration: ", duration, false)
+                                .thumbnail(thumbnail)
+                                .url(url)
+                        })
+                    })
                 })
-                .await;
+                .await
+                .expect("Error creating interaction response");
         } else {
-            return String::from("You must be in a voice channel to use that command!");
+            command
+                .create_interaction_response(&ctx.http, |r| {
+                    r.interaction_response_data(|d| {
+                        d.content("You must be in a voice channel to use that command!")
+                    })
+                })
+                .await
+                .expect("Error creating interaction response");
         }
     }
-    String::from("Fetching current song...")
 }
 
 ///get the queue
-pub async fn queue(ctx: &Context, command: &ApplicationCommandInteraction) -> String {
+pub async fn queue(ctx: &Context, command: &ApplicationCommandInteraction) {
     let cache = &ctx.cache;
     let guild_id = command.guild_id;
     if let Some(_guild) = cache.guild(guild_id.unwrap()).await {
@@ -273,12 +304,17 @@ pub async fn queue(ctx: &Context, command: &ApplicationCommandInteraction) -> St
             let queue = handler.queue();
 
             if queue.is_empty() {
-                return String::from("The queue is empty!");
+                command
+                    .create_interaction_response(&ctx.http, |r| {
+                        r.interaction_response_data(|d| d.content("The queue is empty!"))
+                    })
+                    .await
+                    .expect("Error creating interaction response");
+                return;
             }
             //embed
-            let _ = command
-                .channel_id
-                .send_message(&ctx.http, |m| {
+            command
+                .create_interaction_response(&ctx.http, |m| {
                     //embed
                     let i: usize;
                     if queue.len() < 10 {
@@ -288,35 +324,41 @@ pub async fn queue(ctx: &Context, command: &ApplicationCommandInteraction) -> St
                     }
                     //color
                     let colour = Colour::from_rgb(149, 8, 2);
-                    assert_eq!(colour.r(), 149);
-                    assert_eq!(colour.g(), 8);
-                    assert_eq!(colour.b(), 2);
-                    assert_eq!(colour.tuple(), (149, 8, 2));
-                    m.embed(|e| {
-                        e.title("queue");
-                        e.title("Current Queue:");
-                        e.description(format!("current size: {}", queue.len()));
-                        e.color(colour);
-                        for i in 0..i {
-                            let song = &queue.current_queue().get(i).unwrap().metadata().clone();
-                            let channel = &song.channel.as_ref().unwrap();
-                            let title = &song.title.as_ref().unwrap();
-                            //duration
-                            let time = &song.duration.as_ref().unwrap();
-                            let minutes = time.as_secs() / 60;
-                            let seconds = time.as_secs() - minutes * 60;
-                            let duration = format!("{}:{:02}", minutes, seconds);
-                            let arg1 = format!("{}. {} | {}", i + 1, title, channel);
-                            e.field(arg1, duration, false);
-                        }
-                        e
-                    });
-                    m
+                    m.interaction_response_data(|d| {
+                        d.create_embed(|e| {
+                            e.title("queue")
+                                .title("Current Queue:")
+                                .description(format!("current size: {}", queue.len()))
+                                .color(colour);
+                            for i in 0..i {
+                                let song =
+                                    &queue.current_queue().get(i).unwrap().metadata().clone();
+                                let channel = &song.channel.as_ref().unwrap();
+                                let title = &song.title.as_ref().unwrap();
+                                //duration
+                                let time = &song.duration.as_ref().unwrap();
+                                let minutes = time.as_secs() / 60;
+                                let seconds = time.as_secs() - minutes * 60;
+                                let duration = format!("{}:{:02}", minutes, seconds);
+                                let arg1 = format!("{}. {} | {}", i + 1, title, channel);
+                                e.field(arg1, duration, false);
+                            }
+                            e
+                        })
+                    })
                 })
-                .await;
+                .await
+                .expect("Error creating interaction response");
         } else {
-            return String::from("You must be in a voice channel to use that command!");
+            command
+                .create_interaction_response(&ctx.http, |r| {
+                    r.interaction_response_data(|d| {
+                        d.content("You must be in a voice channel to use that command!")
+                    })
+                })
+                .await
+                .expect("Error creating interaction response");
+            return;
         }
     }
-    String::from("getting queue...")
 }

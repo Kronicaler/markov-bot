@@ -11,8 +11,8 @@ use global_data::*;
 use helper_funcs::*;
 use slash_commands::*;
 
-use self::tags::respond_to_tag;
-use super::tags::{blacklist_user_from_tags, check_for_tag_listeners};
+use self::tags::{respond_to_tag, blacklist_user_from_tags};
+use super::tags::check_for_tag_listeners;
 use serenity::{
     async_trait,
     client::{Context, EventHandler},

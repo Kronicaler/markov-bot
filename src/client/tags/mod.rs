@@ -36,7 +36,7 @@ use {
     },
 };
 
-pub async fn list_tags(ctx: &Context) -> String {
+pub async fn list_tags(ctx: &Context, command: &ApplicationCommandInteraction) {
     let tag = get_tags_lock(&ctx.data).await;
 
     let mut message = String::new();
@@ -47,10 +47,15 @@ pub async fn list_tags(ctx: &Context) -> String {
     message.pop();
     message.pop();
 
-    message
+    command
+        .create_interaction_response(&ctx.http, |r| {
+            r.interaction_response_data(|d| d.content(message))
+        })
+        .await
+        .expect("Error creating interaction response");
 }
 
-pub async fn remove_tag(ctx: &Context, command: &ApplicationCommandInteraction) -> String {
+pub async fn remove_tag(ctx: &Context, command: &ApplicationCommandInteraction) {
     let listener = command
         .data
         .options
@@ -61,22 +66,44 @@ pub async fn remove_tag(ctx: &Context, command: &ApplicationCommandInteraction) 
         .expect("Expected listener value");
     let tags = get_tags_lock(&ctx.data).await;
 
+    let response;
     if let ApplicationCommandInteractionDataOptionValue::String(listener) = listener {
         for tag in tags.as_ref().clone().iter() {
             if &tag.listener == listener {
                 tags.remove(&tag);
                 save_tags_to_file(&tags);
                 println!("{} removed tag {}", command.user.name, tag.listener);
-                return "Successfully removed the tag".to_owned();
+                response = "Successfully removed the tag";
+                command
+                    .create_interaction_response(&ctx.http, |r| {
+                        r.interaction_response_data(|d| d.content(response))
+                    })
+                    .await
+                    .expect("Error creating interaction response");
+                return;
             }
         }
-        return "Couldn't find the tag".to_owned();
+        response = "Couldn't find the tag";
+        command
+            .create_interaction_response(&ctx.http, |r| {
+                r.interaction_response_data(|d| d.content(response))
+            })
+            .await
+            .expect("Error creating interaction response");
+        return;
     }
 
-    "Something went wrong".to_owned()
+    response = "Something went wrong";
+
+    command
+        .create_interaction_response(&ctx.http, |r| {
+            r.interaction_response_data(|d| d.content(response))
+        })
+        .await
+        .expect("Error creating interaction response");
 }
 
-pub async fn create_tag(ctx: &Context, command: &ApplicationCommandInteraction) -> String {
+pub async fn create_tag(ctx: &Context, command: &ApplicationCommandInteraction) {
     let listener = command
         .data
         .options
@@ -105,7 +132,13 @@ pub async fn create_tag(ctx: &Context, command: &ApplicationCommandInteraction) 
                 || response.contains("@everyone")
                 || response.contains("@here")
             {
-                return "can't add a mention".to_owned();
+                command
+                    .create_interaction_response(&ctx.http, |r| {
+                        r.interaction_response_data(|d| d.content("can't add a mention"))
+                    })
+                    .await
+                    .expect("Error creating interaction response");
+                return;
             }
 
             let tags = get_tags_lock(&ctx.data).await;
@@ -119,10 +152,38 @@ pub async fn create_tag(ctx: &Context, command: &ApplicationCommandInteraction) 
 
             tags.insert(tag);
             save_tags_to_file(&tags);
-            return "Set tag".to_owned();
+            command.create_interaction_response(&ctx.http, |r| {
+                r.interaction_response_data(|d| d.content("Set tag"))
+            }).await.expect("Error creating interaction response");
+            return;
         }
     }
-    "Couldn't set tag".to_owned()
+    command.create_interaction_response(&ctx.http, |r| {
+        r.interaction_response_data(|d| d.content("Couldn't set tag"))
+    }).await.expect("Error creating interaction response");
+}
+
+pub async fn blacklist_user_from_tags_command(
+    ctx: &Context,
+    user: &User,
+    command: &ApplicationCommandInteraction,
+) {
+    let users_blacklisted_from_tags = get_tags_blacklisted_users_lock(&ctx.data).await;
+
+    let response;
+    if users_blacklisted_from_tags.contains(&user.id.0) {
+        users_blacklisted_from_tags.remove(&user.id.0);
+        save_user_tag_blacklist_to_file(&users_blacklisted_from_tags);
+        response = format!("Removed {} from the blacklist", &user.name);
+    } else {
+        users_blacklisted_from_tags.insert(user.id.0);
+        save_user_tag_blacklist_to_file(&users_blacklisted_from_tags);
+        response = format!("Added {} to the tag blacklist", &user.name);
+    }
+
+    command.create_interaction_response(&ctx.http, |r| {
+        r.interaction_response_data(|d| d.content(response))
+    }).await.expect("Error creating interaction response");
 }
 
 pub async fn blacklist_user_from_tags(ctx: &Context, user: &User) -> String {
@@ -227,18 +288,23 @@ pub fn create_tag_commands(
         })
 }
 
-pub async fn set_tag_response_channel(
-    ctx: &Context,
-    command: &ApplicationCommandInteraction,
-) -> String {
+pub async fn set_tag_response_channel(ctx: &Context, command: &ApplicationCommandInteraction) {
     let guild_id = match command.guild_id {
         Some(guild_id) => guild_id,
-        None => return "You can only use this command in a server".to_owned(),
+        None => {
+            command.create_interaction_response(&ctx.http, |r| {
+                r.interaction_response_data(|d| {
+                    d.content("You can only use this command in a server")
+                })
+            }).await.expect("Error creating interaction response");
+            return;
+        }
     };
 
     let member = command.member.as_ref().expect("Expected member");
     let member_perms = member.permissions.expect("Couldn't get member permissions");
 
+    let response;
     if !member_perms.administrator()
         && member.user.id
             != ctx
@@ -249,16 +315,25 @@ pub async fn set_tag_response_channel(
                 .owner
                 .id
     {
-        return "You need to have the Administrator permission to invoke this command".to_owned();
+        response = "You need to have the Administrator permission to invoke this command";
+        command.create_interaction_response(&ctx.http, |r| {
+            r.interaction_response_data(|d| d.content(response))
+        }).await.expect("Error creating interaction response");
+        return;
     }
 
     let channel_id = command.channel_id.0;
     let bot_channel_ids = get_tag_response_channel_id_lock(&ctx.data).await;
     bot_channel_ids.insert(guild_id.0, channel_id);
-    match save_tag_response_channel(&bot_channel_ids) {
-        Ok(_) => "Successfully set this channel as the tag response channel".to_owned(),
-        Err(_) => "Something went wrong setting the tag response channel".to_owned(),
-    }
+
+    response = match save_tag_response_channel(&bot_channel_ids) {
+        Ok(_) => "Successfully set this channel as the tag response channel",
+        Err(_) => "Something went wrong setting the tag response channel",
+    };
+
+    command.create_interaction_response(&ctx.http, |r| {
+        r.interaction_response_data(|d| d.content(response))
+    }).await.expect("Error creating interaction response");
 }
 
 /// It first checks if a tag response channel exists for the guild the message is in.
