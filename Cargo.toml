@@ -21,6 +21,7 @@ strum_macros = "0.23.1"
 rand = "0.8.4"
 dashmap = {version="5.0.0", features=["serde"] }
 serde = "1.0.132"
+#requires youtube-dlc, opus, yt-search and ffmpeg in order for voice commands to work
 songbird = {version="0.2", features=["builtin-queue", "serenity"]}
 
 [patch.crates-io]
