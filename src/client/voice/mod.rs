@@ -1,3 +1,4 @@
+use serenity::builder::CreateEmbed;
 /*
  * voice.rs, LsangnaBoi 2022
  * voice channel functionality
@@ -11,6 +12,8 @@ use serenity::{
 };
 use songbird::model::id::GuildId;
 use songbird::{create_player, input::ytdl_search};
+
+use super::slash_commands::ResponseType;
 
 ///join voice channel
 pub async fn join(ctx: &Context, command: &ApplicationCommandInteraction) -> String {
@@ -69,7 +72,7 @@ pub async fn join(ctx: &Context, command: &ApplicationCommandInteraction) -> Str
 }
 
 ///play song from youtube
-pub async fn play(ctx: &Context, command: &ApplicationCommandInteraction) -> String {
+pub async fn play(ctx: &Context, command: &ApplicationCommandInteraction) -> ResponseType {
     //get the guild ID, cache, and query
     let guild_id = command.guild_id;
     let cache = &ctx.cache;
@@ -93,7 +96,7 @@ pub async fn play(ctx: &Context, command: &ApplicationCommandInteraction) -> Str
         .expect("Couldn't send response");
 
     //create manager
-    let manager = songbird::get(&ctx).await.expect("songbird error").clone();
+    let manager = songbird::get(ctx).await.expect("songbird error").clone();
 
     //if the guild is found
     if let Some(_guild) = cache.guild(guild_id.unwrap()).await {
@@ -106,10 +109,9 @@ pub async fn play(ctx: &Context, command: &ApplicationCommandInteraction) -> Str
                 Ok(source) => source,
                 Err(why) => {
                     println!("Err starting source: {:?}", why);
-                    return String::from("couldn't source anything");
+                    return ResponseType::Content(String::from("couldn't source anything"));
                 }
             };
-
 
             //create embed
             //title
@@ -127,37 +129,37 @@ pub async fn play(ctx: &Context, command: &ApplicationCommandInteraction) -> Str
             let duration = format!("{}:{:02}", minutes, seconds);
             //color
             let colour = Colour::from_rgb(149, 8, 2);
-            
-            command
-                .channel_id
-                .send_message(&ctx.http, |m| {
-                    m.embed(|e| {
-                        e.title(title)
-                            .colour(colour)
-                            .description(channel)
-                            .field("duration: ", duration, false)
-                            .thumbnail(thumbnail)
-                            .url(url)
-                    });
-                    m
-                })
-                .await
-                .expect("Couldn't send message");
 
-                command.delete_original_interaction_response(&ctx.http).await.expect("Couldn't delete response");
+            let embed = CreateEmbed::default()
+                .title(title)
+                .colour(colour)
+                .description(channel)
+                .field("duration: ", duration, false)
+                .thumbnail(thumbnail)
+                .url(url)
+                .clone();
+
+            command
+                .delete_original_interaction_response(&ctx.http)
+                .await
+                .expect("Couldn't delete response");
 
             //add to queue
             let (mut audio, _) = create_player(source);
             audio.set_volume(0.5);
             handler.enqueue(audio);
-            
+
+            return ResponseType::Embed(embed);
+
         //if not in a voice channel
         } else {
-            return String::from("Must be in a voice channel to use that command!");
+            return ResponseType::Content(String::from(
+                "Must be in a voice channel to use that command!",
+            ));
         }
     }
 
-    String::from("")
+    ResponseType::Content(String::from("Something went horribly wrong"))
 }
 
 ///skip the track
