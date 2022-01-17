@@ -15,66 +15,11 @@ use songbird::{create_player, input::ytdl_search};
 
 use super::slash_commands::ResponseType;
 
-///join voice channel
-pub async fn join(ctx: &Context, command: &ApplicationCommandInteraction) -> String {
-    //get cache and user ID
-    let cache = &ctx.cache;
-    let user_id = command.user.id;
-    let guild_id = command.guild_id;
-
-    //create manager
-    let manager = songbird::get(ctx)
-        .await
-        .expect("Songbird voice client placed in at initialization");
-
-    //retrieve the guild from the cache
-    if let Some(guild) = cache.guild(guild_id.unwrap()).await {
-        //get channel_id
-        let channel_id = guild
-            .voice_states
-            .get(&user_id)
-            .and_then(|voice_state| voice_state.channel_id);
-
-        let connect_to = match channel_id {
-            Some(channel) => channel,
-            None => {
-                return String::from("You must be in a voice channel to use this command!");
-            }
-        };
-
-        let name = channel_id.unwrap().name(cache).await.unwrap();
-
-        //join voice channel
-        let (_handle_lock, _success) = manager
-            .join(GuildId(guild_id.unwrap().0).0, connect_to)
-            .await;
-
-        //embed
-        command
-            .channel_id
-            .send_message(&ctx.http, |m| {
-                let colour = Colour::from_rgb(149, 8, 2);
-                m.embed(|e| {
-                    e.title(format!("Joined {}", name));
-                    e.colour(colour);
-                    e
-                });
-                m
-            })
-            .await
-            .expect("Couldn't send message");
-    } else {
-        println!("unable to fetch the guild from the cache");
-    }
-
-    //return
-    String::from("joining...")
-}
-
 ///play song from youtube
 pub async fn play(ctx: &Context, command: &ApplicationCommandInteraction) -> ResponseType {
     //get the guild ID, cache, and query
-    let guild_id = command.guild_id;
+    let guild_id = command.guild_id.expect("Couldn't get guild ID");
+    let user_id = command.user.id;
     let cache = &ctx.cache;
     let query = command
         .data
@@ -87,79 +32,98 @@ pub async fn play(ctx: &Context, command: &ApplicationCommandInteraction) -> Res
         _ => panic!("expected a string"),
     };
 
-    // command
-    //     .create_interaction_response(&ctx.http, |f| {
-    //         f.kind(serenity::model::interactions::InteractionResponseType::ChannelMessageWithSource)
-    //             .interaction_response_data(|message| message.content("Searching..."))
-    //     })
-    //     .await
-    //     .expect("Couldn't send response");
+    command
+        .create_interaction_response(&ctx.http, |f| {
+            f.kind(serenity::model::interactions::InteractionResponseType::ChannelMessageWithSource)
+                .interaction_response_data(|message| message.content("Searching..."))
+        })
+        .await
+        .expect("Couldn't send response");
 
     //create manager
     let manager = songbird::get(ctx).await.expect("songbird error").clone();
 
+    let guild = cache
+        .guild(guild_id)
+        .await
+        .expect("unable to fetch guild from the cache");
+
+    //get channel_id
+    let channel_id = guild
+        .voice_states
+        .get(&user_id)
+        .and_then(|voice_state| voice_state.channel_id);
+
+    let connect_to = match channel_id {
+        Some(channel) => channel,
+        None => {
+            return ResponseType::EditWithContent(String::from(
+                "You must be in a voice channel to use this command!",
+            ));
+        }
+    };
+
+    //join voice channel
+    let (_handle_lock, _success) = manager.join(GuildId(guild_id.0).0, connect_to).await;
+
     //if the guild is found
-    if let Some(_guild) = cache.guild(guild_id.unwrap()).await {
-        //create audio source
-        if let Some(handler_lock) = manager.get(guild_id.unwrap().0) {
-            let mut handler = handler_lock.lock().await;
+    //create audio source
+    if let Some(handler_lock) = manager.get(guild_id.0) {
+        let mut handler = handler_lock.lock().await;
 
-            //get source from YouTube
-            let source = match ytdl_search(query).await {
-                Ok(source) => source,
-                Err(why) => {
-                    println!("Err starting source: {:?}", why);
-                    return ResponseType::Content(String::from("couldn't source anything"));
-                }
-            };
+        //get source from YouTube
+        let source = match ytdl_search(query).await {
+            Ok(source) => source,
+            Err(why) => {
+                println!("Err starting source: {:?}", why);
+                return ResponseType::EditWithContent(String::from("couldn't source anything"));
+            }
+        };
 
-            //create embed
-            //title
-            let title = source.metadata.title.as_ref().unwrap();
-            //channel
-            let channel = source.metadata.channel.as_ref().unwrap();
-            //image
-            let thumbnail = source.metadata.thumbnail.as_ref().unwrap();
-            //embed
-            let url = source.metadata.source_url.as_ref().unwrap();
-            //duration
-            let time = source.metadata.duration.as_ref().unwrap();
-            let minutes = time.as_secs() / 60;
-            let seconds = time.as_secs() - minutes * 60;
-            let duration = format!("{}:{:02}", minutes, seconds);
-            //color
-            let colour = Colour::from_rgb(149, 8, 2);
+        //create embed
+        //title
+        let title = source.metadata.title.clone().unwrap();
+        //channel
+        let channel = source.metadata.channel.clone().unwrap();
+        //image
+        let thumbnail = source.metadata.thumbnail.clone().unwrap();
+        //embed
+        let url = source.metadata.source_url.clone().unwrap();
+        //duration
+        let time = source.metadata.duration.unwrap();
+        let minutes = time.as_secs() / 60;
+        let seconds = time.as_secs() - minutes * 60;
+        let duration = format!("{}:{:02}", minutes, seconds);
+        //color
+        let colour = Colour::from_rgb(149, 8, 2);
 
-            let embed = CreateEmbed::default()
+        command
+            .delete_original_interaction_response(&ctx.http)
+            .await
+            .expect("Couldn't delete response");
+
+        //add to queue
+        let (mut audio, _) = create_player(source);
+        audio.set_volume(0.5);
+        handler.enqueue(audio);
+
+        return ResponseType::EditWithEmbed(
+            CreateEmbed::default()
                 .title(title)
                 .colour(colour)
                 .description(channel)
                 .field("duration: ", duration, false)
                 .thumbnail(thumbnail)
                 .url(url)
-                .clone();
+                .clone(),
+        );
 
-            // command
-            //     .delete_original_interaction_response(&ctx.http)
-            //     .await
-            //     .expect("Couldn't delete response");
-
-            //add to queue
-            let (mut audio, _) = create_player(source);
-            audio.set_volume(0.5);
-            handler.enqueue(audio);
-
-            return ResponseType::Embed(embed);
-
-        //if not in a voice channel
-        } else {
-            return ResponseType::Content(String::from(
-                "Must be in a voice channel to use that command!",
-            ));
-        }
+    //if not in a voice channel
+    } else {
+        ResponseType::EditWithContent(String::from(
+            "Must be in a voice channel to use that command!",
+        ))
     }
-
-    ResponseType::Content(String::from("Something went horribly wrong"))
 }
 
 ///skip the track

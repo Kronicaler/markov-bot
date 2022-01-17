@@ -7,10 +7,14 @@ use super::{
 };
 use crate::*;
 use serenity::{
+    builder::CreateEmbed,
     client::Context,
-    model::interactions::{application_command::{
-        ApplicationCommand, ApplicationCommandInteraction, ApplicationCommandOptionType,
-    }, InteractionResponseType}, builder::CreateEmbed,
+    model::interactions::{
+        application_command::{
+            ApplicationCommand, ApplicationCommandInteraction, ApplicationCommandOptionType,
+        },
+        InteractionResponseType,
+    },
 };
 use std::str::FromStr;
 use strum_macros::{Display, EnumString};
@@ -43,7 +47,6 @@ pub enum Command {
     version,
 
     // =====VOICE=====
-    join,
     play,
     skip,
     stop,
@@ -51,9 +54,10 @@ pub enum Command {
     queue,
 }
 
-pub enum ResponseType{
+pub enum ResponseType {
     Content(String),
-    Embed(CreateEmbed)
+    EditWithContent(String),
+    EditWithEmbed(CreateEmbed),
 }
 
 /// Check which slash command was triggered, call the appropriate function and return a response to the user
@@ -64,7 +68,9 @@ pub async fn command_responses(command: &ApplicationCommandInteraction, ctx: Con
         Ok(user_command) => match user_command {
             Command::ping => ResponseType::Content("Hey, I'm alive!".to_owned()),
             Command::id => ResponseType::Content(user_id_command(command)),
-            Command::blacklisteddata => ResponseType::Content(markov::blacklisted_users(&ctx).await),
+            Command::blacklisteddata => {
+                ResponseType::Content(markov::blacklisted_users(&ctx).await)
+            }
             Command::stopsavingmymessages => {
                 match markov::add_user_to_blacklist(user, &ctx).await {
                     Ok(_) => ResponseType::Content(format!(
@@ -78,20 +84,26 @@ pub async fn command_responses(command: &ApplicationCommandInteraction, ctx: Con
                             None => user.name.clone(),
                         }
                     )),
-                    Err(_) => {
-                        ResponseType::Content("Something went wrong while adding you to the blacklist :(".to_owned())
-                    }
+                    Err(_) => ResponseType::Content(
+                        "Something went wrong while adding you to the blacklist :(".to_owned(),
+                    ),
                 }
             }
             Command::testcommand => ResponseType::Content(test_command()),
             Command::createtag => ResponseType::Content(create_tag(&ctx, command).await),
             Command::removetag => ResponseType::Content(remove_tag(&ctx, command).await),
             Command::tags => ResponseType::Content(list_tags(&ctx).await),
-            Command::blacklistmefromtags => ResponseType::Content(blacklist_user_from_tags(&ctx, user).await),
-            Command::settagresponsechannel => ResponseType::Content(set_tag_response_channel(&ctx, command).await),
+            Command::blacklistmefromtags => {
+                ResponseType::Content(blacklist_user_from_tags(&ctx, user).await)
+            }
+            Command::settagresponsechannel => {
+                ResponseType::Content(set_tag_response_channel(&ctx, command).await)
+            }
             Command::help => ResponseType::Content(global_data::HELP_MESSAGE.to_owned()),
             Command::command => ResponseType::Content("command".to_owned()),
-            Command::version => ResponseType::Content("My current version is ".to_owned() + env!("CARGO_PKG_VERSION")),
+            Command::version => ResponseType::Content(
+                "My current version is ".to_owned() + env!("CARGO_PKG_VERSION"),
+            ),
             Command::continuesavingmymessages => {
                 match markov::remove_user_from_blacklist(user, &ctx).await {
                     Ok(_) => ResponseType::Content(format!(
@@ -105,14 +117,13 @@ pub async fn command_responses(command: &ApplicationCommandInteraction, ctx: Con
                             None => user.name.clone(),
                         }
                     )),
-                    Err(_) => {
-                        ResponseType::Content("Something went wrong while removing you from the blacklist :(".to_owned())
-                    }
+                    Err(_) => ResponseType::Content(
+                        "Something went wrong while removing you from the blacklist :(".to_owned(),
+                    ),
                 }
             }
 
             // ===== VOICE =====
-            Command::join => ResponseType::Content(voice::join(&ctx, command).await),
             Command::play => voice::play(&ctx, command).await,
             Command::skip => ResponseType::Content(voice::skip(&ctx, command).await),
             Command::stop => ResponseType::Content(voice::stop(&ctx, command).await),
@@ -122,19 +133,30 @@ pub async fn command_responses(command: &ApplicationCommandInteraction, ctx: Con
         Err(_) => ResponseType::Content("not implemented :(".to_owned()),
     };
 
-    if let Err(why) = command
-        .create_interaction_response(&ctx.http, |response| {
-            response
-                .kind(InteractionResponseType::ChannelMessageWithSource)
-                .interaction_response_data(|message| match content {
-                    ResponseType::Content(str) => message.content(str),
-                    ResponseType::Embed(e) => message.add_embed(e),
+    match content {
+        ResponseType::Content(str) => {
+            command
+                .create_interaction_response(&ctx.http, |response| {
+                    response
+                        .kind(InteractionResponseType::ChannelMessageWithSource)
+                        .interaction_response_data(|message| message.content(str))
                 })
-        })
-        .await
-    {
-        eprintln!("Cannot respond to slash command: {why}");
-    }
+                .await
+                .expect("Couldn't create interaction response");
+        }
+        ResponseType::EditWithContent(str) => {
+            command
+                .edit_original_interaction_response(&ctx.http, |m| m.content(str))
+                .await
+                .expect("Couldn't edit original response with content");
+        }
+        ResponseType::EditWithEmbed(embed) => {
+            command
+                .edit_original_interaction_response(&ctx.http, |m| m.add_embed(embed))
+                .await
+                .expect("Couldn't edit original response with embed");
+        }
+    };
 }
 
 fn test_command() -> String {
@@ -245,12 +267,6 @@ pub async fn create_test_commands(ctx: &Context) {
                         .description("test command".to_owned())
                 })
                 // ===== VOICE =====
-                //join voice channel
-                .create_application_command(|command| {
-                    command
-                        .name(Command::join)
-                        .description("join voice channel")
-                })
                 //play from youtube
                 .create_application_command(|command| {
                     command
