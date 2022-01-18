@@ -145,6 +145,44 @@ pub async fn create_global_commands(ctx: &Context) {
                 command
                     .name(Command::version)
                     .description("My current version")
+            })
+            // ===== VOICE =====
+            //play from youtube
+            .create_application_command(|command| {
+                command
+                    .name(Command::play)
+                    .description("play song from youtube")
+                    .create_option(|option| {
+                        option
+                            .name("query")
+                            .description("what to search youtube for")
+                            .kind(ApplicationCommandOptionType::String)
+                            .required(true)
+                    })
+            })
+            //skip a song
+            .create_application_command(|command| {
+                command
+                    .name(Command::skip)
+                    .description("skip the current song")
+            })
+            //stop playing
+            .create_application_command(|command| {
+                command
+                    .name(Command::stop)
+                    .description("stop playing and clear the queue")
+            })
+            //get info of current song
+            .create_application_command(|command| {
+                command
+                    .name(Command::playing)
+                    .description("get info for current song")
+            })
+            //get queue
+            .create_application_command(|command| {
+                command
+                    .name(Command::queue)
+                    .description("get the current queue")
             });
         create_tag_commands(commands)
     })
@@ -159,47 +197,7 @@ pub async fn create_test_commands(ctx: &Context) {
     let testing_guild = 248167504910745600; // TODO: make into an optional environment variable
 
     GuildId(testing_guild)
-        .set_application_commands(&ctx.http, |commands| {
-            commands
-                // ===== VOICE =====
-                //play from youtube
-                .create_application_command(|command| {
-                    command
-                        .name(Command::play)
-                        .description("play song from youtube")
-                        .create_option(|option| {
-                            option
-                                .name("query")
-                                .description("what to search youtube for")
-                                .kind(ApplicationCommandOptionType::String)
-                                .required(true)
-                        })
-                })
-                //skip a song
-                .create_application_command(|command| {
-                    command
-                        .name(Command::skip)
-                        .description("skip the current song")
-                })
-                //stop playing
-                .create_application_command(|command| {
-                    command
-                        .name(Command::stop)
-                        .description("stop playing and clear the queue")
-                })
-                //get info of current song
-                .create_application_command(|command| {
-                    command
-                        .name(Command::playing)
-                        .description("get info for current song")
-                })
-                //get queue
-                .create_application_command(|command| {
-                    command
-                        .name(Command::queue)
-                        .description("get the current queue")
-                })
-        })
+        .set_application_commands(&ctx.http, |commands| commands)
         .await
         .expect("Couldn't create guild test commands");
 }
