@@ -1,7 +1,5 @@
-/*
- * voice.rs, LsangnaBoi 2022
- * voice channel functionality
- */
+use serenity::model::id::GuildId;
+use serenity::model::prelude::VoiceState;
 use serenity::utils::Colour;
 use serenity::{
     client::Context,
@@ -9,8 +7,12 @@ use serenity::{
         ApplicationCommandInteraction, ApplicationCommandInteractionDataOptionValue,
     },
 };
-use songbird::model::id::GuildId;
 use songbird::{create_player, input::ytdl_search};
+
+/*
+ * voice.rs, LsangnaBoi 2022
+ * voice channel functionality
+ */
 
 ///play song from youtube
 pub async fn play(ctx: &Context, command: &ApplicationCommandInteraction) {
@@ -360,5 +362,56 @@ pub async fn queue(ctx: &Context, command: &ApplicationCommandInteraction) {
                 .expect("Error creating interaction response");
             return;
         }
+    }
+}
+
+pub async fn leave_if_alone(
+    old: Option<VoiceState>,
+    ctx: Context,
+    guild_id_option: Option<GuildId>,
+) {
+    // If a user joined a channel
+    if old.is_none() {
+        return;
+    }
+
+    let old = old.unwrap();
+
+    let manager = songbird::get(&ctx)
+        .await
+        .expect("Songbird Voice client placed in at initialisation.")
+        .clone();
+
+    let call_mutex = manager.get(guild_id_option.unwrap());
+    if call_mutex.is_none() {
+        return;
+    }
+    let call_mutex = call_mutex.unwrap();
+
+    let mut call = call_mutex.lock().await;
+
+    let bot_voice_channel = call.current_channel();
+    if bot_voice_channel.is_none() {
+        return;
+    }
+    let bot_voice_channel = bot_voice_channel.unwrap();
+
+    let guild = guild_id_option
+        .unwrap()
+        .to_guild_cached(&ctx.cache)
+        .await
+        .unwrap();
+
+    let changed_voice_channel = guild.channels.get(&old.channel_id.unwrap()).unwrap();
+
+    if changed_voice_channel.id.0 != bot_voice_channel.0 {
+        return;
+    }
+
+    let changed_voice_channel_members = changed_voice_channel.members(&ctx.cache).await.unwrap();
+
+    if changed_voice_channel_members.len() == 1 {
+        call.queue().stop();
+        call.leave().await.expect("Couldn't leave voice channel");
     }
 }

@@ -11,7 +11,10 @@ use global_data::*;
 use helper_funcs::*;
 use slash_commands::*;
 
-use self::tags::{respond_to_tag, blacklist_user_from_tags};
+use self::{
+    tags::{blacklist_user_from_tags, respond_to_tag},
+    voice::leave_if_alone,
+};
 use super::tags::check_for_tag_listeners;
 use serenity::{
     async_trait,
@@ -119,6 +122,16 @@ impl EventHandler for Handler {
                 .await
                 .expect("Couldn't send message");
         }
+    }
+
+    async fn voice_state_update(
+        &self,
+        ctx: Context,
+        guild_id_option: Option<GuildId>,
+        old: Option<VoiceState>,
+        _new: VoiceState,
+    ) {
+        leave_if_alone(old, ctx, guild_id_option).await;
     }
 }
 
