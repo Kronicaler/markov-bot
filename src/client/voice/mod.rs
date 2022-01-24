@@ -141,52 +141,52 @@ pub async fn play(ctx: &Context, command: &ApplicationCommandInteraction) {
     }
 }
 
-///skip the track
+/// Skip the track
 pub async fn skip(ctx: &Context, command: &ApplicationCommandInteraction) {
-    let cache = &ctx.cache;
-    let guild_id = command.guild_id;
-    if let Some(_guild) = cache.guild(guild_id.unwrap()).await {
-        let manager = songbird::get(ctx)
-            .await
-            .expect("Songbird Voice client placed in at initialisation.")
-            .clone();
+    let guild_id = command.guild_id.expect("Couldn't get guild ID");
 
-        if let Some(handler_lock) = manager.get(guild_id.unwrap().0) {
-            let handler = handler_lock.lock().await;
-            let queue = handler.queue();
-            let _ = queue.skip();
-            //embed
-            let queuesize: usize;
-            if handler.queue().is_empty() {
-                queuesize = 1;
-            } else {
-                queuesize = handler.queue().len() - 1;
-            }
-            let title = format!("Song skipped, {} left in queue.", queuesize);
-            let colour = Colour::from_rgb(149, 8, 2);
-            command
-                .channel_id
-                .send_message(&ctx.http, |m| {
-                    m.embed(|e| {
-                        e.title(title);
-                        e.colour(colour);
-                        e
-                    });
-                    m
+    let manager = songbird::get(ctx)
+        .await
+        .expect("Songbird Voice client placed in at initialisation.")
+        .clone();
+
+    // Get call
+    let call_lock = manager.get(guild_id.0);
+    if call_lock.is_none() {
+        command
+            .create_interaction_response(&ctx.http, |r| {
+                r.interaction_response_data(|d| {
+                    d.content("Must be in a voice channel to use that command!")
                 })
-                .await
-                .expect("Error creating interaction response");
-        } else {
-            command
-                .create_interaction_response(&ctx.http, |r| {
-                    r.interaction_response_data(|d| {
-                        d.content("Must be in a voice channel to use that command!")
-                    })
-                })
-                .await
-                .expect("Error creating interaction response");
-        }
+            })
+            .await
+            .expect("Error creating interaction response");
     }
+    let call_lock = call_lock.expect("Couldn't get handler lock");
+    let call = call_lock.lock().await;
+
+    if call.queue().len() == 0 {
+        command
+            .create_interaction_response(&ctx.http, |r| {
+                r.interaction_response_data(|d| d.content("The queue is empty."))
+            })
+            .await
+            .expect("Couldn't create response");
+        return;
+    }
+
+    call.queue().skip().expect("Couldn't skip queue");
+
+    // Embed
+    let title = format!("Song skipped, {} left in queue.", call.queue().len());
+    let colour = Colour::from_rgb(149, 8, 2);
+
+    command
+        .create_interaction_response(&ctx.http, |m| {
+            m.interaction_response_data(|d| d.create_embed(|e| e.title(title).colour(colour)))
+        })
+        .await
+        .expect("Error creating interaction response");
 }
 
 ///stop playing
