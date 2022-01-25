@@ -161,6 +161,7 @@ pub async fn skip(ctx: &Context, command: &ApplicationCommandInteraction) {
             })
             .await
             .expect("Error creating interaction response");
+        return;
     }
     let call_lock = call_lock.expect("Couldn't get handler lock");
     let call = call_lock.lock().await;
