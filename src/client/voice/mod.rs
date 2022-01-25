@@ -57,7 +57,7 @@ pub async fn play(ctx: &Context, command: &ApplicationCommandInteraction) {
         None => {
             command
                 .edit_original_interaction_response(&ctx.http, |r| {
-                        r.content("You must be in a voice channel to use this command!")
+                    r.content("You must be in a voice channel to use this command!")
                 })
                 .await
                 .expect("Error creating interaction response");
@@ -80,7 +80,7 @@ pub async fn play(ctx: &Context, command: &ApplicationCommandInteraction) {
                 println!("Err starting source: {:?}", why);
                 command
                     .edit_original_interaction_response(&ctx.http, |r| {
-                            r.content("Coulnd't find the video on Youtube")
+                        r.content("Coulnd't find the video on Youtube")
                     })
                     .await
                     .expect("Error creating interaction response");
@@ -105,6 +105,12 @@ pub async fn play(ctx: &Context, command: &ApplicationCommandInteraction) {
         //color
         let colour = Colour::from_rgb(149, 8, 2);
 
+        let content = if handler.queue().is_empty() {
+            "Playing"
+        } else {
+            "Queued up"
+        };
+
         command
             .edit_original_interaction_response(&ctx.http, |r| {
                 r.create_embed(|e| {
@@ -115,6 +121,7 @@ pub async fn play(ctx: &Context, command: &ApplicationCommandInteraction) {
                         .thumbnail(thumbnail)
                         .url(url)
                 })
+                .content(content)
             })
             .await
             .expect("Error creating interaction response");
@@ -127,7 +134,7 @@ pub async fn play(ctx: &Context, command: &ApplicationCommandInteraction) {
     } else {
         command
             .edit_original_interaction_response(&ctx.http, |r| {
-                    r.content("Must be in a voice channel to use that command!")
+                r.content("Must be in a voice channel to use that command!")
             })
             .await
             .expect("Error creating interaction response");
