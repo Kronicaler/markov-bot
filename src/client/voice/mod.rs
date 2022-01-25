@@ -178,7 +178,7 @@ pub async fn skip(ctx: &Context, command: &ApplicationCommandInteraction) {
     call.queue().skip().expect("Couldn't skip queue");
 
     // Embed
-    let title = format!("Song skipped, {} left in queue.", call.queue().len());
+    let title = format!("Song skipped, {} left in queue.", call.queue().len() - 1);
     let colour = Colour::from_rgb(149, 8, 2);
 
     command
