@@ -33,8 +33,7 @@ pub async fn play(ctx: &Context, command: &ApplicationCommandInteraction) {
 
     command
         .create_interaction_response(&ctx.http, |f| {
-            f.kind(serenity::model::interactions::InteractionResponseType::ChannelMessageWithSource)
-                .interaction_response_data(|message| message.content("Searching..."))
+            f.interaction_response_data(|message| message.content("Searching..."))
         })
         .await
         .expect("Couldn't send response");
@@ -57,10 +56,8 @@ pub async fn play(ctx: &Context, command: &ApplicationCommandInteraction) {
         Some(channel) => channel,
         None => {
             command
-                .create_interaction_response(&ctx.http, |r| {
-                    r.interaction_response_data(|d| {
-                        d.content("You must be in a voice channel to use this command!")
-                    })
+                .edit_original_interaction_response(&ctx.http, |r| {
+                        r.content("You must be in a voice channel to use this command!")
                 })
                 .await
                 .expect("Error creating interaction response");
@@ -82,10 +79,8 @@ pub async fn play(ctx: &Context, command: &ApplicationCommandInteraction) {
             Err(why) => {
                 println!("Err starting source: {:?}", why);
                 command
-                    .create_interaction_response(&ctx.http, |r| {
-                        r.interaction_response_data(|d| {
-                            d.content("Coulnd't find the video on Youtube")
-                        })
+                    .edit_original_interaction_response(&ctx.http, |r| {
+                            r.content("Coulnd't find the video on Youtube")
                     })
                     .await
                     .expect("Error creating interaction response");
@@ -131,10 +126,8 @@ pub async fn play(ctx: &Context, command: &ApplicationCommandInteraction) {
         //if not in a voice channel
     } else {
         command
-            .create_interaction_response(&ctx.http, |r| {
-                r.interaction_response_data(|d| {
-                    d.content("Must be in a voice channel to use that command!")
-                })
+            .edit_original_interaction_response(&ctx.http, |r| {
+                    r.content("Must be in a voice channel to use that command!")
             })
             .await
             .expect("Error creating interaction response");
