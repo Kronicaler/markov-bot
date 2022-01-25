@@ -31,12 +31,7 @@ pub async fn play(ctx: &Context, command: &ApplicationCommandInteraction) {
         _ => panic!("expected a string"),
     };
 
-    command
-        .create_interaction_response(&ctx.http, |f| {
-            f.interaction_response_data(|message| message.content("Searching..."))
-        })
-        .await
-        .expect("Couldn't send response");
+    command.defer(&ctx.http).await.unwrap();
 
     //create manager
     let manager = songbird::get(ctx).await.expect("songbird error").clone();
