@@ -1,139 +1,18 @@
+mod play;
+
 use serenity::model::id::GuildId;
 use serenity::model::prelude::VoiceState;
 use serenity::utils::Colour;
 use serenity::{
-    client::Context,
-    model::interactions::application_command::{
-        ApplicationCommandInteraction, ApplicationCommandInteractionDataOptionValue,
-    },
+    client::Context, model::interactions::application_command::ApplicationCommandInteraction,
 };
-use songbird::{create_player, input::ytdl_search};
 
 /*
  * voice.rs, LsangnaBoi 2022
  * voice channel functionality
  */
-
-///play song from youtube
 pub async fn play(ctx: &Context, command: &ApplicationCommandInteraction) {
-    //get the guild ID, cache, and query
-    let guild_id = command.guild_id.expect("Couldn't get guild ID");
-    let user_id = command.user.id;
-    let cache = &ctx.cache;
-    let query = command
-        .data
-        .options
-        .iter()
-        .find(|opt| opt.name == "query")
-        .expect("expected input");
-    let query = match query.resolved.as_ref().unwrap() {
-        ApplicationCommandInteractionDataOptionValue::String(s) => s,
-        _ => panic!("expected a string"),
-    };
-
-    command.defer(&ctx.http).await.unwrap();
-
-    //create manager
-    let manager = songbird::get(ctx).await.expect("songbird error").clone();
-
-    let guild = cache
-        .guild(guild_id)
-        .await
-        .expect("unable to fetch guild from the cache");
-
-    //get channel_id
-    let channel_id = guild
-        .voice_states
-        .get(&user_id)
-        .and_then(|voice_state| voice_state.channel_id);
-
-    let connect_to = match channel_id {
-        Some(channel) => channel,
-        None => {
-            command
-                .edit_original_interaction_response(&ctx.http, |r| {
-                    r.content("You must be in a voice channel to use this command!")
-                })
-                .await
-                .expect("Error creating interaction response");
-            return;
-        }
-    };
-
-    //join voice channel
-    let (_handle_lock, _success) = manager.join(GuildId(guild_id.0).0, connect_to).await;
-
-    //if the guild is found
-    //create audio source
-    if let Some(handler_lock) = manager.get(guild_id.0) {
-        let mut handler = handler_lock.lock().await;
-
-        //get source from YouTube
-        let source = match ytdl_search(query).await {
-            Ok(source) => source,
-            Err(why) => {
-                println!("Err starting source: {:?}", why);
-                command
-                    .edit_original_interaction_response(&ctx.http, |r| {
-                        r.content("Coulnd't find the video on Youtube")
-                    })
-                    .await
-                    .expect("Error creating interaction response");
-                return;
-            }
-        };
-
-        //create embed
-        //title
-        let title = source.metadata.title.clone().unwrap();
-        //channel
-        let channel = source.metadata.channel.clone().unwrap();
-        //image
-        let thumbnail = source.metadata.thumbnail.clone().unwrap();
-        //embed
-        let url = source.metadata.source_url.clone().unwrap();
-        //duration
-        let time = source.metadata.duration.unwrap();
-        let minutes = time.as_secs() / 60;
-        let seconds = time.as_secs() - minutes * 60;
-        let duration = format!("{}:{:02}", minutes, seconds);
-        //color
-        let colour = Colour::from_rgb(149, 8, 2);
-
-        let content = if handler.queue().is_empty() {
-            "Playing"
-        } else {
-            "Queued up"
-        };
-
-        command
-            .edit_original_interaction_response(&ctx.http, |r| {
-                r.create_embed(|e| {
-                    e.title(title)
-                        .colour(colour)
-                        .description(channel)
-                        .field("duration: ", duration, false)
-                        .thumbnail(thumbnail)
-                        .url(url)
-                })
-                .content(content)
-            })
-            .await
-            .expect("Error creating interaction response");
-        //add to queue
-        let (mut audio, _) = create_player(source);
-        audio.set_volume(0.5);
-        handler.enqueue(audio);
-
-        //if not in a voice channel
-    } else {
-        command
-            .edit_original_interaction_response(&ctx.http, |r| {
-                r.content("Must be in a voice channel to use that command!")
-            })
-            .await
-            .expect("Error creating interaction response");
-    }
+    play::play(ctx, command).await;
 }
 
 /// Skip the track
@@ -161,7 +40,7 @@ pub async fn skip(ctx: &Context, command: &ApplicationCommandInteraction) {
     let call_lock = call_lock.expect("Couldn't get handler lock");
     let call = call_lock.lock().await;
 
-    if call.queue().len() == 0 {
+    if call.queue().is_empty() {
         command
             .create_interaction_response(&ctx.http, |r| {
                 r.interaction_response_data(|d| d.content("The queue is empty."))
@@ -356,7 +235,6 @@ pub async fn queue(ctx: &Context, command: &ApplicationCommandInteraction) {
                 })
                 .await
                 .expect("Error creating interaction response");
-            return;
         }
     }
 }
