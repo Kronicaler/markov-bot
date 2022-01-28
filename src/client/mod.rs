@@ -22,7 +22,13 @@ use serenity::{
     model::{interactions::Interaction, prelude::*},
     Client,
 };
-use songbird::SerenityInit;
+use songbird::{
+    driver::{
+        retry::{ExponentialBackoff, Retry, Strategy},
+        DecodeMode,
+    },
+    Config, SerenityInit,
+};
 use std::env;
 use strum_macros::{Display, EnumString};
 use tokio::join;
@@ -142,10 +148,18 @@ pub async fn start_client() {
         .parse()
         .expect("Couldn't parse the APPLICATION_ID");
 
+    let songbird_config = Config::default()
+        .decode_mode(DecodeMode::Pass)
+        .driver_retry(Retry {
+            retry_limit: Some(2),
+            strategy: Strategy::Backoff(ExponentialBackoff::default()),
+        })
+        .preallocated_tracks(2);
+
     let mut client = Client::builder(token)
         .application_id(application_id.0)
         .event_handler(Handler {})
-        .register_songbird()
+        .register_songbird_from_config(songbird_config)
         .await
         .expect("Error creating client");
 
