@@ -37,5 +37,10 @@ impl TagCommandBuilder for CreateApplicationCommands {
         .create_application_command(|command|{
             command.name(Command::blacklistmefromtags).description("The bot won't respond to your messages if you trip off a tag")
         })
+        .create_application_command(|command| {
+            command.name(Command::settagresponsechannel).description(
+                "Set this channel as the channel where i will reply to tags",
+            )
+        })
     }
 }

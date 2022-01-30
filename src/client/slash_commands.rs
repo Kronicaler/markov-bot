@@ -133,11 +133,6 @@ pub async fn create_global_commands(ctx: &Context) {
                 )
             })
             .create_application_command(|command| {
-                command.name(Command::settagresponsechannel).description(
-                    "Set this channel as the channel where i will reply to tags",
-                )
-            })
-            .create_application_command(|command| {
                 command
                     .name(Command::help)
                     .description("Information about my commands")
