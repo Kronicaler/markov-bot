@@ -5,7 +5,7 @@
 mod client;
 
 use client::*;
-use serenity::model::{id::GuildId};
+use serenity::model::id::GuildId;
 
 #[tokio::main]
 async fn main() {

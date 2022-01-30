@@ -1,10 +1,11 @@
 use super::{
     helper_funcs::{ping_command, user_id_command},
     tags::{
-        blacklist_user_from_tags_command, create_tag, create_tag_commands, list_tags, remove_tag,
+        blacklist_user_from_tags_command, create_tag, list_tags, remove_tag,
         set_tag_response_channel,
     },
 };
+use crate::client::tags::commands::TagCommandBuilder;
 use crate::*;
 use serenity::{
     client::Context,
@@ -183,8 +184,8 @@ pub async fn create_global_commands(ctx: &Context) {
                 command
                     .name(Command::queue)
                     .description("get the current queue")
-            });
-        create_tag_commands(commands)
+            })
+            .create_tag_commands()
     })
     .await
     .expect("Couldn't create global slash commands");

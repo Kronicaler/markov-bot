@@ -1,3 +1,4 @@
+pub mod commands;
 mod file_operations;
 mod global_data;
 
@@ -6,7 +7,7 @@ use self::global_data::{
     BOT_CHANNEL_PATH, TAG_PATH,
 };
 use super::{create_file_if_missing, ButtonIds};
-use crate::client::{tags::file_operations::save_user_tag_blacklist_to_file, Command};
+use crate::client::tags::file_operations::save_user_tag_blacklist_to_file;
 use dashmap::{DashMap, DashSet};
 pub use global_data::Tag;
 use regex::Regex;
@@ -19,7 +20,6 @@ use serenity::{
         interactions::{
             application_command::{
                 ApplicationCommandInteraction, ApplicationCommandInteractionDataOptionValue,
-                ApplicationCommandOptionType,
             },
             message_component::ButtonStyle,
         },
@@ -152,15 +152,21 @@ pub async fn create_tag(ctx: &Context, command: &ApplicationCommandInteraction) 
 
             tags.insert(tag);
             save_tags_to_file(&tags);
-            command.create_interaction_response(&ctx.http, |r| {
-                r.interaction_response_data(|d| d.content("Set tag"))
-            }).await.expect("Error creating interaction response");
+            command
+                .create_interaction_response(&ctx.http, |r| {
+                    r.interaction_response_data(|d| d.content("Set tag"))
+                })
+                .await
+                .expect("Error creating interaction response");
             return;
         }
     }
-    command.create_interaction_response(&ctx.http, |r| {
-        r.interaction_response_data(|d| d.content("Couldn't set tag"))
-    }).await.expect("Error creating interaction response");
+    command
+        .create_interaction_response(&ctx.http, |r| {
+            r.interaction_response_data(|d| d.content("Couldn't set tag"))
+        })
+        .await
+        .expect("Error creating interaction response");
 }
 
 pub async fn blacklist_user_from_tags_command(
@@ -181,9 +187,12 @@ pub async fn blacklist_user_from_tags_command(
         response = format!("Added {} to the tag blacklist", &user.name);
     }
 
-    command.create_interaction_response(&ctx.http, |r| {
-        r.interaction_response_data(|d| d.content(response))
-    }).await.expect("Error creating interaction response");
+    command
+        .create_interaction_response(&ctx.http, |r| {
+            r.interaction_response_data(|d| d.content(response))
+        })
+        .await
+        .expect("Error creating interaction response");
 }
 
 pub async fn blacklist_user_from_tags(ctx: &Context, user: &User) -> String {
@@ -258,45 +267,19 @@ pub async fn check_for_tag_listeners(
 
     None
 }
-/// Create the tag slash commands
-pub fn create_tag_commands(
-    commands: &mut serenity::builder::CreateApplicationCommands,
-) -> &mut serenity::builder::CreateApplicationCommands {
-    commands.create_application_command(|command| {
-            command.name(Command::createtag).description(
-                "Create a tag for a word or list of words and a response whenever someone says that word",
-            )
-            .create_option(|option|{
-                option.name("tag").description("What word to listen for").kind(ApplicationCommandOptionType::String).required(true)
-            })
-            .create_option(|option|{
-                option.name("response").description("What the response should be when the tag is said")
-                .kind(ApplicationCommandOptionType::String)
-                .required(true)
-            })
-        })
-        .create_application_command(|command| {
-            command.name(Command::removetag).description("Remove a tag").create_option(|option|{
-                option.name("tag").description("The tag to remove").kind(ApplicationCommandOptionType::String).required(true)
-            })
-        })
-        .create_application_command(|command|{
-            command.name(Command::tags).description("List all of the tags")
-        })
-        .create_application_command(|command|{
-            command.name(Command::blacklistmefromtags).description("The bot won't respond to your messages if you trip off a tag")
-        })
-}
 
 pub async fn set_tag_response_channel(ctx: &Context, command: &ApplicationCommandInteraction) {
     let guild_id = match command.guild_id {
         Some(guild_id) => guild_id,
         None => {
-            command.create_interaction_response(&ctx.http, |r| {
-                r.interaction_response_data(|d| {
-                    d.content("You can only use this command in a server")
+            command
+                .create_interaction_response(&ctx.http, |r| {
+                    r.interaction_response_data(|d| {
+                        d.content("You can only use this command in a server")
+                    })
                 })
-            }).await.expect("Error creating interaction response");
+                .await
+                .expect("Error creating interaction response");
             return;
         }
     };
@@ -316,9 +299,12 @@ pub async fn set_tag_response_channel(ctx: &Context, command: &ApplicationComman
                 .id
     {
         response = "You need to have the Administrator permission to invoke this command";
-        command.create_interaction_response(&ctx.http, |r| {
-            r.interaction_response_data(|d| d.content(response))
-        }).await.expect("Error creating interaction response");
+        command
+            .create_interaction_response(&ctx.http, |r| {
+                r.interaction_response_data(|d| d.content(response))
+            })
+            .await
+            .expect("Error creating interaction response");
         return;
     }
 
@@ -331,9 +317,12 @@ pub async fn set_tag_response_channel(ctx: &Context, command: &ApplicationComman
         Err(_) => "Something went wrong setting the tag response channel",
     };
 
-    command.create_interaction_response(&ctx.http, |r| {
-        r.interaction_response_data(|d| d.content(response))
-    }).await.expect("Error creating interaction response");
+    command
+        .create_interaction_response(&ctx.http, |r| {
+            r.interaction_response_data(|d| d.content(response))
+        })
+        .await
+        .expect("Error creating interaction response");
 }
 
 /// It first checks if a tag response channel exists for the guild the message is in.
