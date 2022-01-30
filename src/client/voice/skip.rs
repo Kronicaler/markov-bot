@@ -44,7 +44,14 @@ pub async fn skip(ctx: &Context, command: &ApplicationCommandInteraction) {
     let track_number = get_track_number(command);
 
     if track_number.is_some() {
-        call.queue().dequeue(track_number.unwrap() - 1);
+        if let None = call.queue().dequeue(track_number.unwrap() - 1) {
+            command
+        .create_interaction_response(&ctx.http, |m| {
+            m.interaction_response_data(|d| d.create_embed(|e| e.title("Couldn't skip song")))
+        })
+        .await
+        .expect("Error creating interaction response");
+        }
     } else {
         call.queue().skip().expect("Couldn't skip queue");
     }
