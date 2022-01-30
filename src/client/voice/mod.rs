@@ -1,5 +1,9 @@
 pub mod commands;
 mod play;
+mod skip;
+
+pub use play::play;
+pub use skip::skip;
 
 use serenity::model::id::GuildId;
 use serenity::model::prelude::VoiceState;
@@ -12,58 +16,6 @@ use serenity::{
  * voice.rs, LsangnaBoi 2022
  * voice channel functionality
  */
-pub async fn play(ctx: &Context, command: &ApplicationCommandInteraction) {
-    play::play(ctx, command).await;
-}
-
-/// Skip the track
-pub async fn skip(ctx: &Context, command: &ApplicationCommandInteraction) {
-    let guild_id = command.guild_id.expect("Couldn't get guild ID");
-
-    let manager = songbird::get(ctx)
-        .await
-        .expect("Songbird Voice client placed in at initialisation.")
-        .clone();
-
-    // Get call
-    let call_lock = manager.get(guild_id.0);
-    if call_lock.is_none() {
-        command
-            .create_interaction_response(&ctx.http, |r| {
-                r.interaction_response_data(|d| {
-                    d.content("Must be in a voice channel to use that command!")
-                })
-            })
-            .await
-            .expect("Error creating interaction response");
-        return;
-    }
-    let call_lock = call_lock.expect("Couldn't get handler lock");
-    let call = call_lock.lock().await;
-
-    if call.queue().is_empty() {
-        command
-            .create_interaction_response(&ctx.http, |r| {
-                r.interaction_response_data(|d| d.content("The queue is empty."))
-            })
-            .await
-            .expect("Couldn't create response");
-        return;
-    }
-
-    call.queue().skip().expect("Couldn't skip queue");
-
-    // Embed
-    let title = format!("Song skipped, {} left in queue.", call.queue().len() - 1);
-    let colour = Colour::from_rgb(149, 8, 2);
-
-    command
-        .create_interaction_response(&ctx.http, |m| {
-            m.interaction_response_data(|d| d.create_embed(|e| e.title(title).colour(colour)))
-        })
-        .await
-        .expect("Error creating interaction response");
-}
 
 ///stop playing
 pub async fn stop(ctx: &Context, command: &ApplicationCommandInteraction) {
