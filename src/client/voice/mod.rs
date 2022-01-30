@@ -1,4 +1,5 @@
 mod play;
+pub mod commands;
 
 use serenity::model::id::GuildId;
 use serenity::model::prelude::VoiceState;
