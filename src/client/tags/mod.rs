@@ -36,7 +36,7 @@ use {
     },
 };
 
-pub async fn list_tags(ctx: &Context, command: &ApplicationCommandInteraction) {
+pub async fn list(ctx: &Context, command: &ApplicationCommandInteraction) {
     let tag = get_tags_lock(&ctx.data).await;
 
     let mut message = String::new();
@@ -146,7 +146,7 @@ pub async fn create_tag(ctx: &Context, command: &ApplicationCommandInteraction) 
             let tag = Tag {
                 listener: listener.to_lowercase().trim().to_owned(),
                 response: response.trim().to_owned(),
-                creator_name: command.user.name.to_owned(),
+                creator_name: command.user.name.clone(),
                 creator_id: command.user.id.0,
             };
 
@@ -195,7 +195,7 @@ pub async fn blacklist_user_from_tags_command(
         .expect("Error creating interaction response");
 }
 
-pub async fn blacklist_user_from_tags(ctx: &Context, user: &User) -> String {
+pub async fn blacklist_user(ctx: &Context, user: &User) -> String {
     let users_blacklisted_from_tags = get_tags_blacklisted_users_lock(&ctx.data).await;
 
     if users_blacklisted_from_tags.contains(&user.id.0) {
@@ -248,7 +248,7 @@ pub async fn check_for_tag_listeners(
                 }
 
                 if count == listener_words.len() {
-                    return Some(response.to_owned());
+                    return Some(response.clone());
                 }
             }
         }
@@ -261,7 +261,7 @@ pub async fn check_for_tag_listeners(
         let listener_words = listener.split(' ').map(ToString::to_string);
 
         if words_in_message.contains(listener) && listener_words.count() < 2 {
-            return Some(response.to_owned());
+            return Some(response.clone());
         }
     }
 
@@ -269,19 +269,18 @@ pub async fn check_for_tag_listeners(
 }
 
 pub async fn set_tag_response_channel(ctx: &Context, command: &ApplicationCommandInteraction) {
-    let guild_id = match command.guild_id {
-        Some(guild_id) => guild_id,
-        None => {
-            command
-                .create_interaction_response(&ctx.http, |r| {
-                    r.interaction_response_data(|d| {
-                        d.content("You can only use this command in a server")
-                    })
+    let guild_id = if let Some(guild_id) = command.guild_id {
+        guild_id
+    } else {
+        command
+            .create_interaction_response(&ctx.http, |r| {
+                r.interaction_response_data(|d| {
+                    d.content("You can only use this command in a server")
                 })
-                .await
-                .expect("Error creating interaction response");
-            return;
-        }
+            })
+            .await
+            .expect("Error creating interaction response");
+        return;
     };
 
     let member = command.member.as_ref().expect("Expected member");

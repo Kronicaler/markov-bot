@@ -6,13 +6,13 @@ pub mod slash_commands;
 pub mod tags;
 pub mod voice;
 
-use file_operations::*;
-use global_data::*;
-use helper_funcs::*;
-use slash_commands::*;
+use file_operations::create_file_if_missing;
+use global_data::{init_global_data_for_client, HELP_MESSAGE};
+use helper_funcs::leave_unknown_guilds;
+use slash_commands::{command_responses, create_global_commands, create_test_commands};
 
 use self::{
-    tags::{blacklist_user_from_tags, respond_to_tag},
+    tags::{blacklist_user, respond_to_tag},
     voice::leave_if_alone,
 };
 use super::tags::check_for_tag_listeners;
@@ -70,7 +70,7 @@ impl EventHandler for Handler {
                 );
 
                 if button.data.custom_id == ButtonIds::BlacklistMeFromTags.to_string() {
-                    let response = blacklist_user_from_tags(&ctx, &button.user).await;
+                    let response = blacklist_user(&ctx, &button.user).await;
 
                     button
                         .create_interaction_response(&ctx.http, |r| {
@@ -141,7 +141,7 @@ impl EventHandler for Handler {
     }
 }
 
-pub async fn start_client() {
+pub async fn start() {
     let token = env::var("DISCORD_TOKEN").expect("Expected a DISCORD_TOKEN in the environment");
     let application_id: UserId = env::var("APPLICATION_ID")
         .expect("Expected an APPLICATION_ID in the environment")

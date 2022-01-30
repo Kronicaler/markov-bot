@@ -77,7 +77,7 @@ pub async fn leave_unknown_guilds(ready: &Ready, ctx: &Context) {
                 .expect("Couldn't fetch owner of guild")
                 .tag();
 
-            println!("Left guild {guild_name} owned by {guild_owner}",)
+            println!("Left guild {guild_name} owned by {guild_owner}",);
         }
     }
 }

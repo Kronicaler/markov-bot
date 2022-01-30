@@ -75,7 +75,7 @@ pub async fn generate_sentence(ctx: &Context) -> String {
         Err(why) => match why {
             markov_strings::ErrorType::CorpusEmpty => "The corpus is empty, try again later!",
             markov_strings::ErrorType::TriesExceeded => "couldn't generate a sentence, try again!",
-            _ => "Try again later.",
+            markov_strings::ErrorType::CorpusNotEmpty => "Try again later.",
         }
         .to_owned(),
     }
@@ -135,12 +135,19 @@ pub async fn add_user_to_blacklist(
         Err(_) => "Something went wrong while adding you to the blacklist :(".to_owned(),
     };
 
-    command.create_interaction_response(&ctx.http, |r| {
-        r.interaction_response_data(|d| d.content(response))
-    }).await.expect("Error creating interaction response");
+    command
+        .create_interaction_response(&ctx.http, |r| {
+            r.interaction_response_data(|d| d.content(response))
+        })
+        .await
+        .expect("Error creating interaction response");
 }
 
-pub async fn remove_user_from_blacklist(user: &User, ctx: &Context,command: &ApplicationCommandInteraction) {
+pub async fn remove_user_from_blacklist(
+    user: &User,
+    ctx: &Context,
+    command: &ApplicationCommandInteraction,
+) {
     let blacklisted_users = get_markov_blacklisted_users_lock(&ctx.data).await;
 
     blacklisted_users.remove(&user.id.0);
@@ -156,14 +163,15 @@ pub async fn remove_user_from_blacklist(user: &User, ctx: &Context,command: &App
                 None => user.name.clone(),
             }
         ),
-        Err(_) => {
-            "Something went wrong while removing you from the blacklist :(".to_owned()
-        }
+        Err(_) => "Something went wrong while removing you from the blacklist :(".to_owned(),
     };
 
-    command.create_interaction_response(&ctx.http, |r| {
-        r.interaction_response_data(|d| d.content(response))
-    }).await.expect("Error creating interaction response");
+    command
+        .create_interaction_response(&ctx.http, |r| {
+            r.interaction_response_data(|d| d.content(response))
+        })
+        .await
+        .expect("Error creating interaction response");
 }
 
 pub async fn blacklisted_users(ctx: Context, command: &ApplicationCommandInteraction) {
@@ -181,9 +189,14 @@ pub async fn blacklisted_users(ctx: Context, command: &ApplicationCommandInterac
     }
 
     if blacklisted_usernames.is_empty() {
-        command.create_interaction_response(ctx.http, |r| {
-            r.interaction_response_data(|d| d.content("Currently there are no blacklisted users"))
-        }).await.expect("Error creating interaction response");
+        command
+            .create_interaction_response(ctx.http, |r| {
+                r.interaction_response_data(|d| {
+                    d.content("Currently there are no blacklisted users")
+                })
+            })
+            .await
+            .expect("Error creating interaction response");
         return;
     }
 
@@ -195,9 +208,12 @@ pub async fn blacklisted_users(ctx: Context, command: &ApplicationCommandInterac
     //remove the trailing comma and whitespace
     message.pop();
     message.pop();
-    command.create_interaction_response(ctx.http, |r| {
-        r.interaction_response_data(|d| d.content(message))
-    }).await.expect("Error creating interaction response");
+    command
+        .create_interaction_response(ctx.http, |r| {
+            r.interaction_response_data(|d| d.content(message))
+        })
+        .await
+        .expect("Error creating interaction response");
 }
 
 pub fn init_markov_data(

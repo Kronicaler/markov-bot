@@ -32,13 +32,13 @@ pub async fn play(ctx: &Context, command: &ApplicationCommandInteraction) {
         .expect("unable to fetch guild from the cache");
 
     // Get voice channel_id
-    let voice_channel_id = match get_voice_channel_id(guild, command.user.id).await {
-        Some(value) => value,
-        None => {
+    let voice_channel_id =
+        if let Some(voice_channel_id) = get_voice_channel_id(&guild, command.user.id) {
+            voice_channel_id
+        } else {
             voice_channel_not_found_response(command, ctx).await;
             return;
-        }
-    };
+        };
 
     //create manager
     let manager = songbird::get(ctx).await.expect("songbird error").clone();
@@ -88,7 +88,7 @@ async fn voice_channel_not_found_response(command: &ApplicationCommandInteractio
         .expect("Error creating interaction response");
 }
 
-async fn get_voice_channel_id(guild: Guild, user_id: UserId) -> Option<ChannelId> {
+fn get_voice_channel_id(guild: &Guild, user_id: UserId) -> Option<ChannelId> {
     guild
         .voice_states
         .get(&user_id)

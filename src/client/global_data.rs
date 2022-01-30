@@ -1,5 +1,5 @@
 use super::{markov::init_markov_data, tags::init_tags_data};
-use crate::*;
+use crate::markov;
 use serenity::Client;
 use std::error::Error;
 

@@ -1,5 +1,5 @@
-mod play;
 pub mod commands;
+mod play;
 
 use serenity::model::id::GuildId;
 use serenity::model::prelude::VoiceState;
@@ -78,7 +78,7 @@ pub async fn stop(ctx: &Context, command: &ApplicationCommandInteraction) {
         if let Some(handler_lock) = manager.get(guild_id.unwrap()) {
             let handler = handler_lock.lock().await;
             let queue = handler.queue();
-            let _ = queue.stop();
+            queue.stop();
         } else {
             command
                 .create_interaction_response(&ctx.http, |r| {

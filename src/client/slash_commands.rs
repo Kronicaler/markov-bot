@@ -1,13 +1,12 @@
 use super::{
     helper_funcs::{ping_command, user_id_command},
     tags::{
-        blacklist_user_from_tags_command, create_tag, list_tags, remove_tag,
-        set_tag_response_channel,
+        blacklist_user_from_tags_command, create_tag, list, remove_tag, set_tag_response_channel,
     },
     voice::commands::VoiceCommandBuilder,
 };
 use crate::client::tags::commands::TagCommandBuilder;
-use crate::*;
+use crate::{global_data, markov, voice, GuildId};
 use serenity::{
     client::Context,
     model::interactions::application_command::{
@@ -59,14 +58,15 @@ pub async fn command_responses(command: &ApplicationCommandInteraction, ctx: Con
             Command::id => user_id_command(ctx, command).await,
             Command::blacklisteddata => markov::blacklisted_users(ctx, command).await,
             Command::stopsavingmymessages => {
-                markov::add_user_to_blacklist(user, &ctx, command).await
+                markov::add_user_to_blacklist(user, &ctx, command).await;
             }
             Command::createtag => create_tag(&ctx, command).await,
             Command::removetag => remove_tag(&ctx, command).await,
-            Command::tags => list_tags(&ctx, command).await,
+            Command::tags => list(&ctx, command).await,
             Command::blacklistmefromtags => {
-                blacklist_user_from_tags_command(&ctx, user, command).await
+                blacklist_user_from_tags_command(&ctx, user, command).await;
             }
+
             Command::settagresponsechannel => set_tag_response_channel(&ctx, command).await,
             Command::help => command
                 .create_interaction_response(ctx.http, |r| {
@@ -83,7 +83,7 @@ pub async fn command_responses(command: &ApplicationCommandInteraction, ctx: Con
                 .await
                 .expect("Error creating interaction response"),
             Command::continuesavingmymessages => {
-                markov::remove_user_from_blacklist(user, &ctx, command).await
+                markov::remove_user_from_blacklist(user, &ctx, command).await;
             }
 
             // ===== VOICE =====
@@ -154,7 +154,7 @@ pub async fn create_global_commands(ctx: &Context) {
 ///
 /// TODO: call only when it's run in debug mode
 pub async fn create_test_commands(ctx: &Context) {
-    let testing_guild = 248167504910745600; // TODO: make into an optional environment variable
+    let testing_guild = 919_312_301_088_178_206; // TODO: make into an optional environment variable
 
     GuildId(testing_guild)
         .set_application_commands(&ctx.http, |commands| commands)
