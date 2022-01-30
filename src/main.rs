@@ -1,10 +1,8 @@
-//#![windows_subsystem = "windows"]
-#![deny(missing_docs, clippy::all)]
+#![deny(clippy::pedantic, warnings)]
 
 //! A discord bot written in rust for fun
 
 mod client;
-mod unit_tests;
 
 use client::*;
 use serenity::model::{id::GuildId};
