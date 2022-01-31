@@ -150,7 +150,7 @@ pub async fn create_tag(ctx: &Context, command: &ApplicationCommandInteraction) 
                 creator_id: command.user.id.0,
             };
 
-            for tag in tags.clone().iter() {
+            for tag in tags.as_ref().clone().iter() {
                 if &tag.listener == listener {
                     tags.remove(&tag);
                 }
