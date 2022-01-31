@@ -59,8 +59,10 @@ pub async fn skip(ctx: &Context, command: &ApplicationCommandInteraction) {
                 })
                 .await
                 .expect("Error creating interaction response");
-                return;
+            return;
         }
+    } else {
+        call.queue().skip().expect("Couldn't skip song");
     }
 
     // Embed
