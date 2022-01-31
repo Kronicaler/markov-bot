@@ -150,6 +150,12 @@ pub async fn create_tag(ctx: &Context, command: &ApplicationCommandInteraction) 
                 creator_id: command.user.id.0,
             };
 
+            for tag in tags.clone().iter() {
+                if &tag.listener == listener {
+                    tags.remove(&tag);
+                }
+            }
+
             tags.insert(tag);
             save_tags_to_file(&tags);
             command
