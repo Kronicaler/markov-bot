@@ -10,16 +10,16 @@ edition = "2021"
 [dependencies]
 serenity = { version="0.10.10", default-features = false, features = ["cache", "client", "gateway", "rustls_backend", "model", "unstable_discord_api", "voice"] }
 tokio = { version = "1.15.0", features = ["macros", "rt-multi-thread", "signal"] }
-serde_json = "1.0"
+serde_json = "1.0.79"
 regex = "1.5.4"
 markov_strings = "0.1.5"
-dotenv = "0.15"
+dotenv = "0.15.0"
 crossbeam = "0.8.1"
 rayon = "1.5.1"
-strum = "0.23.0"
-strum_macros = "0.23.1"
+strum = "0.24.0"
+strum_macros = "0.24.0"
 rand = "0.8.4"
 dashmap = {version="5.0.0", features=["serde"] }
 serde = "1.0.135"
-#requires youtube-dlc, opus, yt-search and ffmpeg in order for voice commands to work
-songbird = {version="0.2", features=["builtin-queue", "serenity"]}
+# requires youtube-dlc, opus, yt-search and ffmpeg in order for voice commands to work
+songbird = {version="0.2.2", features=["builtin-queue", "serenity"]}
