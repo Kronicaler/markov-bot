@@ -12,7 +12,7 @@ use serenity::{
 };
 use songbird::{
     create_player,
-    input::{ytdl_search, Input, Metadata},
+    input::{Input, Metadata, Restartable},
     tracks::TrackQueue,
 };
 use std::time::Duration;
@@ -52,15 +52,16 @@ pub async fn play(ctx: &Context, command: &ApplicationCommandInteraction) {
     let mut call = call_lock.lock().await;
 
     //get source from YouTube
-    let source = get_source(query, command, ctx)
+    let source = get_source(query.to_owned(), command, ctx)
         .await
         .expect("Couldn't get source");
 
     // Return interaction response
-    return_response(&source.metadata, call.queue(), command, ctx).await;
+    let input: Input = source.into();
+    return_response(&input.metadata, call.queue(), command, ctx).await;
 
     //add to queue
-    let (mut audio, _) = create_player(source);
+    let (mut audio, _) = create_player(input);
     audio.set_volume(0.5);
     call.enqueue(audio);
 }
@@ -96,11 +97,31 @@ fn get_voice_channel_id(guild: &Guild, user_id: UserId) -> Option<ChannelId> {
 }
 
 async fn get_source(
-    query: &str,
+    query: String,
     command: &ApplicationCommandInteraction,
     ctx: &Context,
-) -> Result<Input, Box<dyn std::error::Error>> {
-    match ytdl_search(query).await {
+) -> Result<Restartable, Box<dyn std::error::Error>> {
+    let link_regex =
+    regex::Regex::new(r#"(?:(?:https?|ftp)://|\b(?:[a-z\d]+\.))(?:(?:[^\s()<>]+|\((?:[^\s()<>]+|(?:\([^\s()<>]+\)))?\))+(?:\((?:[^\s()<>]+|(?:\(?:[^\s()<>]+\)))?\)|[^\s`!()\[\]{};:'".,<>?«»“”‘’]))?"#)
+    .expect("Invalid regular expression");
+
+    if link_regex.is_match(&query) {
+        match Restartable::ytdl(query, false).await {
+            Ok(source) => return Ok(source),
+            Err(why) => {
+                println!("Err starting source: {:?}", why);
+                command
+                    .edit_original_interaction_response(&ctx.http, |r| {
+                        r.content("Coulnd't find the video on Youtube")
+                    })
+                    .await
+                    .expect("Error creating interaction response");
+                return Err(Box::new(why));
+            }
+        }
+    }
+
+    match Restartable::ytdl_search(query, false).await {
         Ok(source) => Ok(source),
         Err(why) => {
             println!("Err starting source: {:?}", why);

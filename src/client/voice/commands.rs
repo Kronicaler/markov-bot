@@ -54,5 +54,10 @@ impl VoiceCommandBuilder for CreateApplicationCommands {
                 .name(Command::queue)
                 .description("get the current queue")
         })
+        .create_application_command(|command| {
+            command
+                .name(Command::loop_song)
+                .description("loop the current song")
+        })
     }
 }

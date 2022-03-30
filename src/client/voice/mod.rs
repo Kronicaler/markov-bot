@@ -1,9 +1,11 @@
 pub mod commands;
 mod play;
 mod skip;
+mod loop_song;
 
 pub use play::play;
 pub use skip::skip;
+pub use loop_song::loop_song;
 
 use serenity::model::id::GuildId;
 use serenity::model::prelude::VoiceState;
