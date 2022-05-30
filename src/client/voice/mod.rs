@@ -76,6 +76,19 @@ pub async fn playing(ctx: &Context, command: &ApplicationCommandInteraction) {
         if let Some(handler_lock) = manager.get(guild_id.unwrap()) {
             let handler = handler_lock.lock().await;
             let queue = handler.queue();
+
+            if let None = queue.current(){
+                command
+                    .create_interaction_response(&ctx.http, |r| {
+                        r.interaction_response_data(|d| {
+                            d.content("Nothing is currently playing.")
+                        })
+                    })
+                    .await
+                    .expect("Error creating interaction response");
+                return;
+            }
+
             let song = &queue.current().unwrap().metadata().clone();
             //create embed
             //title
