@@ -84,9 +84,9 @@ pub async fn generate_sentence(ctx: &Context) -> String {
 pub fn init() -> Result<Markov, Box<dyn Error>> {
     let mut markov_chain = Markov::new();
     markov_chain.set_state_size(3).expect("Will never fail");
-    markov_chain.set_max_tries(200);
+    markov_chain.set_max_tries(1000);
     markov_chain.set_filter(|r| {
-        if r.text.split(' ').count() >= 5 && r.refs.len() >= 2 {
+        if r.refs.len() >= 2 && r.score > 20 {
             return true;
         }
         false
