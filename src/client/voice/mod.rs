@@ -1,11 +1,11 @@
 pub mod commands;
+mod loop_song;
 mod play;
 mod skip;
-mod loop_song;
 
+pub use loop_song::loop_song;
 pub use play::play;
 pub use skip::skip;
-pub use loop_song::loop_song;
 
 use serenity::model::id::GuildId;
 use serenity::model::prelude::VoiceState;
@@ -77,12 +77,10 @@ pub async fn playing(ctx: &Context, command: &ApplicationCommandInteraction) {
             let handler = handler_lock.lock().await;
             let queue = handler.queue();
 
-            if let None = queue.current(){
+            if let None = queue.current() {
                 command
                     .create_interaction_response(&ctx.http, |r| {
-                        r.interaction_response_data(|d| {
-                            d.content("Nothing is currently playing.")
-                        })
+                        r.interaction_response_data(|d| d.content("Nothing is currently playing."))
                     })
                     .await
                     .expect("Error creating interaction response");
@@ -169,11 +167,26 @@ pub async fn queue(ctx: &Context, command: &ApplicationCommandInteraction) {
                     }
                     //color
                     let colour = Colour::from_rgb(149, 8, 2);
+                    let total_queue_time = queue
+                        .current_queue()
+                        .iter()
+                        .map(|f| f.metadata().duration.unwrap())
+                        .reduce(|a, f| a.checked_add(f).unwrap())
+                        .unwrap_or_default();
+
+                    let minutes = total_queue_time.as_secs() / 60;
+                    let seconds = total_queue_time.as_secs() - minutes * 60;
+                    let duration = format!("{}:{:02}", minutes, seconds);
+
                     m.interaction_response_data(|d| {
                         d.create_embed(|e| {
                             e.title("queue")
                                 .title("Current Queue:")
-                                .description(format!("current size: {}", queue.len()))
+                                .description(format!(
+                                    "Current size: {} | Total queue length: {}",
+                                    queue.len(),
+                                    duration
+                                ))
                                 .color(colour);
                             for i in 0..i {
                                 let song =
