@@ -2,10 +2,12 @@ pub mod commands;
 mod loop_song;
 mod play;
 mod skip;
+mod swap;
 
 pub use loop_song::loop_song;
 pub use play::play;
 pub use skip::skip;
+pub use swap::swap_songs;
 
 use serenity::model::id::GuildId;
 use serenity::model::prelude::VoiceState;
@@ -76,7 +78,7 @@ pub async fn playing(ctx: &Context, command: &ApplicationCommandInteraction) {
         if let Some(handler_lock) = manager.get(guild_id.unwrap()) {
             let handler = handler_lock.lock().await;
             let queue = handler.queue();
-
+            
             if let None = queue.current() {
                 command
                     .create_interaction_response(&ctx.http, |r| {

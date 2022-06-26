@@ -59,5 +59,24 @@ impl VoiceCommandBuilder for CreateApplicationCommands {
                 .name(Command::loop_song)
                 .description("loop the current song")
         })
+        .create_application_command(|command| {
+            command
+                .name(Command::swap_songs)
+                .description("swap the positions of 2 songs in the queue")
+                .create_option(|option| {
+                    option
+                        .name("first-track")
+                        .description("The first track to swap")
+                        .required(true)
+                        .kind(ApplicationCommandOptionType::Integer)
+                })
+                .create_option(|option| {
+                    option
+                        .name("second-track")
+                        .description("The second track to swap")
+                        .required(true)
+                        .kind(ApplicationCommandOptionType::Integer)
+                })
+        })
     }
 }

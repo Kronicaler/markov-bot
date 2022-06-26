@@ -78,11 +78,7 @@ pub async fn skip(ctx: &Context, command: &ApplicationCommandInteraction) {
 }
 
 fn get_track_number(command: &ApplicationCommandInteraction) -> Option<usize> {
-    let track_number = command.data.options.iter().find(|opt| opt.name == "number");
-
-    track_number?;
-
-    let track_number = track_number.unwrap();
+    let track_number = command.data.options.iter().find(|opt| opt.name == "number")?;
 
     match track_number.resolved.as_ref().unwrap() {
         ApplicationCommandInteractionDataOptionValue::Integer(s) => {

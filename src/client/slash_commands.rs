@@ -48,6 +48,8 @@ pub enum Command {
     queue,
     #[strum(serialize = "loop")]
     loop_song,
+    #[strum(serialize = "swap-songs")]
+    swap_songs,
 }
 
 /// Check which slash command was triggered, call the appropriate function and return a response to the user
@@ -95,6 +97,7 @@ pub async fn command_responses(command: &ApplicationCommandInteraction, ctx: Con
             Command::playing => voice::playing(&ctx, command).await,
             Command::queue => voice::queue(&ctx, command).await,
             Command::loop_song => voice::loop_song(&ctx, command).await,
+            Command::swap_songs => voice::swap_songs(&ctx, command).await,
         },
         Err(why) => {
             eprintln!("Cannot respond to slash command {why}");
