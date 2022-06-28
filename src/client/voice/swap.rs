@@ -6,6 +6,8 @@ use serenity::{
 };
 use songbird::tracks::TrackQueue;
 
+use super::helper_funcs::{get_call, is_user_with_bot_in_vc};
+
 pub trait Swapable {
     fn swap(&self, first_track_idx: usize, second_track_idx: usize) -> Result<(), SwapError>;
 }
@@ -53,28 +55,25 @@ impl Swapable for TrackQueue {
 pub async fn swap_songs(ctx: &Context, command: &ApplicationCommandInteraction) {
     let guild_id = command.guild_id.expect("Couldn't get guild ID");
 
-    let manager = songbird::get(ctx)
-        .await
-        .expect("Songbird Voice client placed in at initialisation.")
-        .clone();
+    let call = match get_call(ctx, guild_id, command).await {
+        Some(value) => value,
+        None => return,
+    };
 
-    // Get call
-    let call_lock = match manager.get(guild_id.0) {
-        Some(c) => c,
-        None => {
+    if let Some(guild) = guild_id.to_guild_cached(&ctx.cache).await {
+        if !is_user_with_bot_in_vc(ctx, &guild, command.user.id).await {
             command
                 .create_interaction_response(&ctx.http, |r| {
                     r.interaction_response_data(|d| {
-                        d.content("Must be in a voice channel to use that command!")
+                        d.content("Must be in the same voice channel to use that command!")
                     })
                 })
                 .await
                 .expect("Error creating interaction response");
             return;
         }
-    };
+    }
 
-    let call = call_lock.lock().await;
     let queue = call.queue();
 
     let (first_track_idx, second_track_idx) = match get_track_numbers(command) {

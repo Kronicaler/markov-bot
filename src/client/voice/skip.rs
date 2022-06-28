@@ -1,3 +1,5 @@
+use std::ops::ControlFlow;
+
 use serenity::{
     client::Context,
     model::interactions::application_command::{
@@ -6,30 +8,20 @@ use serenity::{
     utils::Colour,
 };
 
+use super::helper_funcs::{is_user_with_bot_in_vc, get_call};
+
 /// Skip the track
 pub async fn skip(ctx: &Context, command: &ApplicationCommandInteraction) {
     let guild_id = command.guild_id.expect("Couldn't get guild ID");
 
-    let manager = songbird::get(ctx)
-        .await
-        .expect("Songbird Voice client placed in at initialisation.")
-        .clone();
-
-    // Get call
-    let call_lock = manager.get(guild_id.0);
-    if call_lock.is_none() {
-        command
-            .create_interaction_response(&ctx.http, |r| {
-                r.interaction_response_data(|d| {
-                    d.content("Must be in a voice channel to use that command!")
-                })
-            })
-            .await
-            .expect("Error creating interaction response");
+    if let ControlFlow::Break(_) = respond_if_not_same_vc(guild_id, ctx, command).await {
         return;
     }
-    let call_lock = call_lock.expect("Couldn't get handler lock");
-    let call = call_lock.lock().await;
+
+    let call = match get_call(ctx, guild_id, command).await {
+        Some(value) => value,
+        None => return,
+    };
 
     if call.queue().is_empty() {
         command
@@ -77,8 +69,33 @@ pub async fn skip(ctx: &Context, command: &ApplicationCommandInteraction) {
         .expect("Error creating interaction response");
 }
 
+async fn respond_if_not_same_vc(
+    guild_id: serenity::model::id::GuildId,
+    ctx: &Context,
+    command: &ApplicationCommandInteraction,
+) -> ControlFlow<()> {
+    if let Some(guild) = guild_id.to_guild_cached(&ctx.cache).await {
+        if !is_user_with_bot_in_vc(ctx, &guild, command.user.id).await {
+            command
+                .create_interaction_response(&ctx.http, |r| {
+                    r.interaction_response_data(|d| {
+                        d.content("Must be in the same voice channel to use that command!")
+                    })
+                })
+                .await
+                .expect("Error creating interaction response");
+            return ControlFlow::Break(());
+        }
+    }
+    ControlFlow::Continue(())
+}
+
 fn get_track_number(command: &ApplicationCommandInteraction) -> Option<usize> {
-    let track_number = command.data.options.iter().find(|opt| opt.name == "number")?;
+    let track_number = command
+        .data
+        .options
+        .iter()
+        .find(|opt| opt.name == "number")?;
 
     match track_number.resolved.as_ref().unwrap() {
         ApplicationCommandInteractionDataOptionValue::Integer(s) => {

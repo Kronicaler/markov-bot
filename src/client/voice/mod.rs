@@ -1,4 +1,5 @@
 pub mod commands;
+mod helper_funcs;
 mod loop_song;
 mod play;
 mod skip;
@@ -9,6 +10,7 @@ pub use play::play;
 pub use skip::skip;
 pub use swap::swap_songs;
 
+use helper_funcs::*;
 use serenity::model::id::GuildId;
 use serenity::model::prelude::VoiceState;
 use serenity::utils::Colour;
@@ -47,8 +49,8 @@ pub async fn stop(ctx: &Context, command: &ApplicationCommandInteraction) {
             return;
         }
     }
+    
     //embed
-
     command
         .create_interaction_response(&ctx.http, |m| {
             let colour = Colour::from_rgb(149, 8, 2);
@@ -78,7 +80,7 @@ pub async fn playing(ctx: &Context, command: &ApplicationCommandInteraction) {
         if let Some(handler_lock) = manager.get(guild_id.unwrap()) {
             let handler = handler_lock.lock().await;
             let queue = handler.queue();
-            
+
             if let None = queue.current() {
                 command
                     .create_interaction_response(&ctx.http, |r| {

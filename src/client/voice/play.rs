@@ -1,12 +1,9 @@
+use super::*;
 use serenity::{
     builder::CreateEmbed,
     client::Context,
-    model::{
-        guild::Guild,
-        id::{ChannelId, UserId},
-        interactions::application_command::{
-            ApplicationCommandInteraction, ApplicationCommandInteractionDataOptionValue,
-        },
+    model::interactions::application_command::{
+        ApplicationCommandInteraction, ApplicationCommandInteractionDataOptionValue,
     },
     utils::Colour,
 };
@@ -33,12 +30,17 @@ pub async fn play(ctx: &Context, command: &ApplicationCommandInteraction) {
 
     // Get voice channel_id
     let voice_channel_id =
-        if let Some(voice_channel_id) = get_voice_channel_id(&guild, command.user.id) {
+        if let Some(voice_channel_id) = get_voice_channel_of_user(&guild, command.user.id) {
             voice_channel_id
         } else {
             voice_channel_not_found_response(command, ctx).await;
             return;
         };
+
+    if !is_user_with_bot_in_vc(ctx, &guild, command.user.id).await {
+        voice_channel_not_same_response(command, ctx).await;
+        return;
+    }
 
     //create manager
     let manager = songbird::get(ctx).await.expect("songbird error").clone();
@@ -89,11 +91,13 @@ async fn voice_channel_not_found_response(command: &ApplicationCommandInteractio
         .expect("Error creating interaction response");
 }
 
-fn get_voice_channel_id(guild: &Guild, user_id: UserId) -> Option<ChannelId> {
-    guild
-        .voice_states
-        .get(&user_id)
-        .and_then(|voice_state| voice_state.channel_id)
+async fn voice_channel_not_same_response(command: &ApplicationCommandInteraction, ctx: &Context) {
+    command
+        .edit_original_interaction_response(&ctx.http, |r| {
+            r.content("You must be in the same voice channel to use this command!")
+        })
+        .await
+        .expect("Error creating interaction response");
 }
 
 async fn get_source(
