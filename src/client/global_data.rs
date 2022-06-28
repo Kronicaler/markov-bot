@@ -22,13 +22,13 @@ pub const HELP_MESSAGE: &str = "All of my commands are slash commands.
 pub async fn init_global_data_for_client(client: &Client) -> Result<(), Box<dyn Error>> {
     let mut data = client.data.write().await;
 
-    let markov = if cfg!(debug_assertions) {
+    if cfg!(debug_assertions) {
         println!("Debugging enabled");
-        markov::init_debug()?
     } else {
         println!("Debugging disabled");
-        markov::init()?
     };
+
+    let markov = markov::init()?;
 
     init_markov_data(&mut data, markov)?;
 

@@ -3,7 +3,10 @@ mod global_data;
 mod markov_chain;
 
 use self::{
-    file_operations::{import_chain_from_file, save_markov_blacklisted_users},
+    file_operations::{
+        export_corpus_to_file, import_corpus_from_file, import_messages_from_file,
+        save_markov_blacklisted_users,
+    },
     global_data::{
         get_markov_blacklisted_channels_lock, get_markov_blacklisted_users_lock,
         get_markov_chain_lock, MARKOV_EXPORT_PATH,
@@ -80,7 +83,7 @@ pub async fn generate_sentence(ctx: &Context) -> String {
         .to_owned(),
     }
 }
-/// Initializes the Markov chain from [`MARKOV_DATA_SET_PATH`][global_data::MARKOV_DATA_SET_PATH]
+/// Initializes the Markov chain from [`MARKOV_EXPORT_PATH`][global_data::MARKOV_EXPORT_PATH]
 pub fn init() -> Result<Markov, Box<dyn Error>> {
     let mut markov_chain = Markov::new();
     markov_chain.set_state_size(3).expect("Will never fail");
@@ -91,24 +94,17 @@ pub fn init() -> Result<Markov, Box<dyn Error>> {
         }
         false
     });
-    let input_data = import_chain_from_file()?;
-    markov_chain.add_to_corpus(input_data);
+
+    if !std::path::Path::new(MARKOV_EXPORT_PATH).exists() {
+        let input_data = import_messages_from_file()?;
+        markov_chain.add_to_corpus(input_data);
+
+        export_corpus_to_file(&markov_chain.export())?;
+    }
+    
+    markov_chain = Markov::from_export(import_corpus_from_file()?);
+
     Ok(markov_chain)
-}
-/// Initializes the Markov chain from [`MARKOV_EXPORT_PATH`]
-pub fn init_debug() -> Result<Markov, Box<dyn Error>> {
-    let mut markov: Markov = serde_json::from_str(&fs::read_to_string(create_file_if_missing(
-        MARKOV_EXPORT_PATH,
-        &serde_json::to_string(&Markov::new().export())?,
-    )?)?)?;
-    markov.set_max_tries(200);
-    markov.set_filter(|r| {
-        if r.text.split(' ').count() >= 5 && r.refs.len() >= 2 {
-            return true;
-        }
-        false
-    });
-    Ok(markov)
 }
 
 pub async fn add_user_to_blacklist(

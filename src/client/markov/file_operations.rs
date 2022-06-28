@@ -44,16 +44,24 @@ pub fn clean_markov_file() {
     }
 }
 
-#[allow(dead_code)]
-pub fn export_to_markov_file(export: &ImportExport) -> Result<(), std::io::Error> {
+pub fn export_corpus_to_file(export: &ImportExport) -> Result<(), std::io::Error> {
     fs::write(
         MARKOV_EXPORT_PATH,
         serde_json::to_string(&export).expect("Serialization failed"),
     )
 }
 
+pub fn import_corpus_from_file() -> Result<ImportExport, Box<dyn Error>> {
+    let x = serde_json::from_str::<ImportExport>(&fs::read_to_string(create_file_if_missing(
+        MARKOV_EXPORT_PATH,
+        "",
+    )?)?)?;
+
+    return Ok(x);
+}
+
 /// Reads the Markov data set from [`MARKOV_DATA_SET_PATH`]
-pub fn import_chain_from_file() -> Result<Vec<InputData>, Box<dyn Error>> {
+pub fn import_messages_from_file() -> Result<Vec<InputData>, Box<dyn Error>> {
     let text_from_file = fs::read_to_string(create_file_if_missing(MARKOV_DATA_SET_PATH, "")?)?;
     let text_array: Vec<&str> = text_from_file.split("\n\n").collect();
     Ok(text_array
