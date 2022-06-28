@@ -2,7 +2,8 @@ use serenity::{
     client::Context,
     model::{
         guild::Guild,
-        id::{ChannelId, UserId}, interactions::application_command::ApplicationCommandInteraction,
+        id::{ChannelId, UserId},
+        interactions::application_command::ApplicationCommandInteraction,
     },
 };
 
@@ -42,11 +43,11 @@ pub async fn is_bot_in_another_channel(ctx: &Context, guild: &Guild, user_id: Us
     return false;
 }
 
-pub async fn get_call(
+pub async fn get_call_lock(
     ctx: &Context,
     guild_id: serenity::model::id::GuildId,
     command: &ApplicationCommandInteraction,
-) -> Option<songbird::Call> {
+) -> Option<std::sync::Arc<serenity::prelude::Mutex<songbird::Call>>> {
     let manager = songbird::get(ctx)
         .await
         .expect("Songbird Voice client placed in at initialisation.")
@@ -67,6 +68,5 @@ pub async fn get_call(
         }
     };
 
-    let call = call_lock.lock().await.clone();
-    Some(call)
+    Some(call_lock)
 }

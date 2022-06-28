@@ -6,7 +6,7 @@ use serenity::{
 };
 use songbird::tracks::TrackQueue;
 
-use super::helper_funcs::{get_call, is_bot_in_another_channel};
+use super::helper_funcs::{get_call_lock, is_bot_in_another_channel};
 
 pub trait Swapable {
     fn swap(&self, first_track_idx: usize, second_track_idx: usize) -> Result<(), SwapError>;
@@ -55,10 +55,11 @@ impl Swapable for TrackQueue {
 pub async fn swap_songs(ctx: &Context, command: &ApplicationCommandInteraction) {
     let guild_id = command.guild_id.expect("Couldn't get guild ID");
 
-    let call = match get_call(ctx, guild_id, command).await {
+    let call_lock = match get_call_lock(ctx, guild_id, command).await {
         Some(value) => value,
         None => return,
     };
+    let call=call_lock.lock().await;
 
     if let Some(guild) = guild_id.to_guild_cached(&ctx.cache).await {
         if is_bot_in_another_channel(ctx, &guild, command.user.id).await {

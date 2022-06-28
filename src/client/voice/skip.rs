@@ -8,7 +8,7 @@ use serenity::{
     utils::Colour,
 };
 
-use super::helper_funcs::{is_bot_in_another_channel, get_call};
+use super::helper_funcs::{is_bot_in_another_channel, get_call_lock};
 
 /// Skip the track
 pub async fn skip(ctx: &Context, command: &ApplicationCommandInteraction) {
@@ -18,10 +18,11 @@ pub async fn skip(ctx: &Context, command: &ApplicationCommandInteraction) {
         return;
     }
 
-    let call = match get_call(ctx, guild_id, command).await {
+    let call_lock = match get_call_lock(ctx, guild_id, command).await {
         Some(value) => value,
         None => return,
     };
+    let call=call_lock.lock().await;
 
     if call.queue().is_empty() {
         command
