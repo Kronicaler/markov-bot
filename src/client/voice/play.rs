@@ -37,7 +37,7 @@ pub async fn play(ctx: &Context, command: &ApplicationCommandInteraction) {
             return;
         };
 
-    if !is_user_with_bot_in_vc(ctx, &guild, command.user.id).await {
+    if is_bot_in_another_channel(ctx, &guild, command.user.id).await {
         voice_channel_not_same_response(command, ctx).await;
         return;
     }

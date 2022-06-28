@@ -6,7 +6,7 @@ use serenity::{
 };
 use songbird::tracks::TrackQueue;
 
-use super::helper_funcs::{get_call, is_user_with_bot_in_vc};
+use super::helper_funcs::{get_call, is_bot_in_another_channel};
 
 pub trait Swapable {
     fn swap(&self, first_track_idx: usize, second_track_idx: usize) -> Result<(), SwapError>;
@@ -61,7 +61,7 @@ pub async fn swap_songs(ctx: &Context, command: &ApplicationCommandInteraction) 
     };
 
     if let Some(guild) = guild_id.to_guild_cached(&ctx.cache).await {
-        if !is_user_with_bot_in_vc(ctx, &guild, command.user.id).await {
+        if is_bot_in_another_channel(ctx, &guild, command.user.id).await {
             command
                 .create_interaction_response(&ctx.http, |r| {
                     r.interaction_response_data(|d| {

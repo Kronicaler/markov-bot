@@ -8,7 +8,7 @@ use serenity::{
     utils::Colour,
 };
 
-use super::helper_funcs::{is_user_with_bot_in_vc, get_call};
+use super::helper_funcs::{is_bot_in_another_channel, get_call};
 
 /// Skip the track
 pub async fn skip(ctx: &Context, command: &ApplicationCommandInteraction) {
@@ -75,7 +75,7 @@ async fn respond_if_not_same_vc(
     command: &ApplicationCommandInteraction,
 ) -> ControlFlow<()> {
     if let Some(guild) = guild_id.to_guild_cached(&ctx.cache).await {
-        if !is_user_with_bot_in_vc(ctx, &guild, command.user.id).await {
+        if is_bot_in_another_channel(ctx, &guild, command.user.id).await {
             command
                 .create_interaction_response(&ctx.http, |r| {
                     r.interaction_response_data(|d| {

@@ -20,26 +20,26 @@ pub fn get_voice_channel_of_bot(ctx: &Context, guild: &Guild) -> Option<ChannelI
         .and_then(|voice_state| voice_state.channel_id)
 }
 
-pub async fn is_user_with_bot_in_vc(ctx: &Context, guild: &Guild, user_id: UserId) -> bool {
+pub async fn is_bot_in_another_channel(ctx: &Context, guild: &Guild, user_id: UserId) -> bool {
     let user_voice_channel = get_voice_channel_of_user(guild, user_id);
 
     let user_voice_channel = match user_voice_channel {
         Some(c) => c,
-        None => return false,
+        None => return true,
     };
 
     let bot_voice_channel = get_voice_channel_of_bot(ctx, guild);
 
     let bot_voice_channel = match bot_voice_channel {
         Some(c) => c,
-        None => return false,
+        None => return true,
     };
 
     if user_voice_channel != bot_voice_channel {
-        return false;
+        return true;
     }
 
-    return true;
+    return false;
 }
 
 pub async fn get_call(
