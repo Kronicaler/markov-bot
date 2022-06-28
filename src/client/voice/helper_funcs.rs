@@ -32,7 +32,7 @@ pub async fn is_bot_in_another_channel(ctx: &Context, guild: &Guild, user_id: Us
 
     let bot_voice_channel = match bot_voice_channel {
         Some(c) => c,
-        None => return true,
+        None => return false,
     };
 
     if user_voice_channel != bot_voice_channel {
