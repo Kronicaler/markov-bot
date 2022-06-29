@@ -1,13 +1,13 @@
 use super::{
     global_data::{MARKOV_BLACKLISTED_USERS_PATH, MARKOV_DATA_SET_PATH, MARKOV_EXPORT_PATH},
-    markov_chain::filter_string_for_markov_file,
+    markov_chain::filter_string_for_markov_file, create_default_chain,
 };
 use crate::client::file_operations::create_file_if_missing;
+use anyhow::Result;
 use dashmap::DashSet;
 use markov_strings::{ImportExport, InputData};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use std::{
-    error::Error,
     fs::{self, OpenOptions},
     io::Write,
 };
@@ -51,7 +51,7 @@ pub fn export_corpus_to_file(export: &ImportExport) -> Result<(), std::io::Error
     )
 }
 
-pub fn import_corpus_from_file() -> Result<ImportExport, Box<dyn Error>> {
+pub fn import_corpus_from_file() -> Result<ImportExport> {
     let x = serde_json::from_str::<ImportExport>(&fs::read_to_string(create_file_if_missing(
         MARKOV_EXPORT_PATH,
         "",
@@ -61,7 +61,7 @@ pub fn import_corpus_from_file() -> Result<ImportExport, Box<dyn Error>> {
 }
 
 /// Reads the Markov data set from [`MARKOV_DATA_SET_PATH`]
-pub fn import_messages_from_file() -> Result<Vec<InputData>, Box<dyn Error>> {
+pub fn import_messages_from_file() -> Result<Vec<InputData>> {
     let text_from_file = fs::read_to_string(create_file_if_missing(MARKOV_DATA_SET_PATH, "")?)?;
     let text_array: Vec<&str> = text_from_file.split("\n\n").collect();
     Ok(text_array
@@ -80,4 +80,17 @@ pub fn save_markov_blacklisted_users(
         MARKOV_BLACKLISTED_USERS_PATH,
         serde_json::to_string(blacklisted_users).expect("Serialization failed"),
     )
+}
+
+pub fn generate_new_corpus_from_msg_file() -> Result<ImportExport> {
+    let messages = import_messages_from_file()?;
+
+    let mut markov = create_default_chain();
+    markov.add_to_corpus(messages);
+
+    let export = markov.export();
+
+    export_corpus_to_file(&export)?;
+
+    return Ok(export);
 }

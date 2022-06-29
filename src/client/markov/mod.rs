@@ -4,8 +4,8 @@ mod markov_chain;
 
 use self::{
     file_operations::{
-        export_corpus_to_file, import_corpus_from_file, import_messages_from_file,
-        save_markov_blacklisted_users,
+        export_corpus_to_file, generate_new_corpus_from_msg_file, import_corpus_from_file,
+        import_messages_from_file, save_markov_blacklisted_users,
     },
     global_data::{
         get_markov_blacklisted_channels_lock, get_markov_blacklisted_users_lock,
@@ -56,6 +56,19 @@ pub async fn add_message_to_chain(msg: &Message, ctx: &Context) -> Result<bool, 
     let filtered_message = filter_message_for_markov_file(msg);
     if let Some(filtered_message) = filtered_message {
         file_operations::append_to_markov_file(&filtered_message)?;
+
+        let markov_chain_lock = get_markov_chain_lock(&ctx.data).await;
+
+        if rand::random::<f32>() < 0.005 {
+            std::thread::spawn(move || {
+                let corpus = generate_new_corpus_from_msg_file().unwrap();
+
+                let mut markov_chain = markov_chain_lock.blocking_write();
+
+                *markov_chain = Markov::from_export(corpus);
+            });
+        }
+
         Ok(true)
     } else {
         Ok(false)
@@ -85,6 +98,21 @@ pub async fn generate_sentence(ctx: &Context) -> String {
 }
 /// Initializes the Markov chain from [`MARKOV_EXPORT_PATH`][global_data::MARKOV_EXPORT_PATH]
 pub fn init() -> Result<Markov, Box<dyn Error>> {
+    let mut markov_chain = create_default_chain();
+
+    if !std::path::Path::new(MARKOV_EXPORT_PATH).exists() {
+        let input_data = import_messages_from_file()?;
+        markov_chain.add_to_corpus(input_data);
+
+        export_corpus_to_file(&markov_chain.export())?;
+    }
+
+    markov_chain = Markov::from_export(import_corpus_from_file()?);
+
+    Ok(markov_chain)
+}
+
+fn create_default_chain() -> Markov {
     let mut markov_chain = Markov::new();
     markov_chain.set_state_size(3).expect("Will never fail");
     markov_chain.set_max_tries(1000);
@@ -94,17 +122,7 @@ pub fn init() -> Result<Markov, Box<dyn Error>> {
         }
         false
     });
-
-    if !std::path::Path::new(MARKOV_EXPORT_PATH).exists() {
-        let input_data = import_messages_from_file()?;
-        markov_chain.add_to_corpus(input_data);
-
-        export_corpus_to_file(&markov_chain.export())?;
-    }
-    
-    markov_chain = Markov::from_export(import_corpus_from_file()?);
-
-    Ok(markov_chain)
+    markov_chain
 }
 
 pub async fn add_user_to_blacklist(
