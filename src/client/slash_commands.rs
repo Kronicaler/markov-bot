@@ -160,7 +160,10 @@ pub async fn create_global_commands(ctx: &Context) {
 ///
 /// TODO: call only when it's run in debug mode
 pub async fn create_test_commands(ctx: &Context) {
-    let testing_guild = 919_312_301_088_178_206; // TODO: make into an optional environment variable
+    let testing_guild = std::env::var("TESTING_GUILD_ID")
+        .expect("Expected a TESTING_GUILD_ID in the environment")
+        .parse()
+        .expect("Couldn't parse the TESTING_GUILD_ID");
 
     GuildId(testing_guild)
         .set_application_commands(&ctx.http, |commands| commands)
