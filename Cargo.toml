@@ -21,7 +21,7 @@ strum_macros = "0.24.0"
 rand = "0.8.4"
 dashmap = {version="5.3.3", features=["serde"] }
 serde = "1.0.135"
-# requires youtube-dl, opus, yt-search and ffmpeg in order for voice commands to work
+# requires youtube-dl, opus and ffmpeg in order for voice commands to work
 songbird = {version="0.2.2", features=["builtin-queue", "serenity"]}
 anyhow = "1.0.58"
 thiserror = "1.0.31"
