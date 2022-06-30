@@ -12,7 +12,8 @@ use helper_funcs::leave_unknown_guilds;
 use slash_commands::{command_responses, create_global_commands, create_test_commands};
 
 use self::{
-    tags::{blacklist_user, respond_to_tag}, voice::helper_funcs::leave_vc_if_alone,
+    tags::{blacklist_user, respond_to_tag},
+    voice::helper_funcs::leave_vc_if_alone,
 };
 use super::tags::check_for_tag_listeners;
 use serenity::{
@@ -49,9 +50,13 @@ impl EventHandler for Handler {
 
         let t1 = ctx.set_activity(Activity::watching("https://github.com/TheKroni/markov-bot"));
         let t2 = create_global_commands(&ctx);
-        let t3 = create_test_commands(&ctx);
 
-        join!(t1, t2, t3);
+        if cfg!(debug_assertions) {
+            let t3 = create_test_commands(&ctx);
+            join!(t1, t2, t3);
+        } else {
+            join!(t1, t2);
+        }
     }
     /// Is called when a user starts an [`Interaction`]
     async fn interaction_create(&self, ctx: Context, interaction: Interaction) {
