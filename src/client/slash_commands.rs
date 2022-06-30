@@ -157,8 +157,6 @@ pub async fn create_global_commands(ctx: &Context) {
 }
 
 /// For testing purposes. Creates commands for a specific guild
-///
-/// TODO: call only when it's run in debug mode
 pub async fn create_test_commands(ctx: &Context) {
     let testing_guild = std::env::var("TESTING_GUILD_ID")
         .expect("Expected a TESTING_GUILD_ID in the environment")
