@@ -5,6 +5,7 @@ use serenity::{
     },
 };
 use songbird::tracks::TrackQueue;
+use thiserror::Error;
 
 use super::helper_funcs::{get_call_lock, is_bot_in_another_channel};
 
@@ -12,10 +13,15 @@ pub trait Swapable {
     fn swap(&self, first_track_idx: usize, second_track_idx: usize) -> Result<(), SwapError>;
 }
 
+#[derive(Debug, Error)]
 pub enum SwapError {
+    #[error("Requested song that wasn't in the queue")]
     IndexOutOfBounds,
+    #[error("Can't swap any songs if the queue is empty")]
     NothingIsPlaying,
+    #[error("Can't swap the song that's currently being played")]
     CannotSwapCurrentSong,
+    #[error("Can't swap a song with itself")]
     CannotSwapSameSong,
 }
 
@@ -59,7 +65,7 @@ pub async fn swap_songs(ctx: &Context, command: &ApplicationCommandInteraction) 
         Some(value) => value,
         None => return,
     };
-    let call=call_lock.lock().await;
+    let call = call_lock.lock().await;
 
     if let Some(guild) = guild_id.to_guild_cached(&ctx.cache).await {
         if is_bot_in_another_channel(ctx, &guild, command.user.id).await {
