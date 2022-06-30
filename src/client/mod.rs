@@ -12,8 +12,7 @@ use helper_funcs::leave_unknown_guilds;
 use slash_commands::{command_responses, create_global_commands, create_test_commands};
 
 use self::{
-    tags::{blacklist_user, respond_to_tag},
-    voice::leave_if_alone,
+    tags::{blacklist_user, respond_to_tag}, voice::helper_funcs::leave_vc_if_alone,
 };
 use super::tags::check_for_tag_listeners;
 use serenity::{
@@ -137,7 +136,7 @@ impl EventHandler for Handler {
         old: Option<VoiceState>,
         _new: VoiceState,
     ) {
-        leave_if_alone(old, ctx, guild_id_option).await;
+        leave_vc_if_alone(old, ctx, guild_id_option).await;
     }
 }
 
