@@ -38,13 +38,21 @@ pub async fn play(ctx: &Context, command: &ApplicationCommandInteraction) {
             return;
         };
 
-    if is_bot_in_another_channel(ctx, &guild, command.user.id).await {
+    //create manager
+    let manager = songbird::get(ctx).await.expect("songbird error").clone();
+
+    let queue = match manager.get(guild_id) {
+        Some(e) => Some(e.lock().await.queue().clone()),
+        None => None,
+    };
+
+    if is_bot_in_another_channel(ctx, &guild, command.user.id).await
+        && queue.is_some()
+        && !queue.expect("Should never fail").is_empty()
+    {
         voice_channel_not_same_response(command, ctx).await;
         return;
     }
-
-    //create manager
-    let manager = songbird::get(ctx).await.expect("songbird error").clone();
 
     //join voice channel
     let (call_lock, success) = manager.join(guild_id, voice_channel_id).await;
