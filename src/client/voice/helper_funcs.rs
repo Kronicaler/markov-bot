@@ -74,7 +74,7 @@ pub async fn get_call_lock(
 
 pub async fn leave_vc_if_alone(
     old: Option<VoiceState>,
-    ctx: Context,
+    ctx: &Context,
     guild_id_option: Option<GuildId>,
 ) {
     // If a user joined a channel

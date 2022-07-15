@@ -139,9 +139,18 @@ impl EventHandler for Handler {
         ctx: Context,
         guild_id_option: Option<GuildId>,
         old: Option<VoiceState>,
-        _new: VoiceState,
+        new: VoiceState,
     ) {
-        leave_vc_if_alone(old, ctx, guild_id_option).await;
+        leave_vc_if_alone(old, &ctx, guild_id_option).await;
+
+        if new.channel_id.is_none() && new.user_id == ctx.http.application_id {
+            let manager = songbird::get(&ctx).await.unwrap();
+
+            let call_lock = manager.get(new.guild_id.unwrap()).unwrap();
+            let call = call_lock.lock().await;
+
+            call.queue().stop();
+        }
     }
 }
 
