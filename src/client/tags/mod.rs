@@ -16,7 +16,8 @@ use serenity::{
     client::Context,
     model::{
         channel::{GuildChannel, Message},
-        id::UserId,
+        guild::Guild,
+        id::{ChannelId, UserId},
         interactions::{
             application_command::{
                 ApplicationCommandInteraction, ApplicationCommandInteractionDataOptionValue,
@@ -344,7 +345,20 @@ pub async fn respond_to_tag(ctx: &Context, msg: &Message, message: &str) {
 
     //If the guild has a tag response channel send the response there
     if let Some(channel_id) = tag_response_channel_id {
-        let tag_response_channel = ctx.cache.guild_channel(*channel_id).await;
+        let mut tag_response_channel = ctx.cache.guild_channel(*channel_id).await;
+
+        if tag_response_channel.is_none() {
+            
+            let guild_channels = Guild::get(&&ctx.http, channel_id.key().clone())
+                .await
+                .expect("Couldn't fetch guild")
+                .channels(&ctx.http)
+                .await
+                .unwrap();
+
+            tag_response_channel = guild_channels.get(&ChannelId::from(channel_id.value().clone())).cloned();
+        }
+
         if let Some(tag_response_channel) = tag_response_channel {
             tag_response_channel
                 .send_message(&ctx.http, |m| {
