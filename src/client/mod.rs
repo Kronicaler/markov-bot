@@ -94,7 +94,7 @@ impl EventHandler for Handler {
                             .expect("couldn't create response");
                     }
                     ButtonIds::QueueNext => edit_queue(&ctx, &mut button, button_id).await,
-                    ButtonIds::QueuePrevious => todo!(),
+                    ButtonIds::QueuePrevious => edit_queue(&ctx, &mut button, button_id).await,
                 };
             }
             _ => {}

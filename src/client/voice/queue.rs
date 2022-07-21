@@ -146,6 +146,8 @@ pub async fn edit_queue(
             let handler = handler_lock.lock().await;
             let queue = handler.queue();
 
+            button.defer(&ctx.http).await.unwrap();
+
             if queue.is_empty() {
                 button
                     .edit_original_interaction_response(&ctx.http, |r| {
@@ -155,13 +157,9 @@ pub async fn edit_queue(
                     .expect("Error creating interaction response");
                 return;
             }
-            //embed
-
-            button.defer(&ctx.http).await.unwrap();
 
             button
                 .edit_original_interaction_response(&ctx.http, |d| {
-                    //embed
                     let i: i32;
 
                     println!("{} {}", queue.len(), queue_start);
@@ -178,7 +176,7 @@ pub async fn edit_queue(
                         }
                     } else {
                         queue_start = if queue_start < 10 {
-                            1
+                            0
                         } else {
                             queue_start - 10
                         };
@@ -187,6 +185,10 @@ pub async fn edit_queue(
                             i = queue.len() as i32;
                         } else {
                             i = queue_start + 10;
+                        }
+
+                        while queue_start < 0 {
+                            queue_start += 10;
                         }
                     }
                     //color
