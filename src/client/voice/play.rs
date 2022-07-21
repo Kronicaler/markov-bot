@@ -67,14 +67,15 @@ pub async fn play(ctx: &Context, command: &ApplicationCommandInteraction) {
         .await
         .expect("Couldn't get source");
 
-    // Return interaction response
-    let input: Input = source.into();
-    return_response(&input.metadata, call.queue(), command, ctx).await;
-
     //add to queue
+    let input: Input = source.into();
+    let metadata = input.metadata.clone();
     let (mut audio, _) = create_player(input);
     audio.set_volume(0.5);
     call.enqueue(audio);
+
+    // Return interaction response
+    return_response(&metadata, call.queue(), command, ctx).await;
 }
 
 fn get_query(command: &ApplicationCommandInteraction) -> &String {
@@ -174,10 +175,10 @@ async fn return_response(
         .url(url)
         .clone();
 
-    let content = if queue.is_empty() {
-        "Playing"
+    let content = if queue.len() == 1 {
+        "Playing".to_owned()
     } else {
-        "Queued up"
+        format!("Queued up at number {}", queue.len())
     };
 
     command
