@@ -348,7 +348,6 @@ pub async fn respond_to_tag(ctx: &Context, msg: &Message, message: &str) {
         let mut tag_response_channel = ctx.cache.guild_channel(*channel_id).await;
 
         if tag_response_channel.is_none() {
-            
             let guild_channels = Guild::get(&&ctx.http, channel_id.key().clone())
                 .await
                 .expect("Couldn't fetch guild")
@@ -356,7 +355,9 @@ pub async fn respond_to_tag(ctx: &Context, msg: &Message, message: &str) {
                 .await
                 .unwrap();
 
-            tag_response_channel = guild_channels.get(&ChannelId::from(channel_id.value().clone())).cloned();
+            tag_response_channel = guild_channels
+                .get(&ChannelId::from(channel_id.value().clone()))
+                .cloned();
         }
 
         if let Some(tag_response_channel) = tag_response_channel {
