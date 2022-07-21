@@ -165,12 +165,24 @@ async fn return_response(
     let seconds = time.as_secs() - minutes * 60;
     let duration = format!("{}:{:02}", minutes, seconds);
     let colour = Colour::from_rgb(149, 8, 2);
+    let time_before_song = queue
+        .current_queue()
+        .iter()
+        .map(|f| f.metadata().duration.unwrap())
+        .reduce(|a, f| a.checked_add(f).unwrap())
+        .unwrap_or_default()
+        - time;
+    let time_before_song = format!(
+        "{}:{:02}",
+        time_before_song.as_secs() / 60,
+        time_before_song.as_secs() - (time_before_song.as_secs() / 60) * 60
+    );
 
-    let embed = CreateEmbed::default()
+    let mut embed = CreateEmbed::default()
         .title(title)
         .colour(colour)
         .description(channel)
-        .field("duration: ", duration, false)
+        .field("Duration: ", duration, true)
         .thumbnail(thumbnail)
         .url(url)
         .clone();
@@ -178,7 +190,8 @@ async fn return_response(
     let content = if queue.len() == 1 {
         "Playing".to_owned()
     } else {
-        format!("Queued up at number {}", queue.len())
+        embed.field("Estimated time until playing: ", time_before_song, true);
+        format!("Position in queue: {}", queue.len())
     };
 
     command
