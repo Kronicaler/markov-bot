@@ -162,7 +162,6 @@ pub async fn edit_queue(
                 .edit_original_interaction_response(&ctx.http, |d| {
                     let i: i32;
 
-                    println!("{} {}", queue.len(), queue_start);
                     if button_id == ButtonIds::QueueNext {
                         queue_start += 10;
                         i = if queue.len() as i32 - queue_start < 10 {
@@ -215,7 +214,6 @@ pub async fn edit_queue(
                                 ))
                                 .color(colour);
 
-                            println!("{} {}", queue_start, i);
                             for i in queue_start..i {
                                 let song = &queue
                                     .current_queue()
