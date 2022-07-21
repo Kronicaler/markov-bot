@@ -71,7 +71,7 @@ impl EventHandler for Handler {
                 command_responses(&command, ctx).await;
             }
             InteractionType::MessageComponent => {
-                let button = interaction.message_component().expect(
+                let mut button = interaction.message_component().expect(
                     "it's already known that this is a message component and shouldn't break",
                 );
 
@@ -93,7 +93,7 @@ impl EventHandler for Handler {
                             .await
                             .expect("couldn't create response");
                     }
-                    ButtonIds::QueueNext => edit_queue(&ctx, &button, button_id).await,
+                    ButtonIds::QueueNext => edit_queue(&ctx, &mut button, button_id).await,
                     ButtonIds::QueuePrevious => todo!(),
                 };
             }

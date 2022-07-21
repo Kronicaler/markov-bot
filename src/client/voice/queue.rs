@@ -56,7 +56,7 @@ pub async fn queue(ctx: &Context, command: &ApplicationCommandInteraction) {
                     let duration = format!("{}:{:02}", minutes, seconds);
 
                     m.interaction_response_data(|d| {
-                        d.content("1")
+                        d.content("0")
                             .create_embed(|e| {
                                 e.title("queue")
                                     .title("Current Queue:")
@@ -126,16 +126,15 @@ pub async fn queue(ctx: &Context, command: &ApplicationCommandInteraction) {
     }
 }
 
-pub async fn edit_queue(ctx: &Context, button: &MessageComponentInteraction, button_id: ButtonIds) {
+pub async fn edit_queue(
+    ctx: &Context,
+    button: &mut MessageComponentInteraction,
+    button_id: ButtonIds,
+) {
     let cache = &ctx.cache;
     let guild_id = button.guild_id;
 
-    let mut queue_start: usize = button
-        .message
-        .content
-        .chars()
-        .next()
-        .expect("queue content is empty") as usize;
+    let mut queue_start: i32 = button.message.content.parse().unwrap();
 
     if let Some(_guild) = cache.guild(guild_id.unwrap()).await {
         let manager = songbird::get(ctx)
@@ -157,25 +156,35 @@ pub async fn edit_queue(ctx: &Context, button: &MessageComponentInteraction, but
                 return;
             }
             //embed
+
+            button.defer(&ctx.http).await.unwrap();
+
             button
                 .edit_original_interaction_response(&ctx.http, |d| {
                     //embed
-                    let i: usize;
+                    let i: i32;
+
+                    println!("{} {}", queue.len(), queue_start);
                     if button_id == ButtonIds::QueueNext {
-                        if queue.len() - queue_start < 10 {
-                            i = queue.len();
+                        queue_start += 10;
+                        i = if queue.len() as i32 - queue_start < 10 {
+                            queue.len() as i32
                         } else {
-                            i = queue_start + 10;
-                        }
-                    } else {
-                        if queue_start < 10 {
-                            queue_start = 1;
-                        } else {
+                            queue_start + 10 as i32
+                        };
+
+                        while queue_start >= queue.len() as i32 {
                             queue_start -= 10;
                         }
+                    } else {
+                        queue_start = if queue_start < 10 {
+                            1
+                        } else {
+                            queue_start - 10
+                        };
 
-                        if queue.len() - queue_start < 10 {
-                            i = queue.len();
+                        if queue.len() as i32 - queue_start < 10 {
+                            i = queue.len() as i32;
                         } else {
                             i = queue_start + 10;
                         }
@@ -203,9 +212,16 @@ pub async fn edit_queue(ctx: &Context, button: &MessageComponentInteraction, but
                                     duration
                                 ))
                                 .color(colour);
+
+                            println!("{} {}", queue_start, i);
                             for i in queue_start..i {
-                                let song =
-                                    &queue.current_queue().get(i).unwrap().metadata().clone();
+                                let song = &queue
+                                    .current_queue()
+                                    .get(i as usize)
+                                    .unwrap()
+                                    .metadata()
+                                    .clone();
+
                                 let channel = &song.channel.as_ref().unwrap();
                                 let title = &song.title.as_ref().unwrap();
                                 //duration
