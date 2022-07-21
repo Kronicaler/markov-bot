@@ -56,52 +56,59 @@ pub async fn queue(ctx: &Context, command: &ApplicationCommandInteraction) {
                     let duration = format!("{}:{:02}", minutes, seconds);
 
                     m.interaction_response_data(|d| {
-                        d.create_embed(|e| {
-                            e.title("queue")
-                                .title("Current Queue:")
-                                .description(format!(
-                                    "Current size: {} | Total queue length: {}",
-                                    queue.len(),
-                                    duration
-                                ))
-                                .color(colour);
-                            for i in 0..i {
-                                let song =
-                                    &queue.current_queue().get(i).unwrap().metadata().clone();
-                                let channel = &song.channel.as_ref().unwrap();
-                                let title = &song.title.as_ref().unwrap();
-                                //duration
-                                let time = &song.duration.as_ref().unwrap();
-                                let minutes = time.as_secs() / 60;
-                                let seconds = time.as_secs() - minutes * 60;
-                                let duration = format!("{}:{:02}", minutes, seconds);
-                                let arg1 = format!("{}. {} | {}", i + 1, title, channel);
-                                e.field(arg1, duration, false);
-                            }
-                            e
-                        })
-                        .components(|c| {
-                            if queue.len() > 10 {
-                                c.create_action_row(|a| {
-                                    a.create_button(|b| {
-                                        b.emoji(serenity::model::channel::ReactionType::Unicode(
-                                            "◀".to_string(),
-                                        ))
-                                        .style(ButtonStyle::Primary)
-                                        .custom_id(ButtonIds::QueuePrevious)
+                        d.content("1")
+                            .create_embed(|e| {
+                                e.title("queue")
+                                    .title("Current Queue:")
+                                    .description(format!(
+                                        "Current size: {} | Total queue length: {}",
+                                        queue.len(),
+                                        duration
+                                    ))
+                                    .color(colour);
+                                for i in 0..i {
+                                    let song =
+                                        &queue.current_queue().get(i).unwrap().metadata().clone();
+                                    let channel = &song.channel.as_ref().unwrap();
+                                    let title = &song.title.as_ref().unwrap();
+                                    //duration
+                                    let time = &song.duration.as_ref().unwrap();
+                                    let minutes = time.as_secs() / 60;
+                                    let seconds = time.as_secs() - minutes * 60;
+                                    let duration = format!("{}:{:02}", minutes, seconds);
+                                    let arg1 = format!("{}. {} | {}", i + 1, title, channel);
+                                    e.field(arg1, duration, false);
+                                }
+                                e
+                            })
+                            .components(|c| {
+                                if queue.len() > 10 {
+                                    c.create_action_row(|a| {
+                                        a.create_button(|b| {
+                                            b.emoji(
+                                                serenity::model::channel::ReactionType::Unicode(
+                                                    "◀".to_string(),
+                                                ),
+                                            )
+                                            .style(ButtonStyle::Primary)
+                                            .custom_id(ButtonIds::QueuePrevious)
+                                        })
+                                        .create_button(
+                                            |b| {
+                                                b.emoji(
+                                                    serenity::model::channel::ReactionType::Unicode(
+                                                        "▶".to_string(),
+                                                    ),
+                                                )
+                                                .style(ButtonStyle::Primary)
+                                                .custom_id(ButtonIds::QueueNext)
+                                            },
+                                        )
                                     })
-                                    .create_button(|b| {
-                                        b.emoji(serenity::model::channel::ReactionType::Unicode(
-                                            "▶".to_string(),
-                                        ))
-                                        .style(ButtonStyle::Primary)
-                                        .custom_id(ButtonIds::QueueNext)
-                                    })
-                                })
-                            } else {
-                                c
-                            }
-                        })
+                                } else {
+                                    c
+                                }
+                            })
                     })
                 })
                 .await
@@ -186,51 +193,53 @@ pub async fn edit_queue(ctx: &Context, button: &MessageComponentInteraction, but
                     let seconds = total_queue_time.as_secs() - minutes * 60;
                     let duration = format!("{}:{:02}", minutes, seconds);
 
-                    d.create_embed(|e| {
-                        e.title("queue")
-                            .title("Current Queue:")
-                            .description(format!(
-                                "Current size: {} | Total queue length: {}",
-                                queue.len(),
-                                duration
-                            ))
-                            .color(colour);
-                        for i in queue_start..i {
-                            let song = &queue.current_queue().get(i).unwrap().metadata().clone();
-                            let channel = &song.channel.as_ref().unwrap();
-                            let title = &song.title.as_ref().unwrap();
-                            //duration
-                            let time = &song.duration.as_ref().unwrap();
-                            let minutes = time.as_secs() / 60;
-                            let seconds = time.as_secs() - minutes * 60;
-                            let duration = format!("{}:{:02}", minutes, seconds);
-                            let arg1 = format!("{}. {} | {}", i + 1, title, channel);
-                            e.field(arg1, duration, false);
-                        }
-                        e
-                    })
-                    .components(|c| {
-                        if queue.len() > 10 {
-                            c.create_action_row(|a| {
-                                a.create_button(|b| {
-                                    b.emoji(serenity::model::channel::ReactionType::Unicode(
-                                        "◀".to_string(),
-                                    ))
-                                    .style(ButtonStyle::Primary)
-                                    .custom_id(ButtonIds::QueuePrevious)
+                    d.content(queue_start.to_string())
+                        .create_embed(|e| {
+                            e.title("queue")
+                                .title("Current Queue:")
+                                .description(format!(
+                                    "Current size: {} | Total queue length: {}",
+                                    queue.len(),
+                                    duration
+                                ))
+                                .color(colour);
+                            for i in queue_start..i {
+                                let song =
+                                    &queue.current_queue().get(i).unwrap().metadata().clone();
+                                let channel = &song.channel.as_ref().unwrap();
+                                let title = &song.title.as_ref().unwrap();
+                                //duration
+                                let time = &song.duration.as_ref().unwrap();
+                                let minutes = time.as_secs() / 60;
+                                let seconds = time.as_secs() - minutes * 60;
+                                let duration = format!("{}:{:02}", minutes, seconds);
+                                let arg1 = format!("{}. {} | {}", i + 1, title, channel);
+                                e.field(arg1, duration, false);
+                            }
+                            e
+                        })
+                        .components(|c| {
+                            if queue.len() > 10 {
+                                c.create_action_row(|a| {
+                                    a.create_button(|b| {
+                                        b.emoji(serenity::model::channel::ReactionType::Unicode(
+                                            "◀".to_string(),
+                                        ))
+                                        .style(ButtonStyle::Primary)
+                                        .custom_id(ButtonIds::QueuePrevious)
+                                    })
+                                    .create_button(|b| {
+                                        b.emoji(serenity::model::channel::ReactionType::Unicode(
+                                            "▶".to_string(),
+                                        ))
+                                        .style(ButtonStyle::Primary)
+                                        .custom_id(ButtonIds::QueueNext)
+                                    })
                                 })
-                                .create_button(|b| {
-                                    b.emoji(serenity::model::channel::ReactionType::Unicode(
-                                        "▶".to_string(),
-                                    ))
-                                    .style(ButtonStyle::Primary)
-                                    .custom_id(ButtonIds::QueueNext)
-                                })
-                            })
-                        } else {
-                            c
-                        }
-                    })
+                            } else {
+                                c
+                            }
+                        })
                 })
                 .await
                 .expect("Error creating interaction response");
