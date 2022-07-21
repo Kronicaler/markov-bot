@@ -13,7 +13,7 @@ use slash_commands::{command_responses, create_global_commands, create_test_comm
 
 use self::{
     tags::{blacklist_user, respond_to_tag},
-    voice::helper_funcs::leave_vc_if_alone,
+    voice::{edit_queue, helper_funcs::leave_vc_if_alone},
 };
 use super::tags::check_for_tag_listeners;
 use serenity::{
@@ -29,13 +29,15 @@ use songbird::{
     },
     Config, SerenityInit,
 };
-use std::env;
+use std::{env, str::FromStr};
 use strum_macros::{Display, EnumString};
 use tokio::join;
 
-#[derive(Display, EnumString)]
+#[derive(Display, EnumString, PartialEq)]
 pub enum ButtonIds {
     BlacklistMeFromTags,
+    QueueNext,
+    QueuePrevious,
 }
 
 struct Handler {}
@@ -73,20 +75,27 @@ impl EventHandler for Handler {
                     "it's already known that this is a message component and shouldn't break",
                 );
 
-                if button.data.custom_id == ButtonIds::BlacklistMeFromTags.to_string() {
-                    let response = blacklist_user(&ctx, &button.user).await;
+                let button_id =
+                    ButtonIds::from_str(&button.data.custom_id).expect("unexpected button ID");
 
-                    button
-                        .create_interaction_response(&ctx.http, |r| {
-                            r.interaction_response_data(|d| {
-                                d.content(response).flags(
-                                    InteractionApplicationCommandCallbackDataFlags::EPHEMERAL,
-                                )
+                match button_id {
+                    ButtonIds::BlacklistMeFromTags => {
+                        let response = blacklist_user(&ctx, &button.user).await;
+
+                        button
+                            .create_interaction_response(&ctx.http, |r| {
+                                r.interaction_response_data(|d| {
+                                    d.content(response).flags(
+                                        InteractionApplicationCommandCallbackDataFlags::EPHEMERAL,
+                                    )
+                                })
                             })
-                        })
-                        .await
-                        .expect("couldn't create response");
-                }
+                            .await
+                            .expect("couldn't create response");
+                    }
+                    ButtonIds::QueueNext => edit_queue(&ctx, &button, button_id).await,
+                    ButtonIds::QueuePrevious => todo!(),
+                };
             }
             _ => {}
         }
