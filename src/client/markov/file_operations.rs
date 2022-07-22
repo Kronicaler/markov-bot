@@ -58,7 +58,7 @@ pub fn import_corpus_from_file() -> Result<ImportExport> {
         "",
     )?)?)?;
 
-    return Ok(x);
+    Ok(x)
 }
 
 /// Reads the Markov data set from [`MARKOV_DATA_SET_PATH`]
@@ -93,5 +93,5 @@ pub fn generate_new_corpus_from_msg_file() -> Result<ImportExport> {
 
     export_corpus_to_file(&export)?;
 
-    return Ok(export);
+    Ok(export)
 }

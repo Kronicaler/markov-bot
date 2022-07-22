@@ -43,13 +43,13 @@ struct Handler {
 impl EventHandler for Handler {
     async fn act(&self, ctx: &songbird::EventContext<'_>) -> Option<songbird::Event> {
         let track_event = if let EventContext::Track(e) = ctx {
-            Some(e.clone())
+            Some(*e)
         } else {
             None
         };
 
         let (track_state, _) = match track_event {
-            Some(e) => e.get(0).unwrap().clone(),
+            Some(e) => *e.get(0).unwrap(),
             None => return None,
         };
 

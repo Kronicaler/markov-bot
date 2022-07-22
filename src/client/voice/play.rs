@@ -1,4 +1,7 @@
-use super::{helper_funcs::*, Handler};
+use super::{
+    helper_funcs::{get_voice_channel_of_user, is_bot_in_another_channel},
+    Handler,
+};
 use serenity::{
     builder::CreateEmbed,
     client::Context,
@@ -46,7 +49,7 @@ pub async fn play(ctx: &Context, command: &ApplicationCommandInteraction) {
         None => None,
     };
 
-    if is_bot_in_another_channel(ctx, &guild, command.user.id).await
+    if is_bot_in_another_channel(ctx, &guild, command.user.id)
         && queue.is_some()
         && !queue.expect("Should never fail").is_empty()
     {
@@ -63,7 +66,7 @@ pub async fn play(ctx: &Context, command: &ApplicationCommandInteraction) {
     let mut call = call_lock.lock().await;
 
     //get source from YouTube
-    let source = get_source(query.to_owned(), command, ctx)
+    let source = get_source(query.clone(), command, ctx)
         .await
         .expect("Couldn't get source");
 
@@ -74,7 +77,7 @@ pub async fn play(ctx: &Context, command: &ApplicationCommandInteraction) {
             Handler {
                 call_lock: call_lock.clone(),
                 voice_text_channel: command.channel_id,
-                ctx:ctx.clone()
+                ctx: ctx.clone(),
             },
         );
     }

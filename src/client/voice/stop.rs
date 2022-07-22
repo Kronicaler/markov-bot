@@ -3,14 +3,14 @@ use serenity::{
     utils::Colour,
 };
 
-use super::helper_funcs::*;
+use super::helper_funcs::is_bot_in_another_channel;
 
 ///stop playing
 pub async fn stop(ctx: &Context, command: &ApplicationCommandInteraction) {
     let guild_id = command.guild_id.expect("Couldn't get guild ID");
 
     if let Some(guild) = guild_id.to_guild_cached(&ctx.cache).await {
-        if is_bot_in_another_channel(ctx, &guild, command.user.id).await {
+        if is_bot_in_another_channel(ctx, &guild, command.user.id) {
             command
                 .create_interaction_response(&ctx.http, |r| {
                     r.interaction_response_data(|d| {

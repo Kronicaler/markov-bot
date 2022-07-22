@@ -22,7 +22,7 @@ pub fn get_voice_channel_of_bot(ctx: &Context, guild: &Guild) -> Option<ChannelI
         .and_then(|voice_state| voice_state.channel_id)
 }
 
-pub async fn is_bot_in_another_channel(ctx: &Context, guild: &Guild, user_id: UserId) -> bool {
+pub fn is_bot_in_another_channel(ctx: &Context, guild: &Guild, user_id: UserId) -> bool {
     let user_voice_channel = get_voice_channel_of_user(guild, user_id);
 
     let user_voice_channel = match user_voice_channel {
@@ -41,7 +41,7 @@ pub async fn is_bot_in_another_channel(ctx: &Context, guild: &Guild, user_id: Us
         return true;
     }
 
-    return false;
+    false
 }
 
 pub async fn get_call_lock(
@@ -84,7 +84,7 @@ pub async fn leave_vc_if_alone(
 
     let old = old.unwrap();
 
-    let manager = songbird::get(&ctx)
+    let manager = songbird::get(ctx)
         .await
         .expect("Songbird Voice client placed in at initialisation.")
         .clone();

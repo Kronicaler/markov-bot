@@ -183,16 +183,17 @@ pub async fn blacklist_user_from_tags_command(
 ) {
     let users_blacklisted_from_tags = get_tags_blacklisted_users_lock(&ctx.data).await;
 
-    let response;
-    if users_blacklisted_from_tags.contains(&user.id.0) {
+    let response = if users_blacklisted_from_tags.contains(&user.id.0) {
         users_blacklisted_from_tags.remove(&user.id.0);
         save_user_tag_blacklist_to_file(&users_blacklisted_from_tags);
-        response = format!("Removed {} from the blacklist", &user.name);
+
+        format!("Removed {} from the blacklist", &user.name)
     } else {
         users_blacklisted_from_tags.insert(user.id.0);
         save_user_tag_blacklist_to_file(&users_blacklisted_from_tags);
-        response = format!("Added {} to the tag blacklist", &user.name);
-    }
+
+        format!("Added {} to the tag blacklist", &user.name)
+    };
 
     command
         .create_interaction_response(&ctx.http, |r| {
@@ -348,7 +349,7 @@ pub async fn respond_to_tag(ctx: &Context, msg: &Message, message: &str) {
         let mut tag_response_channel = ctx.cache.guild_channel(*channel_id).await;
 
         if tag_response_channel.is_none() {
-            let guild_channels = Guild::get(&&ctx.http, channel_id.key().clone())
+            let guild_channels = Guild::get(&&ctx.http, *channel_id.key())
                 .await
                 .expect("Couldn't fetch guild")
                 .channels(&ctx.http)
@@ -356,7 +357,7 @@ pub async fn respond_to_tag(ctx: &Context, msg: &Message, message: &str) {
                 .unwrap();
 
             tag_response_channel = guild_channels
-                .get(&ChannelId::from(channel_id.value().clone()))
+                .get(&ChannelId::from(*channel_id.value()))
                 .cloned();
         }
 

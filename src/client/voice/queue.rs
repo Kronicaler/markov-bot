@@ -36,12 +36,7 @@ pub async fn queue(ctx: &Context, command: &ApplicationCommandInteraction) {
             command
                 .create_interaction_response(&ctx.http, |m| {
                     //embed
-                    let i: usize;
-                    if queue.len() < 10 {
-                        i = queue.len();
-                    } else {
-                        i = 10;
-                    }
+                    let i = if queue.len() < 10 { queue.len() } else { 10 };
                     //color
                     let colour = Colour::from_rgb(149, 8, 2);
                     let total_queue_time = queue
@@ -158,18 +153,18 @@ pub async fn edit_queue(
 
             button
                 .edit_original_interaction_response(&ctx.http, |d| {
-                    let i: i32;
-                    let mut queue_start: i32 = button.message.content.parse().unwrap();
+                    let i: i64;
+                    let mut queue_start: i64 = button.message.content.parse().unwrap();
 
                     if button_id == ButtonIds::QueueNext {
                         queue_start += 10;
-                        i = if queue.len() as i32 - queue_start < 10 {
-                            queue.len() as i32
+                        i = if queue.len() as i64 - queue_start < 10 {
+                            queue.len() as i64
                         } else {
-                            queue_start + 10 as i32
+                            queue_start + 10
                         };
 
-                        while queue_start >= queue.len() as i32 {
+                        while queue_start >= queue.len() as i64 {
                             queue_start -= 10;
                         }
                     } else {
@@ -179,11 +174,11 @@ pub async fn edit_queue(
                             queue_start - 10
                         };
 
-                        if queue.len() as i32 - queue_start < 10 {
-                            i = queue.len() as i32;
+                        i = if queue.len() as i64 - queue_start < 10 {
+                            queue.len() as i64
                         } else {
-                            i = queue_start + 10;
-                        }
+                            queue_start + 10
+                        };
 
                         while queue_start < 0 {
                             queue_start += 10;

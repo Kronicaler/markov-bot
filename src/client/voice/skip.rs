@@ -76,7 +76,7 @@ async fn respond_if_not_same_vc(
     command: &ApplicationCommandInteraction,
 ) -> ControlFlow<()> {
     if let Some(guild) = guild_id.to_guild_cached(&ctx.cache).await {
-        if is_bot_in_another_channel(ctx, &guild, command.user.id).await {
+        if is_bot_in_another_channel(ctx, &guild, command.user.id) {
             command
                 .create_interaction_response(&ctx.http, |r| {
                     r.interaction_response_data(|d| {

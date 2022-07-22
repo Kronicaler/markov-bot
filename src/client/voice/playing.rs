@@ -18,7 +18,7 @@ pub async fn playing(ctx: &Context, command: &ApplicationCommandInteraction) {
             let handler = handler_lock.lock().await;
             let queue = handler.queue();
 
-            if let None = queue.current() {
+            if queue.current().is_none() {
                 command
                     .create_interaction_response(&ctx.http, |r| {
                         r.interaction_response_data(|d| d.content("Nothing is currently playing."))

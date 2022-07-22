@@ -64,7 +64,7 @@ pub async fn loop_song(ctx: &Context, command: &ApplicationCommandInteraction) {
                     .expect("Error creating interaction response");
             }
         }
-        _ => {
+        LoopState::Infinite => {
             track.disable_loop().unwrap();
 
             command

@@ -36,7 +36,7 @@ impl Swapable for TrackQueue {
                 return Err(SwapError::IndexOutOfBounds);
             }
 
-            if q.len() == 0 {
+            if q.is_empty() {
                 return Err(SwapError::NothingIsPlaying);
             }
 
@@ -68,7 +68,7 @@ pub async fn swap_songs(ctx: &Context, command: &ApplicationCommandInteraction) 
     let call = call_lock.lock().await;
 
     if let Some(guild) = guild_id.to_guild_cached(&ctx.cache).await {
-        if is_bot_in_another_channel(ctx, &guild, command.user.id).await {
+        if is_bot_in_another_channel(ctx, &guild, command.user.id) {
             command
                 .create_interaction_response(&ctx.http, |r| {
                     r.interaction_response_data(|d| {
@@ -98,30 +98,28 @@ pub async fn swap_songs(ctx: &Context, command: &ApplicationCommandInteraction) 
         }
     };
 
-    let first_track_idx = match first_track_idx.try_into() {
-        Ok(v) => v,
-        Err(_) => {
-            command
-                .create_interaction_response(&ctx.http, |r| {
-                    r.interaction_response_data(|d| d.content("Invalid number!"))
-                })
-                .await
-                .expect("Error creating interaction response");
-            return;
-        }
+    let first_track_idx = if let Ok(v) = first_track_idx.try_into() {
+        v
+    } else {
+        command
+            .create_interaction_response(&ctx.http, |r| {
+                r.interaction_response_data(|d| d.content("Invalid number!"))
+            })
+            .await
+            .expect("Error creating interaction response");
+        return;
     };
 
-    let second_track_idx = match second_track_idx.try_into() {
-        Ok(v) => v,
-        Err(_) => {
-            command
-                .create_interaction_response(&ctx.http, |r| {
-                    r.interaction_response_data(|d| d.content("Invalid number!"))
-                })
-                .await
-                .expect("Error creating interaction response");
-            return;
-        }
+    let second_track_idx = if let Ok(v) = second_track_idx.try_into() {
+        v
+    } else {
+        command
+            .create_interaction_response(&ctx.http, |r| {
+                r.interaction_response_data(|d| d.content("Invalid number!"))
+            })
+            .await
+            .expect("Error creating interaction response");
+        return;
     };
 
     match queue.swap(first_track_idx, second_track_idx) {
@@ -178,37 +176,23 @@ pub async fn swap_songs(ctx: &Context, command: &ApplicationCommandInteraction) 
 }
 
 fn get_track_numbers(command: &ApplicationCommandInteraction) -> Option<(i64, i64)> {
-    let first_track_idx = command
-        .data
-        .options
-        .get(0)
-        .expect("Expected listener option")
-        .resolved
-        .as_ref()
-        .expect("Expected listener value");
+    let first_track_idx = command.data.options.get(0)?.resolved.as_ref()?;
 
     let first_track_idx =
         if let ApplicationCommandInteractionDataOptionValue::Integer(i) = first_track_idx {
-            i.clone()
+            *i
         } else {
             0
         };
 
-    let second_track_idx = command
-        .data
-        .options
-        .get(1)
-        .expect("Expected response option")
-        .resolved
-        .as_ref()
-        .expect("Expected response value");
+    let second_track_idx = command.data.options.get(1)?.resolved.as_ref()?;
 
     let second_track_idx =
         if let ApplicationCommandInteractionDataOptionValue::Integer(i) = second_track_idx {
-            i.clone()
+            *i
         } else {
             0
         };
 
-    return Some((first_track_idx, second_track_idx));
+    Some((first_track_idx, second_track_idx))
 }
