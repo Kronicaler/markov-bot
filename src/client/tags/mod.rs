@@ -15,16 +15,16 @@ use serenity::{
     builder::ParseValue,
     client::Context,
     model::{
-        channel::{GuildChannel, Message},
+        channel::{Message, Channel},
         guild::Guild,
         id::{ChannelId, UserId},
-        interactions::{
-            application_command::{
-                ApplicationCommandInteraction, ApplicationCommandInteractionDataOptionValue,
+        prelude::{
+            component::ButtonStyle,
+            interaction::application_command::{
+                ApplicationCommandInteraction, CommandDataOptionValue,
             },
-            message_component::ButtonStyle,
+            User,
         },
-        prelude::User,
     },
     prelude::{Mentionable, TypeMap},
 };
@@ -68,7 +68,7 @@ pub async fn remove_tag(ctx: &Context, command: &ApplicationCommandInteraction) 
     let tags = get_tags_lock(&ctx.data).await;
 
     let response;
-    if let ApplicationCommandInteractionDataOptionValue::String(listener) = listener {
+    if let CommandDataOptionValue::String(listener) = listener {
         for tag in tags.as_ref().clone().iter() {
             if &tag.listener == listener {
                 tags.remove(&tag);
@@ -122,8 +122,8 @@ pub async fn create_tag(ctx: &Context, command: &ApplicationCommandInteraction) 
         .as_ref()
         .expect("Expected response value");
 
-    if let ApplicationCommandInteractionDataOptionValue::String(listener) = listener {
-        if let ApplicationCommandInteractionDataOptionValue::String(response) = response {
+    if let CommandDataOptionValue::String(listener) = listener {
+        if let CommandDataOptionValue::String(response) = response {
             let user_regex = Regex::new(r"<@!?(\d+)>").expect("Invalid regular expression");
             let role_regex = Regex::new(r"<@&(\d+)>").expect("Invalid regular expression");
             if user_regex.is_match(response)
@@ -346,7 +346,7 @@ pub async fn respond_to_tag(ctx: &Context, msg: &Message, message: &str) {
 
     //If the guild has a tag response channel send the response there
     if let Some(channel_id) = tag_response_channel_id {
-        let mut tag_response_channel = ctx.cache.guild_channel(*channel_id).await;
+        let mut tag_response_channel = ctx.cache.guild_channel(*channel_id);
 
         if tag_response_channel.is_none() {
             let guild_channels = Guild::get(&&ctx.http, *channel_id.key())
@@ -395,9 +395,8 @@ pub async fn respond_to_tag(ctx: &Context, msg: &Message, message: &str) {
     //Try sending a message to the channel the tag listener was tripped off
     if msg.channel_id.say(&ctx.http, message).await.is_err() {
         //If sending a message fails iterate through the guild channels until it manages to send a message
-        let channels: Vec<GuildChannel> = msg
+        let channels: Vec<Channel> = msg
             .guild(&ctx.cache)
-            .await
             .expect("Couldn't retrieve guild from cache")
             .channels
             .iter()
@@ -405,7 +404,7 @@ pub async fn respond_to_tag(ctx: &Context, msg: &Message, message: &str) {
             .collect();
         for channel in channels {
             match channel
-                .id
+                .id()
                 .send_message(&ctx.http, |m| {
                     m.components(|c| {
                         c.create_action_row(|a| {

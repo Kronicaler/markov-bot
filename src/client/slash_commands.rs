@@ -1,25 +1,23 @@
+use std::str::FromStr;
+
 use super::{
     helper_funcs::{ping_command, user_id_command},
     tags::{
-        blacklist_user_from_tags_command, create_tag, list, remove_tag, set_tag_response_channel,
-    },
-    voice::commands::VoiceCommandBuilder,
+        blacklist_user_from_tags_command, create_tag, list, remove_tag, set_tag_response_channel, commands::TagCommandBuilder,
+    }, voice::commands::VoiceCommandBuilder,
 };
-use crate::client::tags::commands::TagCommandBuilder;
 use crate::{global_data, markov, voice, GuildId};
 use serenity::{
     client::Context,
-    model::interactions::application_command::{
-        ApplicationCommand, ApplicationCommandInteraction, ApplicationCommandOptionType,
-    },
+    model::{prelude::{interaction::application_command::ApplicationCommandInteraction, command::Command}},
+    model::application::command::CommandOptionType,
 };
-use std::str::FromStr;
 use strum_macros::{Display, EnumString};
 
 /// All the slash commands the bot has implemented
 #[allow(non_camel_case_types)]
 #[derive(Display, EnumString)]
-pub enum Command {
+pub enum UserCommand {
     ping,
     id,
     #[strum(serialize = "blacklisted-data")]
@@ -56,29 +54,29 @@ pub enum Command {
 pub async fn command_responses(command: &ApplicationCommandInteraction, ctx: Context) {
     let user = &command.user;
 
-    match Command::from_str(&command.data.name) {
+    match UserCommand::from_str(&command.data.name) {
         Ok(user_command) => match user_command {
-            Command::ping => ping_command(ctx, command).await,
-            Command::id => user_id_command(ctx, command).await,
-            Command::blacklisteddata => markov::blacklisted_users(ctx, command).await,
-            Command::stopsavingmymessages => {
+            UserCommand::ping => ping_command(ctx, command).await,
+            UserCommand::id => user_id_command(ctx, command).await,
+            UserCommand::blacklisteddata => markov::blacklisted_users(ctx, command).await,
+            UserCommand::stopsavingmymessages => {
                 markov::add_user_to_blacklist(user, &ctx, command).await;
             }
-            Command::createtag => create_tag(&ctx, command).await,
-            Command::removetag => remove_tag(&ctx, command).await,
-            Command::tags => list(&ctx, command).await,
-            Command::blacklistmefromtags => {
+            UserCommand::createtag => create_tag(&ctx, command).await,
+            UserCommand::removetag => remove_tag(&ctx, command).await,
+            UserCommand::tags => list(&ctx, command).await,
+            UserCommand::blacklistmefromtags => {
                 blacklist_user_from_tags_command(&ctx, user, command).await;
             }
 
-            Command::settagresponsechannel => set_tag_response_channel(&ctx, command).await,
-            Command::help => command
+            UserCommand::settagresponsechannel => set_tag_response_channel(&ctx, command).await,
+            UserCommand::help => command
                 .create_interaction_response(ctx.http, |r| {
                     r.interaction_response_data(|d| d.content(global_data::HELP_MESSAGE))
                 })
                 .await
                 .expect("Error creating interaction response"),
-            Command::version => command
+                UserCommand::version => command
                 .create_interaction_response(ctx.http, |r| {
                     r.interaction_response_data(|d| {
                         d.content("My current version is ".to_owned() + env!("CARGO_PKG_VERSION"))
@@ -86,18 +84,18 @@ pub async fn command_responses(command: &ApplicationCommandInteraction, ctx: Con
                 })
                 .await
                 .expect("Error creating interaction response"),
-            Command::continuesavingmymessages => {
+                UserCommand::continuesavingmymessages => {
                 markov::remove_user_from_blacklist(user, &ctx, command).await;
             }
 
             // ===== VOICE =====
-            Command::play => voice::play(&ctx, command).await,
-            Command::skip => voice::skip(&ctx, command).await,
-            Command::stop => voice::stop(&ctx, command).await,
-            Command::playing => voice::playing(&ctx, command).await,
-            Command::queue => voice::queue(&ctx, command).await,
-            Command::loop_song => voice::loop_song(&ctx, command).await,
-            Command::swap_songs => voice::swap_songs(&ctx, command).await,
+            UserCommand::play => voice::play(&ctx, command).await,
+            UserCommand::skip => voice::skip(&ctx, command).await,
+            UserCommand::stop => voice::stop(&ctx, command).await,
+            UserCommand::playing => voice::playing(&ctx, command).await,
+            UserCommand::queue => voice::queue(&ctx, command).await,
+            UserCommand::loop_song => voice::loop_song(&ctx, command).await,
+            UserCommand::swap_songs => voice::swap_songs(&ctx, command).await,
         },
         Err(why) => {
             eprintln!("Cannot respond to slash command {why}");
@@ -107,50 +105,50 @@ pub async fn command_responses(command: &ApplicationCommandInteraction, ctx: Con
 
 /// Create the slash commands
 pub async fn create_global_commands(ctx: &Context) {
-    ApplicationCommand::set_global_application_commands(&ctx.http, |commands| {
+    Command::set_global_application_commands(&ctx.http, |commands| {
         commands
             .create_application_command(|command| {
-                command.name(Command::ping).description("A ping command")
+                command.name(UserCommand::ping).description("A ping command")
             })
             .create_application_command(|command| {
                 command
-                    .name(Command::id)
+                    .name(UserCommand::id)
                     .description("Get a user id")
                     .create_option(|option| {
                         option
                             .name("id")
                             .description("The user to lookup")
-                            .kind(ApplicationCommandOptionType::User)
+                            .kind(CommandOptionType::User)
                             .required(true)
                     })
             })
             .create_application_command(|command| {
-                command.name(Command::blacklisteddata).description(
+                command.name(UserCommand::blacklisteddata).description(
                     "Get the list of users who's messages aren't being saved",
                 )
             })
             .create_application_command(|command| {
-                command.name(Command::stopsavingmymessages).description(
+                command.name(UserCommand::stopsavingmymessages).description(
                     "Blacklist yourself if you don't want me to save and learn from your messages",
                 )
             })
             .create_application_command(|command| {
-                command.name(Command::continuesavingmymessages).description(
+                command.name(UserCommand::continuesavingmymessages).description(
                     "Remove yourself from the blacklist if you want me to save and learn from your messages",
                 )
             })
             .create_application_command(|command| {
                 command
-                    .name(Command::help)
+                    .name(UserCommand::help)
                     .description("Information about my commands")
             })
             .create_application_command(|command| {
                 command
-                    .name(Command::version)
+                    .name(UserCommand::version)
                     .description("My current version")
             })
             .create_voice_commands()
-            .create_tag_commands()
+            .create_tag_commands() 
     })
     .await
     .expect("Couldn't create global slash commands");

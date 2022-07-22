@@ -5,10 +5,7 @@ use super::{
 use serenity::{
     builder::CreateEmbed,
     client::Context,
-    model::interactions::application_command::{
-        ApplicationCommandInteraction, ApplicationCommandInteractionDataOptionValue,
-    },
-    utils::Colour,
+    utils::Colour, model::prelude::interaction::application_command::{ApplicationCommandInteraction, CommandDataOptionValue},
 };
 use songbird::{
     create_player,
@@ -29,7 +26,6 @@ pub async fn play(ctx: &Context, command: &ApplicationCommandInteraction) {
 
     let guild = cache
         .guild(guild_id)
-        .await
         .expect("unable to fetch guild from the cache");
 
     // Get voice channel_id
@@ -102,7 +98,7 @@ fn get_query(command: &ApplicationCommandInteraction) -> &String {
         .expect("expected input");
 
     match query.resolved.as_ref().unwrap() {
-        ApplicationCommandInteractionDataOptionValue::String(s) => s,
+        CommandDataOptionValue::String(s) => s,
         _ => panic!("expected a string"),
     }
 }

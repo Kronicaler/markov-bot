@@ -19,8 +19,7 @@ use markov_strings::Markov;
 use serenity::{
     client::Context,
     model::{
-        channel::Message, interactions::application_command::ApplicationCommandInteraction,
-        prelude::User,
+        prelude::{User, interaction::application_command::ApplicationCommandInteraction}, channel::Message,
     },
     prelude::{RwLock, TypeMap},
 };

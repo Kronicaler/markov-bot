@@ -1,13 +1,13 @@
 use serenity::{
-    client::Context, model::interactions::application_command::ApplicationCommandInteraction,
-    utils::Colour,
+    client::Context,
+    utils::Colour, model::prelude::interaction::application_command::ApplicationCommandInteraction,
 };
 
 ///current song
 pub async fn playing(ctx: &Context, command: &ApplicationCommandInteraction) {
     let cache = &ctx.cache;
     let guild_id = command.guild_id;
-    if let Some(_guild) = cache.guild(guild_id.unwrap()).await {
+    if let Some(_guild) = cache.guild(guild_id.unwrap()) {
         let manager = songbird::get(ctx)
             .await
             .expect("Songbird Voice client placed in at initialisation.")
@@ -48,7 +48,7 @@ pub async fn playing(ctx: &Context, command: &ApplicationCommandInteraction) {
             command
                 .create_interaction_response(&ctx.http, |m| {
                     m.interaction_response_data(|d| {
-                        d.create_embed(|e| {
+                        d.embed(|e| {
                             e.title(title)
                                 .colour(colour)
                                 .description(channel)

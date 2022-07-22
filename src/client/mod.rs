@@ -19,7 +19,14 @@ use super::tags::check_for_tag_listeners;
 use serenity::{
     async_trait,
     client::{Context, EventHandler},
-    model::{interactions::Interaction, prelude::*},
+    model::{
+        channel::Message,
+        gateway::{Activity, Ready},
+        id::UserId,
+        prelude::interaction::{Interaction, InteractionType, MessageFlags},
+        voice::VoiceState,
+    },
+    prelude::GatewayIntents,
     Client,
 };
 use songbird::{
@@ -85,9 +92,7 @@ impl EventHandler for Handler {
                         button
                             .create_interaction_response(&ctx.http, |r| {
                                 r.interaction_response_data(|d| {
-                                    d.content(response).flags(
-                                        InteractionApplicationCommandCallbackDataFlags::EPHEMERAL,
-                                    )
+                                    d.content(response).flags(MessageFlags::EPHEMERAL)
                                 })
                             })
                             .await
@@ -143,16 +148,10 @@ impl EventHandler for Handler {
         }
     }
 
-    async fn voice_state_update(
-        &self,
-        ctx: Context,
-        guild_id_option: Option<GuildId>,
-        old: Option<VoiceState>,
-        new: VoiceState,
-    ) {
-        leave_vc_if_alone(old, &ctx, guild_id_option).await;
+    async fn voice_state_update(&self, ctx: Context, old: Option<VoiceState>, new: VoiceState) {
+        leave_vc_if_alone(old, &ctx).await;
 
-        if new.channel_id.is_none() && new.user_id == ctx.http.application_id {
+        if new.channel_id.is_none() && new.user_id == ctx.http.application_id().unwrap() {
             let manager = songbird::get(&ctx).await.unwrap();
 
             let call_lock = manager.get(new.guild_id.unwrap()).unwrap();
@@ -178,7 +177,12 @@ pub async fn start() {
         })
         .preallocated_tracks(2);
 
-    let mut client = Client::builder(token)
+    let intents = GatewayIntents::GUILD_MESSAGES
+        | GatewayIntents::DIRECT_MESSAGES
+        | GatewayIntents::MESSAGE_CONTENT
+        | GatewayIntents::non_privileged();
+
+    let mut client = Client::builder(token, intents)
         .application_id(application_id.0)
         .event_handler(Handler {})
         .register_songbird_from_config(songbird_config)

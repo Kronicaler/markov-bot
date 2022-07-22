@@ -1,10 +1,6 @@
 use serenity::{
     client::Context,
-    model::interactions::{
-        application_command::ApplicationCommandInteraction,
-        message_component::{ButtonStyle, MessageComponentInteraction},
-    },
-    utils::Colour,
+    utils::Colour, model::prelude::{interaction::{application_command::ApplicationCommandInteraction, message_component::MessageComponentInteraction}, component::ButtonStyle},
 };
 
 use crate::client::ButtonIds;
@@ -13,7 +9,7 @@ use crate::client::ButtonIds;
 pub async fn queue(ctx: &Context, command: &ApplicationCommandInteraction) {
     let cache = &ctx.cache;
     let guild_id = command.guild_id;
-    if let Some(_guild) = cache.guild(guild_id.unwrap()).await {
+    if let Some(_guild) = cache.guild(guild_id.unwrap()) {
         let manager = songbird::get(ctx)
             .await
             .expect("Songbird Voice client placed in at initialisation.")
@@ -52,7 +48,7 @@ pub async fn queue(ctx: &Context, command: &ApplicationCommandInteraction) {
 
                     m.interaction_response_data(|d| {
                         d.content("0")
-                            .create_embed(|e| {
+                            .embed(|e| {
                                 e.title("queue")
                                     .title("Current Queue:")
                                     .description(format!(
@@ -129,7 +125,7 @@ pub async fn edit_queue(
     let cache = &ctx.cache;
     let guild_id = button.guild_id;
 
-    if let Some(_guild) = cache.guild(guild_id.unwrap()).await {
+    if let Some(_guild) = cache.guild(guild_id.unwrap()) {
         let manager = songbird::get(ctx)
             .await
             .expect("Songbird Voice client placed in at initialisation.")
@@ -198,7 +194,7 @@ pub async fn edit_queue(
                     let duration = format!("{}:{:02}", minutes, seconds);
 
                     d.content(queue_start.to_string())
-                        .create_embed(|e| {
+                        .embed(|e| {
                             e.title("queue")
                                 .title("Current Queue:")
                                 .description(format!(

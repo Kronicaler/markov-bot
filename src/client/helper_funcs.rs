@@ -1,10 +1,8 @@
 use serenity::{
     client::Context,
-    model::{
-        interactions::application_command::{
-            ApplicationCommandInteraction, ApplicationCommandInteractionDataOptionValue,
-        },
-        prelude::Ready,
+    model::prelude::{
+        interaction::application_command::{ApplicationCommandInteraction, CommandDataOptionValue},
+        Ready,
     },
 };
 
@@ -17,12 +15,11 @@ pub async fn user_id_command(ctx: Context, command: &ApplicationCommandInteracti
         .resolved
         .as_ref()
         .expect("Expected user object");
-    let response =
-        if let ApplicationCommandInteractionDataOptionValue::User(user, _member) = options {
-            format!("{}'s id is {}", user, user.id)
-        } else {
-            "Please provide a valid user".to_owned()
-        };
+    let response = if let CommandDataOptionValue::User(user, _member) = options {
+        format!("{}'s id is {}", user, user.id)
+    } else {
+        "Please provide a valid user".to_owned()
+    };
 
     command
         .create_interaction_response(ctx.http, |r| {
@@ -50,7 +47,7 @@ pub async fn leave_unknown_guilds(ready: &Ready, ctx: &Context) {
         .expect("Couldn't get application info")
         .owner;
     for guild_status in &ready.guilds {
-        let guild_id = guild_status.id();
+        let guild_id = guild_status.id;
 
         let bot_owner_in_guild = guild_id.member(&ctx.http, bot_owner.id).await;
 
@@ -64,12 +61,10 @@ pub async fn leave_unknown_guilds(ready: &Ready, ctx: &Context) {
 
             let guild_name = guild_id
                 .name(&ctx.cache)
-                .await
                 .unwrap_or_else(|| "NO_NAME".to_owned());
 
             let guild_owner = guild_id
                 .to_guild_cached(&ctx.cache)
-                .await
                 .expect("Couldn't fetch guild from cache")
                 .owner_id
                 .to_user(&ctx.http)

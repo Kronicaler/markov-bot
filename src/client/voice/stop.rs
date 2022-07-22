@@ -1,6 +1,6 @@
 use serenity::{
-    client::Context, model::interactions::application_command::ApplicationCommandInteraction,
-    utils::Colour,
+    client::Context,
+    utils::Colour, model::prelude::interaction::application_command::ApplicationCommandInteraction,
 };
 
 use super::helper_funcs::is_bot_in_another_channel;
@@ -9,7 +9,7 @@ use super::helper_funcs::is_bot_in_another_channel;
 pub async fn stop(ctx: &Context, command: &ApplicationCommandInteraction) {
     let guild_id = command.guild_id.expect("Couldn't get guild ID");
 
-    if let Some(guild) = guild_id.to_guild_cached(&ctx.cache).await {
+    if let Some(guild) = guild_id.to_guild_cached(&ctx.cache) {
         if is_bot_in_another_channel(ctx, &guild, command.user.id) {
             command
                 .create_interaction_response(&ctx.http, |r| {
@@ -49,7 +49,7 @@ pub async fn stop(ctx: &Context, command: &ApplicationCommandInteraction) {
         .create_interaction_response(&ctx.http, |m| {
             let colour = Colour::from_rgb(149, 8, 2);
             m.interaction_response_data(|d| {
-                d.create_embed(|e| {
+                d.embed(|e| {
                     e.title(String::from("Stopped playing, the queue has been cleared."))
                         .colour(colour)
                 })

@@ -1,10 +1,10 @@
 use serenity::{
     client::Context,
     model::{
+        channel::Channel,
         guild::Guild,
-        id::{ChannelId, GuildId, UserId},
-        interactions::application_command::ApplicationCommandInteraction,
-        prelude::VoiceState,
+        id::{ChannelId, UserId},
+        prelude::{interaction::application_command::ApplicationCommandInteraction, VoiceState},
     },
 };
 
@@ -18,7 +18,7 @@ pub fn get_voice_channel_of_user(guild: &Guild, user_id: UserId) -> Option<Chann
 pub fn get_voice_channel_of_bot(ctx: &Context, guild: &Guild) -> Option<ChannelId> {
     guild
         .voice_states
-        .get(&ctx.http.application_id.into())
+        .get(&ctx.http.application_id().unwrap().into())
         .and_then(|voice_state| voice_state.channel_id)
 }
 
@@ -72,24 +72,19 @@ pub async fn get_call_lock(
     Some(call_lock)
 }
 
-pub async fn leave_vc_if_alone(
-    old: Option<VoiceState>,
-    ctx: &Context,
-    guild_id_option: Option<GuildId>,
-) {
-    // If a user joined a channel
-    if old.is_none() {
-        return;
-    }
-
-    let old = old.unwrap();
+pub async fn leave_vc_if_alone(old: Option<VoiceState>, ctx: &Context) {
+    let old = match old {
+        Some(e) => e,
+        // If a user joined a channel
+        None => return,
+    };
 
     let manager = songbird::get(ctx)
         .await
         .expect("Songbird Voice client placed in at initialisation.")
         .clone();
 
-    let call_mutex = manager.get(guild_id_option.unwrap());
+    let call_mutex = manager.get(old.guild_id.unwrap());
     if call_mutex.is_none() {
         return;
     }
@@ -103,13 +98,14 @@ pub async fn leave_vc_if_alone(
     }
     let bot_voice_channel = bot_voice_channel.unwrap();
 
-    let guild = guild_id_option
-        .unwrap()
-        .to_guild_cached(&ctx.cache)
-        .await
-        .unwrap();
+    let guild = old.guild_id.unwrap().to_guild_cached(&ctx.cache).unwrap();
 
-    let changed_voice_channel = guild.channels.get(&old.channel_id.unwrap()).unwrap();
+    let changed_voice_channel =
+        if let Channel::Guild(e) = guild.channels.get(&old.channel_id.unwrap()).unwrap() {
+            e
+        } else {
+            panic!("This should be a voice channel")
+        };
 
     if changed_voice_channel.id.0 != bot_voice_channel.0 {
         return;
