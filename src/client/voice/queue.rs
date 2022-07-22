@@ -134,8 +134,6 @@ pub async fn edit_queue(
     let cache = &ctx.cache;
     let guild_id = button.guild_id;
 
-    let mut queue_start: i32 = button.message.content.parse().unwrap();
-
     if let Some(_guild) = cache.guild(guild_id.unwrap()).await {
         let manager = songbird::get(ctx)
             .await
@@ -161,6 +159,7 @@ pub async fn edit_queue(
             button
                 .edit_original_interaction_response(&ctx.http, |d| {
                     let i: i32;
+                    let mut queue_start: i32 = button.message.content.parse().unwrap();
 
                     if button_id == ButtonIds::QueueNext {
                         queue_start += 10;
