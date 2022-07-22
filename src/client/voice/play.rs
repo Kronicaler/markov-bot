@@ -1,3 +1,4 @@
+use super::{helper_funcs::*, Handler};
 use serenity::{
     builder::CreateEmbed,
     client::Context,
@@ -10,10 +11,9 @@ use songbird::{
     create_player,
     input::{Input, Metadata, Restartable},
     tracks::TrackQueue,
+    TrackEvent,
 };
 use std::time::Duration;
-
-use super::helper_funcs::*;
 
 ///play song from youtube
 pub async fn play(ctx: &Context, command: &ApplicationCommandInteraction) {
@@ -66,6 +66,18 @@ pub async fn play(ctx: &Context, command: &ApplicationCommandInteraction) {
     let source = get_source(query.to_owned(), command, ctx)
         .await
         .expect("Couldn't get source");
+
+    if call.queue().is_empty() {
+        call.remove_all_global_events();
+        call.add_global_event(
+            songbird::Event::Track(TrackEvent::End),
+            Handler {
+                call_lock: call_lock.clone(),
+                voice_text_channel: command.channel_id,
+                ctx:ctx.clone()
+            },
+        );
+    }
 
     //add to queue
     let input: Input = source.into();
@@ -156,15 +168,9 @@ async fn return_response(
     command: &ApplicationCommandInteraction,
     ctx: &Context,
 ) {
-    let title = metadata.title.clone().unwrap_or_default();
-    let channel = metadata.channel.clone().unwrap_or_default();
-    let thumbnail = metadata.thumbnail.clone().unwrap_or_default();
-    let url = metadata.source_url.clone().unwrap_or_default();
+    let mut embed = create_track_embed(metadata);
+
     let time = metadata.duration.unwrap_or_else(|| Duration::new(0, 0));
-    let minutes = time.as_secs() / 60;
-    let seconds = time.as_secs() - minutes * 60;
-    let duration = format!("{}:{:02}", minutes, seconds);
-    let colour = Colour::from_rgb(149, 8, 2);
     let time_before_song = queue
         .current_queue()
         .iter()
@@ -178,15 +184,6 @@ async fn return_response(
         time_before_song.as_secs() - (time_before_song.as_secs() / 60) * 60
     );
 
-    let mut embed = CreateEmbed::default()
-        .title(title)
-        .colour(colour)
-        .description(channel)
-        .field("Duration: ", duration, true)
-        .thumbnail(thumbnail)
-        .url(url)
-        .clone();
-
     let content = if queue.len() == 1 {
         "Playing".to_owned()
     } else {
@@ -198,4 +195,27 @@ async fn return_response(
         .edit_original_interaction_response(&ctx.http, |r| r.add_embed(embed).content(content))
         .await
         .expect("Error creating interaction response");
+}
+
+pub fn create_track_embed(metadata: &Metadata) -> CreateEmbed {
+    let title = metadata.title.clone().unwrap_or_default();
+    let channel = metadata.channel.clone().unwrap_or_default();
+    let thumbnail = metadata.thumbnail.clone().unwrap_or_default();
+    let url = metadata.source_url.clone().unwrap_or_default();
+    let time = metadata.duration.unwrap_or_else(|| Duration::new(0, 0));
+    let minutes = time.as_secs() / 60;
+    let seconds = time.as_secs() - minutes * 60;
+    let duration = format!("{}:{:02}", minutes, seconds);
+    let colour = Colour::from_rgb(149, 8, 2);
+
+    let embed = CreateEmbed::default()
+        .title(title)
+        .colour(colour)
+        .description(channel)
+        .field("Duration: ", duration, true)
+        .thumbnail(thumbnail)
+        .url(url)
+        .clone();
+
+    embed
 }
