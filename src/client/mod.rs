@@ -21,7 +21,7 @@ use serenity::{
     client::{Context, EventHandler},
     model::{
         channel::Message,
-        gateway::{Activity, Ready},
+        gateway::Ready,
         id::UserId,
         prelude::interaction::{Interaction, InteractionType, MessageFlags},
         voice::VoiceState,
@@ -53,18 +53,17 @@ struct Handler {}
 impl EventHandler for Handler {
     /// Is called when the bot connects to discord
     async fn ready(&self, ctx: Context, ready: Ready) {
+        println!("{} is connected!", ready.user.name);
+        
         leave_unknown_guilds(&ready, &ctx).await;
 
-        println!("{} is connected!", ready.user.name);
-
-        let t1 = ctx.set_activity(Activity::watching("https://github.com/TheKroni/markov-bot"));
-        let t2 = create_global_commands(&ctx);
+        let t1 = create_global_commands(&ctx);
 
         if cfg!(debug_assertions) {
             let t3 = create_test_commands(&ctx);
-            join!(t1, t2, t3);
+            join!(t1, t3);
         } else {
-            join!(t1, t2);
+            t1.await;
         }
     }
     /// Is called when a user starts an [`Interaction`]
