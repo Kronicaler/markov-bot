@@ -10,11 +10,11 @@ use thiserror::Error;
 use super::helper_funcs::{get_call_lock, is_bot_in_another_channel};
 
 pub trait Swapable {
-    fn swap(&self, first_track_idx: usize, second_track_idx: usize) -> Result<(), SwapError>;
+    fn swap(&self, first_track_idx: usize, second_track_idx: usize) -> Result<(), SwapableError>;
 }
 
 #[derive(Debug, Error)]
-pub enum SwapError {
+pub enum SwapableError {
     #[error("Requested song that wasn't in the queue")]
     IndexOutOfBounds,
     #[error("Can't swap any songs if the queue is empty")]
@@ -26,26 +26,26 @@ pub enum SwapError {
 }
 
 impl Swapable for TrackQueue {
-    fn swap(&self, first_track_idx: usize, second_track_idx: usize) -> Result<(), SwapError> {
+    fn swap(&self, first_track_idx: usize, second_track_idx: usize) -> Result<(), SwapableError> {
         self.modify_queue(|q| {
             if q.len() < first_track_idx
                 || q.len() < second_track_idx
                 || first_track_idx < 1
                 || second_track_idx < 1
             {
-                return Err(SwapError::IndexOutOfBounds);
+                return Err(SwapableError::IndexOutOfBounds);
             }
 
             if q.is_empty() {
-                return Err(SwapError::NothingIsPlaying);
+                return Err(SwapableError::NothingIsPlaying);
             }
 
             if first_track_idx == 1 || second_track_idx == 1 {
-                return Err(SwapError::CannotSwapCurrentSong);
+                return Err(SwapableError::CannotSwapCurrentSong);
             }
 
             if first_track_idx == second_track_idx {
-                return Err(SwapError::CannotSwapSameSong);
+                return Err(SwapableError::CannotSwapSameSong);
             }
 
             let first_track_idx = first_track_idx - 1;
@@ -58,7 +58,7 @@ impl Swapable for TrackQueue {
     }
 }
 
-pub async fn swap_songs(ctx: &Context, command: &ApplicationCommandInteraction) {
+pub async fn swap(ctx: &Context, command: &ApplicationCommandInteraction) {
     let guild_id = command.guild_id.expect("Couldn't get guild ID");
 
     let call_lock = match get_call_lock(ctx, guild_id, command).await {
@@ -137,7 +137,7 @@ pub async fn swap_songs(ctx: &Context, command: &ApplicationCommandInteraction) 
                 .expect("Error creating interaction response");
         }
         Err(e) => match e {
-            SwapError::IndexOutOfBounds => {
+            SwapableError::IndexOutOfBounds => {
                 command
                     .create_interaction_response(&ctx.http, |r| {
                         r.interaction_response_data(|d| d.content("That track isn't in the queue!"))
@@ -145,7 +145,7 @@ pub async fn swap_songs(ctx: &Context, command: &ApplicationCommandInteraction) 
                     .await
                     .expect("Error creating interaction response");
             }
-            SwapError::NothingIsPlaying => {
+            SwapableError::NothingIsPlaying => {
                 command
                     .create_interaction_response(&ctx.http, |r| {
                         r.interaction_response_data(|d| d.content("Nothing is playing!"))
@@ -153,7 +153,7 @@ pub async fn swap_songs(ctx: &Context, command: &ApplicationCommandInteraction) 
                     .await
                     .expect("Error creating interaction response");
             }
-            SwapError::CannotSwapCurrentSong => {
+            SwapableError::CannotSwapCurrentSong => {
                 command
                     .create_interaction_response(&ctx.http, |r| {
                         r.interaction_response_data(|d| {
@@ -163,7 +163,7 @@ pub async fn swap_songs(ctx: &Context, command: &ApplicationCommandInteraction) 
                     .await
                     .expect("Error creating interaction response");
             }
-            SwapError::CannotSwapSameSong => {
+            SwapableError::CannotSwapSameSong => {
                 command
                     .create_interaction_response(&ctx.http, |r| {
                         r.interaction_response_data(|d| d.content("Can't swap the same song!"))

@@ -13,7 +13,7 @@ use std::sync::Arc;
 pub use loop_song::loop_song;
 pub use play::play;
 pub use playing::playing;
-pub use queue::edit_queue;
+pub use queue::change_queue_page;
 pub use queue::queue;
 use serenity::async_trait;
 use serenity::client::Context;
@@ -25,7 +25,7 @@ use songbird::Call;
 use songbird::EventContext;
 use songbird::EventHandler;
 pub use stop::stop;
-pub use swap::swap_songs;
+pub use swap::swap;
 
 use crate::client::voice::play::create_track_embed;
 /*

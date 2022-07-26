@@ -99,7 +99,7 @@ pub async fn command_responses(command: &ApplicationCommandInteraction, ctx: Con
             UserCommand::playing => voice::playing(&ctx, command).await,
             UserCommand::queue => voice::queue(&ctx, command).await,
             UserCommand::loop_song => voice::loop_song(&ctx, command).await,
-            UserCommand::swap_songs => voice::swap_songs(&ctx, command).await,
+            UserCommand::swap_songs => voice::swap(&ctx, command).await,
         },
         Err(why) => {
             eprintln!("Cannot respond to slash command {why}");

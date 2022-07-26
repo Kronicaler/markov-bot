@@ -10,6 +10,7 @@ use serenity::{
     utils::Colour,
 };
 
+
 use crate::client::ButtonIds;
 
 ///get the queue
@@ -124,7 +125,7 @@ pub async fn queue(ctx: &Context, command: &ApplicationCommandInteraction) {
     }
 }
 
-pub async fn edit_queue(
+pub async fn change_queue_page(
     ctx: &Context,
     button: &mut MessageComponentInteraction,
     button_id: ButtonIds,
@@ -214,7 +215,7 @@ pub async fn edit_queue(
                             for i in queue_start..i {
                                 let song = &queue
                                     .current_queue()
-                                    .get(i as usize)
+                                    .get(usize::try_from(i).unwrap())
                                     .unwrap()
                                     .metadata()
                                     .clone();

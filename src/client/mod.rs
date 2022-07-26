@@ -13,7 +13,7 @@ use slash_commands::{command_responses, create_global_commands, create_test_comm
 
 use self::{
     tags::{blacklist_user, respond_to_tag},
-    voice::{edit_queue, helper_funcs::leave_vc_if_alone},
+    voice::{change_queue_page, helper_funcs::leave_vc_if_alone},
 };
 use super::tags::check_for_tag_listeners;
 use serenity::{
@@ -97,8 +97,9 @@ impl EventHandler for Handler {
                             .await
                             .expect("couldn't create response");
                     }
-                    ButtonIds::QueueNext => edit_queue(&ctx, &mut button, button_id).await,
-                    ButtonIds::QueuePrevious => edit_queue(&ctx, &mut button, button_id).await,
+                    ButtonIds::QueueNext | ButtonIds::QueuePrevious => {
+                        change_queue_page(&ctx, &mut button, button_id).await;
+                    }
                 };
             }
             _ => {}
