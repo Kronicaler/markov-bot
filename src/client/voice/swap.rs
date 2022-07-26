@@ -136,42 +136,46 @@ pub async fn swap(ctx: &Context, command: &ApplicationCommandInteraction) {
                 .await
                 .expect("Error creating interaction response");
         }
-        Err(e) => match e {
-            SwapableError::IndexOutOfBounds => {
-                command
-                    .create_interaction_response(&ctx.http, |r| {
-                        r.interaction_response_data(|d| d.content("That track isn't in the queue!"))
+        Err(e) => handle_swappable_error(e, command, ctx).await
+    }
+}
+
+async fn handle_swappable_error(e: SwapableError, command: &ApplicationCommandInteraction, ctx: &Context) {
+    match e {
+        SwapableError::IndexOutOfBounds => {
+            command
+                .create_interaction_response(&ctx.http, |r| {
+                    r.interaction_response_data(|d| d.content("That track isn't in the queue!"))
+                })
+                .await
+                .expect("Error creating interaction response");
+        }
+        SwapableError::NothingIsPlaying => {
+            command
+                .create_interaction_response(&ctx.http, |r| {
+                    r.interaction_response_data(|d| d.content("Nothing is playing!"))
+                })
+                .await
+                .expect("Error creating interaction response");
+        }
+        SwapableError::CannotSwapCurrentSong => {
+            command
+                .create_interaction_response(&ctx.http, |r| {
+                    r.interaction_response_data(|d| {
+                        d.content("Can't swap the song that's currently playing!")
                     })
-                    .await
-                    .expect("Error creating interaction response");
-            }
-            SwapableError::NothingIsPlaying => {
-                command
-                    .create_interaction_response(&ctx.http, |r| {
-                        r.interaction_response_data(|d| d.content("Nothing is playing!"))
-                    })
-                    .await
-                    .expect("Error creating interaction response");
-            }
-            SwapableError::CannotSwapCurrentSong => {
-                command
-                    .create_interaction_response(&ctx.http, |r| {
-                        r.interaction_response_data(|d| {
-                            d.content("Can't swap the song that's currently playing!")
-                        })
-                    })
-                    .await
-                    .expect("Error creating interaction response");
-            }
-            SwapableError::CannotSwapSameSong => {
-                command
-                    .create_interaction_response(&ctx.http, |r| {
-                        r.interaction_response_data(|d| d.content("Can't swap the same song!"))
-                    })
-                    .await
-                    .expect("Error creating interaction response");
-            }
-        },
+                })
+                .await
+                .expect("Error creating interaction response");
+        }
+        SwapableError::CannotSwapSameSong => {
+            command
+                .create_interaction_response(&ctx.http, |r| {
+                    r.interaction_response_data(|d| d.content("Can't swap the same song!"))
+                })
+                .await
+                .expect("Error creating interaction response");
+        }
     }
 }
 
