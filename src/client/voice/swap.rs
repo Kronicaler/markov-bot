@@ -1,5 +1,8 @@
 use serenity::{
-    client::Context, model::prelude::interaction::application_command::{ApplicationCommandInteraction, CommandDataOptionValue},
+    client::Context,
+    model::prelude::interaction::application_command::{
+        ApplicationCommandInteraction, CommandDataOptionValue,
+    },
 };
 use songbird::tracks::TrackQueue;
 use thiserror::Error;
@@ -175,21 +178,19 @@ pub async fn swap_songs(ctx: &Context, command: &ApplicationCommandInteraction) 
 fn get_track_numbers(command: &ApplicationCommandInteraction) -> Option<(i64, i64)> {
     let first_track_idx = command.data.options.get(0)?.resolved.as_ref()?;
 
-    let first_track_idx =
-        if let CommandDataOptionValue::Integer(i) = first_track_idx {
-            *i
-        } else {
-            0
-        };
+    let first_track_idx = if let CommandDataOptionValue::Integer(i) = first_track_idx {
+        *i
+    } else {
+        0
+    };
 
     let second_track_idx = command.data.options.get(1)?.resolved.as_ref()?;
 
-    let second_track_idx =
-        if let CommandDataOptionValue::Integer(i) = second_track_idx {
-            *i
-        } else {
-            0
-        };
+    let second_track_idx = if let CommandDataOptionValue::Integer(i) = second_track_idx {
+        *i
+    } else {
+        0
+    };
 
     Some((first_track_idx, second_track_idx))
 }

@@ -5,7 +5,10 @@ use super::{
 use serenity::{
     builder::CreateEmbed,
     client::Context,
-    utils::Colour, model::prelude::interaction::application_command::{ApplicationCommandInteraction, CommandDataOptionValue},
+    model::prelude::interaction::application_command::{
+        ApplicationCommandInteraction, CommandDataOptionValue,
+    },
+    utils::Colour,
 };
 use songbird::{
     create_player,

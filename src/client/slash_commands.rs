@@ -3,14 +3,18 @@ use std::str::FromStr;
 use super::{
     helper_funcs::{ping_command, user_id_command},
     tags::{
-        blacklist_user_from_tags_command, create_tag, list, remove_tag, set_tag_response_channel, commands::TagCommandBuilder,
-    }, voice::commands::VoiceCommandBuilder,
+        blacklist_user_from_tags_command, commands::TagCommandBuilder, create_tag, list,
+        remove_tag, set_tag_response_channel,
+    },
+    voice::commands::VoiceCommandBuilder,
 };
 use crate::{global_data, markov, voice, GuildId};
 use serenity::{
     client::Context,
-    model::{prelude::{interaction::application_command::ApplicationCommandInteraction, command::Command}},
     model::application::command::CommandOptionType,
+    model::prelude::{
+        command::Command, interaction::application_command::ApplicationCommandInteraction,
+    },
 };
 use strum_macros::{Display, EnumString};
 
@@ -76,7 +80,7 @@ pub async fn command_responses(command: &ApplicationCommandInteraction, ctx: Con
                 })
                 .await
                 .expect("Error creating interaction response"),
-                UserCommand::version => command
+            UserCommand::version => command
                 .create_interaction_response(ctx.http, |r| {
                     r.interaction_response_data(|d| {
                         d.content("My current version is ".to_owned() + env!("CARGO_PKG_VERSION"))
@@ -84,7 +88,7 @@ pub async fn command_responses(command: &ApplicationCommandInteraction, ctx: Con
                 })
                 .await
                 .expect("Error creating interaction response"),
-                UserCommand::continuesavingmymessages => {
+            UserCommand::continuesavingmymessages => {
                 markov::remove_user_from_blacklist(user, &ctx, command).await;
             }
 
@@ -148,7 +152,7 @@ pub async fn create_global_commands(ctx: &Context) {
                     .description("My current version")
             })
             .create_voice_commands()
-            .create_tag_commands() 
+            .create_tag_commands()
     })
     .await
     .expect("Couldn't create global slash commands");

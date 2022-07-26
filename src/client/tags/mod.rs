@@ -15,7 +15,7 @@ use serenity::{
     builder::ParseValue,
     client::Context,
     model::{
-        channel::{Message, Channel},
+        channel::{Channel, Message},
         guild::Guild,
         id::{ChannelId, UserId},
         prelude::{

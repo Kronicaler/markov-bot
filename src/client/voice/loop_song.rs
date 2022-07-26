@@ -1,5 +1,6 @@
 use serenity::{
-    client::Context, model::prelude::interaction::application_command::ApplicationCommandInteraction,
+    client::Context,
+    model::prelude::interaction::application_command::ApplicationCommandInteraction,
 };
 use songbird::tracks::LoopState;
 

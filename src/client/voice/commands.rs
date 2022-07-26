@@ -1,6 +1,4 @@
-use serenity::{
-    builder::CreateApplicationCommands, model::prelude::command::CommandOptionType,
-};
+use serenity::{builder::CreateApplicationCommands, model::prelude::command::CommandOptionType};
 
 use crate::client::slash_commands::UserCommand;
 

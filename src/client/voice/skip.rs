@@ -2,7 +2,10 @@ use std::ops::ControlFlow;
 
 use serenity::{
     client::Context,
-    utils::Colour, model::prelude::interaction::application_command::{ApplicationCommandInteraction, CommandDataOptionValue},
+    model::prelude::interaction::application_command::{
+        ApplicationCommandInteraction, CommandDataOptionValue,
+    },
+    utils::Colour,
 };
 
 use super::helper_funcs::{get_call_lock, is_bot_in_another_channel};
@@ -43,9 +46,7 @@ pub async fn skip(ctx: &Context, command: &ApplicationCommandInteraction) {
         if !success {
             command
                 .create_interaction_response(&ctx.http, |m| {
-                    m.interaction_response_data(|d| {
-                        d.embed(|e| e.title("Couldn't skip song"))
-                    })
+                    m.interaction_response_data(|d| d.embed(|e| e.title("Couldn't skip song")))
                 })
                 .await
                 .expect("Error creating interaction response");
@@ -96,9 +97,7 @@ fn get_track_number(command: &ApplicationCommandInteraction) -> Option<usize> {
         .find(|opt| opt.name == "number")?;
 
     match track_number.resolved.as_ref().unwrap() {
-        CommandDataOptionValue::Integer(s) => {
-            Some((*s).try_into().expect("invalid number"))
-        }
+        CommandDataOptionValue::Integer(s) => Some((*s).try_into().expect("invalid number")),
         _ => panic!("expected an integer!"),
     }
 }

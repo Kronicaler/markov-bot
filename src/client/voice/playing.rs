@@ -1,6 +1,6 @@
 use serenity::{
     client::Context,
-    utils::Colour, model::prelude::interaction::application_command::ApplicationCommandInteraction,
+    model::prelude::interaction::application_command::ApplicationCommandInteraction, utils::Colour,
 };
 
 ///current song

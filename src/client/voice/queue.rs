@@ -1,6 +1,13 @@
 use serenity::{
     client::Context,
-    utils::Colour, model::prelude::{interaction::{application_command::ApplicationCommandInteraction, message_component::MessageComponentInteraction}, component::ButtonStyle},
+    model::prelude::{
+        component::ButtonStyle,
+        interaction::{
+            application_command::ApplicationCommandInteraction,
+            message_component::MessageComponentInteraction,
+        },
+    },
+    utils::Colour,
 };
 
 use crate::client::ButtonIds;

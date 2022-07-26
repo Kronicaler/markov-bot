@@ -1,6 +1,6 @@
 use serenity::{
     client::Context,
-    utils::Colour, model::prelude::interaction::application_command::ApplicationCommandInteraction,
+    model::prelude::interaction::application_command::ApplicationCommandInteraction, utils::Colour,
 };
 
 use super::helper_funcs::is_bot_in_another_channel;
