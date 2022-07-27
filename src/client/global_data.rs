@@ -1,5 +1,4 @@
 use super::{markov::init_markov_data, tags::init_tags_data};
-use crate::markov;
 use serenity::Client;
 use std::error::Error;
 
@@ -28,9 +27,8 @@ pub async fn init_global_data_for_client(client: &Client) -> Result<(), Box<dyn 
         println!("Debugging disabled");
     };
 
-    let markov = markov::init()?;
 
-    init_markov_data(&mut data, markov)?;
+    init_markov_data(&mut data)?;
 
     init_tags_data(data)?;
 

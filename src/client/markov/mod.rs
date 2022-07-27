@@ -232,8 +232,9 @@ pub async fn blacklisted_users(ctx: Context, command: &ApplicationCommandInterac
 
 pub fn init_markov_data(
     data: &mut RwLockWriteGuard<TypeMap>,
-    markov: markov_strings::Markov,
 ) -> Result<(), Box<dyn Error>> {
+    let markov = init()?;
+
     let blacklisted_channels_in_file: DashSet<u64> = serde_json::from_str(&fs::read_to_string(
         create_file_if_missing(global_data::MARKOV_BLACKLISTED_CHANNELS_PATH, "[]")?,
     )?)?;
