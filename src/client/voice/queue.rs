@@ -38,7 +38,6 @@ pub async fn queue(ctx: &Context, command: &ApplicationCommandInteraction) {
                 //embed
                 let i = if queue.len() < 10 { queue.len() } else { 10 };
                 //color
-                let colour = Colour::from_rgb(149, 8, 2);
                 let total_queue_time = queue
                     .current_queue()
                     .iter()
@@ -46,6 +45,7 @@ pub async fn queue(ctx: &Context, command: &ApplicationCommandInteraction) {
                     .reduce(|a, f| a.checked_add(f).unwrap())
                     .unwrap_or_default();
 
+                let colour = Colour::from_rgb(149, 8, 2);
                 let minutes = total_queue_time.as_secs() / 60;
                 let seconds = total_queue_time.as_secs() - minutes * 60;
                 let duration = format!("{}:{:02}", minutes, seconds);
@@ -53,51 +53,16 @@ pub async fn queue(ctx: &Context, command: &ApplicationCommandInteraction) {
                 m.interaction_response_data(|d| {
                     d.content("0")
                         .embed(|e| {
-                            e.title("queue")
-                                .title("Current Queue:")
-                                .description(format!(
-                                    "Current size: {} | Total queue length: {}",
-                                    queue.len(),
-                                    duration
-                                ))
-                                .color(colour);
-                            for i in 0..i {
-                                let song =
-                                    &queue.current_queue().get(i).unwrap().metadata().clone();
-                                let channel = &song.channel.as_ref().unwrap();
-                                let title = &song.title.as_ref().unwrap();
-                                //duration
-                                let time = &song.duration.as_ref().unwrap();
-                                let minutes = time.as_secs() / 60;
-                                let seconds = time.as_secs() - minutes * 60;
-                                let duration = format!("{}:{:02}", minutes, seconds);
-                                let arg1 = format!("{}. {} | {}", i + 1, title, channel);
-                                e.field(arg1, duration, false);
-                            }
-                            e
+                            create_queue_embed(
+                                e,
+                                queue,
+                                &duration,
+                                colour,
+                                0,
+                                i.try_into().unwrap(),
+                            )
                         })
-                        .components(|c| {
-                            if queue.len() > 10 {
-                                c.create_action_row(|a| {
-                                    a.create_button(|b| {
-                                        b.emoji(serenity::model::channel::ReactionType::Unicode(
-                                            "◀".to_string(),
-                                        ))
-                                        .style(ButtonStyle::Primary)
-                                        .custom_id(ButtonIds::QueuePrevious)
-                                    })
-                                    .create_button(|b| {
-                                        b.emoji(serenity::model::channel::ReactionType::Unicode(
-                                            "▶".to_string(),
-                                        ))
-                                        .style(ButtonStyle::Primary)
-                                        .custom_id(ButtonIds::QueueNext)
-                                    })
-                                })
-                            } else {
-                                c
-                            }
-                        })
+                        .components(|c| create_queue_buttons(queue, c))
                 })
             })
             .await
@@ -111,6 +76,32 @@ pub async fn queue(ctx: &Context, command: &ApplicationCommandInteraction) {
             })
             .await
             .expect("Error creating interaction response");
+    }
+}
+
+fn create_queue_buttons<'a>(
+    queue: &songbird::tracks::TrackQueue,
+    c: &'a mut serenity::builder::CreateComponents,
+) -> &'a mut serenity::builder::CreateComponents {
+    if queue.len() > 10 {
+        c.create_action_row(|a| {
+            a.create_button(|b| {
+                b.emoji(serenity::model::channel::ReactionType::Unicode(
+                    "◀".to_string(),
+                ))
+                .style(ButtonStyle::Primary)
+                .custom_id(ButtonIds::QueuePrevious)
+            })
+            .create_button(|b| {
+                b.emoji(serenity::model::channel::ReactionType::Unicode(
+                    "▶".to_string(),
+                ))
+                .style(ButtonStyle::Primary)
+                .custom_id(ButtonIds::QueueNext)
+            })
+        })
+    } else {
+        c
     }
 }
 
@@ -164,7 +155,6 @@ async fn change_page(
         .edit_original_interaction_response(&ctx.http, |d| {
             let (queue_start, queue_end) = get_page_ends(button, &button_id, queue);
             //color
-            let colour = Colour::from_rgb(149, 8, 2);
             let total_queue_time = queue
                 .current_queue()
                 .iter()
@@ -175,63 +165,51 @@ async fn change_page(
             let minutes = total_queue_time.as_secs() / 60;
             let seconds = total_queue_time.as_secs() - minutes * 60;
             let duration = format!("{}:{:02}", minutes, seconds);
+            let colour = Colour::from_rgb(149, 8, 2);
 
             d.content(queue_start.to_string())
-                .embed(|e| {
-                    e.title("queue")
-                        .title("Current Queue:")
-                        .description(format!(
-                            "Current size: {} | Total queue length: {}",
-                            queue.len(),
-                            duration
-                        ))
-                        .color(colour);
-
-                    for i in queue_start..queue_end {
-                        let song = &queue
-                            .current_queue()
-                            .get(usize::try_from(i).unwrap())
-                            .unwrap()
-                            .metadata()
-                            .clone();
-
-                        let channel = &song.channel.as_ref().unwrap();
-                        let title = &song.title.as_ref().unwrap();
-                        //duration
-                        let time = &song.duration.as_ref().unwrap();
-                        let minutes = time.as_secs() / 60;
-                        let seconds = time.as_secs() - minutes * 60;
-                        let duration = format!("{}:{:02}", minutes, seconds);
-                        let arg1 = format!("{}. {} | {}", i + 1, title, channel);
-                        e.field(arg1, duration, false);
-                    }
-                    e
-                })
-                .components(|c| {
-                    if queue.len() > 10 {
-                        c.create_action_row(|a| {
-                            a.create_button(|b| {
-                                b.emoji(serenity::model::channel::ReactionType::Unicode(
-                                    "◀".to_string(),
-                                ))
-                                .style(ButtonStyle::Primary)
-                                .custom_id(ButtonIds::QueuePrevious)
-                            })
-                            .create_button(|b| {
-                                b.emoji(serenity::model::channel::ReactionType::Unicode(
-                                    "▶".to_string(),
-                                ))
-                                .style(ButtonStyle::Primary)
-                                .custom_id(ButtonIds::QueueNext)
-                            })
-                        })
-                    } else {
-                        c
-                    }
-                })
+                .embed(|e| create_queue_embed(e, queue, &duration, colour, queue_start, queue_end))
+                .components(|c| create_queue_buttons(queue, c))
         })
         .await
         .expect("Error creating interaction response");
+}
+
+fn create_queue_embed<'a>(
+    e: &'a mut serenity::builder::CreateEmbed,
+    queue: &songbird::tracks::TrackQueue,
+    duration: &str,
+    colour: Colour,
+    queue_start: i64,
+    queue_end: i64,
+) -> &'a mut serenity::builder::CreateEmbed {
+    e.title("queue")
+        .title("Current Queue:")
+        .description(format!(
+            "Current size: {} | Total queue length: {}",
+            queue.len(),
+            duration
+        ))
+        .color(colour);
+    for i in queue_start..queue_end {
+        let song = &queue
+            .current_queue()
+            .get(usize::try_from(i).unwrap())
+            .unwrap()
+            .metadata()
+            .clone();
+
+        let channel = &song.channel.as_ref().unwrap();
+        let title = &song.title.as_ref().unwrap();
+        //duration
+        let time = &song.duration.as_ref().unwrap();
+        let minutes = time.as_secs() / 60;
+        let seconds = time.as_secs() - minutes * 60;
+        let duration = format!("{}:{:02}", minutes, seconds);
+        let arg1 = format!("{}. {} | {}", i + 1, title, channel);
+        e.field(arg1, duration, false);
+    }
+    e
 }
 
 fn get_page_ends(
