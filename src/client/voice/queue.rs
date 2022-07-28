@@ -35,20 +35,10 @@ pub async fn queue(ctx: &Context, command: &ApplicationCommandInteraction) {
         //embed
         command
             .create_interaction_response(&ctx.http, |m| {
-                //embed
                 let i = if queue.len() < 10 { queue.len() } else { 10 };
-                //color
-                let total_queue_time = queue
-                    .current_queue()
-                    .iter()
-                    .map(|f| f.metadata().duration.unwrap())
-                    .reduce(|a, f| a.checked_add(f).unwrap())
-                    .unwrap_or_default();
 
                 let colour = Colour::from_rgb(149, 8, 2);
-                let minutes = total_queue_time.as_secs() / 60;
-                let seconds = total_queue_time.as_secs() - minutes * 60;
-                let duration = format!("{}:{:02}", minutes, seconds);
+                let duration = get_queue_duration(queue);
 
                 m.interaction_response_data(|d| {
                     d.content("0")
@@ -77,6 +67,20 @@ pub async fn queue(ctx: &Context, command: &ApplicationCommandInteraction) {
             .await
             .expect("Error creating interaction response");
     }
+}
+
+fn get_queue_duration(queue: &songbird::tracks::TrackQueue) -> String {
+    let total_queue_time = queue
+        .current_queue()
+        .iter()
+        .map(|f| f.metadata().duration.unwrap())
+        .reduce(|a, f| a.checked_add(f).unwrap())
+        .unwrap_or_default();
+    let minutes = total_queue_time.as_secs() / 60;
+    let seconds = total_queue_time.as_secs() - minutes * 60;
+    let duration = format!("{}:{:02}", minutes, seconds);
+
+    duration
 }
 
 fn create_queue_buttons<'a>(
@@ -154,17 +158,8 @@ async fn change_page(
     button
         .edit_original_interaction_response(&ctx.http, |d| {
             let (queue_start, queue_end) = get_page_ends(button, &button_id, queue);
-            //color
-            let total_queue_time = queue
-                .current_queue()
-                .iter()
-                .map(|f| f.metadata().duration.unwrap())
-                .reduce(|a, f| a.checked_add(f).unwrap())
-                .unwrap_or_default();
 
-            let minutes = total_queue_time.as_secs() / 60;
-            let seconds = total_queue_time.as_secs() - minutes * 60;
-            let duration = format!("{}:{:02}", minutes, seconds);
+            let duration = get_queue_duration(queue);
             let colour = Colour::from_rgb(149, 8, 2);
 
             d.content(queue_start.to_string())
