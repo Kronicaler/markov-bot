@@ -1,9 +1,16 @@
 use serenity::{
     client::Context,
-    model::{prelude::{
-        interaction::application_command::{ApplicationCommandInteraction, CommandDataOptionValue},
-        Ready,
-    }, id::{ChannelId, GuildId}, channel::GuildChannel, guild::Guild},
+    model::{
+        channel::GuildChannel,
+        guild::Guild,
+        id::{ChannelId, GuildId},
+        prelude::{
+            interaction::application_command::{
+                ApplicationCommandInteraction, CommandDataOptionValue,
+            },
+            Ready,
+        },
+    },
 };
 
 pub async fn user_id_command(ctx: Context, command: &ApplicationCommandInteraction) {
@@ -84,30 +91,36 @@ pub async fn get_guild_channel(
     channel_id: ChannelId,
 ) -> anyhow::Result<GuildChannel> {
     let changed_voice_channel = match guild_id.to_guild_cached(&ctx.cache) {
-        Some(guild) => get_guild_channel_from_cache(guild, channel_id)?,
+        Some(guild) => get_guild_channel_from_cache(&guild, channel_id)?,
         None => fetch_guild_channel(guild_id, ctx, channel_id).await?,
     };
     Ok(changed_voice_channel)
 }
 
-async fn fetch_guild_channel(guild_id: GuildId, ctx: &Context, channel_id: ChannelId) -> Result<GuildChannel, anyhow::Error> {
+async fn fetch_guild_channel(
+    guild_id: GuildId,
+    ctx: &Context,
+    channel_id: ChannelId,
+) -> Result<GuildChannel, anyhow::Error> {
     Ok(guild_id
         .channels(&ctx.http)
         .await?
         .get(&channel_id)
-        .ok_or_else(|| GetGuildChannelError::ChannelNotInGuild)?
+        .ok_or(GetGuildChannelError::ChannelNotInGuild)?
         .clone())
 }
 
-fn get_guild_channel_from_cache(guild: Guild, channel_id: ChannelId) -> Result<GuildChannel, anyhow::Error> {
+fn get_guild_channel_from_cache(
+    guild: &Guild,
+    channel_id: ChannelId,
+) -> Result<GuildChannel, anyhow::Error> {
     Ok(guild
         .channels
         .get(&channel_id)
-        .ok_or_else(|| GetGuildChannelError::ChannelNotInGuild)?
+        .ok_or(GetGuildChannelError::ChannelNotInGuild)?
         .clone()
         .guild()
-        .ok_or_else(|| GetGuildChannelError::NotGuildChannel)?
-        .clone())
+        .ok_or(GetGuildChannelError::NotGuildChannel)?)
 }
 
 #[derive(Debug, thiserror::Error)]
