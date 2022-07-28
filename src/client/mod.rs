@@ -158,6 +158,7 @@ impl EventHandler for Handler {
             let call = call_lock.lock().await;
 
             call.queue().stop();
+            call.remove_all_global_events();
         }
     }
 }
