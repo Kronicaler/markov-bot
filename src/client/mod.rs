@@ -155,7 +155,7 @@ impl EventHandler for Handler {
             let manager = songbird::get(&ctx).await.unwrap();
 
             let call_lock = manager.get(new.guild_id.unwrap()).unwrap();
-            let call = call_lock.lock().await;
+            let mut call = call_lock.lock().await;
 
             call.queue().stop();
             call.remove_all_global_events();
