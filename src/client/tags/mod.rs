@@ -28,6 +28,7 @@ use serenity::{
     },
     prelude::{Mentionable, TypeMap},
 };
+use std::fmt::Write;
 use std::{error::Error, fs, sync::Arc};
 use tokio::sync::RwLockWriteGuard;
 use {
@@ -43,7 +44,7 @@ pub async fn list(ctx: &Context, command: &ApplicationCommandInteraction) {
     let mut message = String::new();
 
     for tag in tag.iter() {
-        message += &format!("{}, ", tag.listener);
+        write!(&mut message, "{}, ", tag.listener).unwrap();
     }
     message.pop();
     message.pop();

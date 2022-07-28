@@ -47,7 +47,7 @@ pub fn filter_message_for_markov_file(msg: &Message) -> Option<String> {
                     let mut user_id = String::new();
 
                     for char in caps[0].chars() {
-                        if char.is_digit(10) {
+                        if char.is_ascii_digit() {
                             user_id += &char.to_string();
                         }
                     }
