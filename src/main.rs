@@ -1,4 +1,4 @@
-#![deny(clippy::pedantic, warnings)]
+#![deny(clippy::all,clippy::pedantic, warnings)]
 
 //! A discord bot written in rust for fun
 
