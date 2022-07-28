@@ -65,18 +65,12 @@ pub async fn swap(ctx: &Context, command: &ApplicationCommandInteraction) {
         Some(value) => value,
         None => return,
     };
+
     let call = call_lock.lock().await;
 
     if let Some(guild) = guild_id.to_guild_cached(&ctx.cache) {
         if is_bot_in_another_channel(ctx, &guild, command.user.id) {
-            command
-                .create_interaction_response(&ctx.http, |r| {
-                    r.interaction_response_data(|d| {
-                        d.content("Must be in the same voice channel to use that command!")
-                    })
-                })
-                .await
-                .expect("Error creating interaction response");
+            user_not_in_vc_response(command, ctx).await;
             return;
         }
     }
@@ -86,41 +80,18 @@ pub async fn swap(ctx: &Context, command: &ApplicationCommandInteraction) {
     let (first_track_idx, second_track_idx) = match get_track_numbers(command) {
         Some(v) => v,
         None => {
-            command
-                .create_interaction_response(&ctx.http, |r| {
-                    r.interaction_response_data(|d| {
-                        d.content("Must input which tracks you want to switch!")
-                    })
-                })
-                .await
-                .expect("Error creating interaction response");
+            invalid_number_response(command, ctx).await;
             return;
         }
     };
 
-    let first_track_idx = if let Ok(v) = first_track_idx.try_into() {
-        v
-    } else {
-        command
-            .create_interaction_response(&ctx.http, |r| {
-                r.interaction_response_data(|d| d.content("Invalid number!"))
-            })
-            .await
-            .expect("Error creating interaction response");
-        return;
-    };
-
-    let second_track_idx = if let Ok(v) = second_track_idx.try_into() {
-        v
-    } else {
-        command
-            .create_interaction_response(&ctx.http, |r| {
-                r.interaction_response_data(|d| d.content("Invalid number!"))
-            })
-            .await
-            .expect("Error creating interaction response");
-        return;
-    };
+    let (first_track_idx, second_track_idx) =
+        if let Ok(value) = parse_track_numbers(first_track_idx, second_track_idx) {
+            value
+        } else {
+            invalid_number_response(command, ctx).await;
+            return;
+        };
 
     match queue.swap(first_track_idx, second_track_idx) {
         Ok(_) => {
@@ -136,11 +107,45 @@ pub async fn swap(ctx: &Context, command: &ApplicationCommandInteraction) {
                 .await
                 .expect("Error creating interaction response");
         }
-        Err(e) => handle_swappable_error(e, command, ctx).await
+        Err(e) => swapping_error_response(e, command, ctx).await,
     }
 }
 
-async fn handle_swappable_error(e: SwapableError, command: &ApplicationCommandInteraction, ctx: &Context) {
+async fn invalid_number_response(command: &ApplicationCommandInteraction, ctx: &Context) {
+    command
+        .create_interaction_response(&ctx.http, |r| {
+            r.interaction_response_data(|d| d.content("Invalid number!"))
+        })
+        .await
+        .expect("Error creating interaction response");
+}
+
+fn parse_track_numbers(
+    first_track_idx: i64,
+    second_track_idx: i64,
+) -> anyhow::Result<(usize, usize)> {
+    let first_track_idx = first_track_idx.try_into()?;
+    let second_track_idx = second_track_idx.try_into()?;
+
+    Ok((first_track_idx, second_track_idx))
+}
+
+async fn user_not_in_vc_response(command: &ApplicationCommandInteraction, ctx: &Context) {
+    command
+        .create_interaction_response(&ctx.http, |r| {
+            r.interaction_response_data(|d| {
+                d.content("Must be in the same voice channel to use that command!")
+            })
+        })
+        .await
+        .expect("Error creating interaction response");
+}
+
+async fn swapping_error_response(
+    e: SwapableError,
+    command: &ApplicationCommandInteraction,
+    ctx: &Context,
+) {
     match e {
         SwapableError::IndexOutOfBounds => {
             command
@@ -180,20 +185,14 @@ async fn handle_swappable_error(e: SwapableError, command: &ApplicationCommandIn
 }
 
 fn get_track_numbers(command: &ApplicationCommandInteraction) -> Option<(i64, i64)> {
-    let first_track_idx = command.data.options.get(0)?.resolved.as_ref()?;
-
-    let first_track_idx = if let CommandDataOptionValue::Integer(i) = first_track_idx {
-        *i
-    } else {
-        0
+    let first_track_idx = match command.data.options.get(0)?.resolved.as_ref()? {
+        CommandDataOptionValue::Integer(i) => *i,
+        _ => return None,
     };
 
-    let second_track_idx = command.data.options.get(1)?.resolved.as_ref()?;
-
-    let second_track_idx = if let CommandDataOptionValue::Integer(i) = second_track_idx {
-        *i
-    } else {
-        0
+    let second_track_idx = match command.data.options.get(1)?.resolved.as_ref()? {
+        CommandDataOptionValue::Integer(i) => *i,
+        _ => return None,
     };
 
     Some((first_track_idx, second_track_idx))
