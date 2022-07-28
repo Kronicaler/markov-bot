@@ -20,27 +20,23 @@ use std::time::Duration;
 
 ///play song from youtube
 pub async fn play(ctx: &Context, command: &ApplicationCommandInteraction) {
-    //get the guild ID, cache, and query
     let guild_id = command.guild_id.expect("Couldn't get guild ID");
-    let cache = &ctx.cache;
     let query = get_query(command);
 
     command.defer(&ctx.http).await.unwrap();
 
-    let guild = cache
+    let guild = &ctx.cache
         .guild(guild_id)
         .expect("unable to fetch guild from the cache");
 
-    // Get voice channel_id
     let voice_channel_id =
-        if let Some(voice_channel_id) = get_voice_channel_of_user(&guild, command.user.id) {
+        if let Some(voice_channel_id) = get_voice_channel_of_user(guild, command.user.id) {
             voice_channel_id
         } else {
             voice_channel_not_found_response(command, ctx).await;
             return;
         };
 
-    //create manager
     let manager = songbird::get(ctx).await.expect("songbird error").clone();
 
     let queue = match manager.get(guild_id) {
@@ -48,7 +44,7 @@ pub async fn play(ctx: &Context, command: &ApplicationCommandInteraction) {
         None => None,
     };
 
-    if is_bot_in_another_channel(ctx, &guild, command.user.id)
+    if is_bot_in_another_channel(ctx, guild, command.user.id)
         && queue.is_some()
         && !queue.expect("Should never fail").is_empty()
     {
@@ -63,12 +59,30 @@ pub async fn play(ctx: &Context, command: &ApplicationCommandInteraction) {
         return;
     }
     let mut call = call_lock.lock().await;
-
+    
+    add_track_end_event(&mut call, &call_lock, command, ctx);
+    
     //get source from YouTube
     let source = get_source(query.clone(), command, ctx)
         .await
         .expect("Couldn't get source");
 
+    //add to queue
+    let input: Input = source.into();
+    let metadata = input.metadata.clone();
+    let (mut audio, _) = create_player(input);
+    audio.set_volume(0.5);
+    call.enqueue(audio);
+
+    return_response(&metadata, call.queue(), command, ctx).await;
+}
+
+fn add_track_end_event(
+    call: &mut tokio::sync::MutexGuard<songbird::Call>,
+    call_lock: &std::sync::Arc<serenity::prelude::Mutex<songbird::Call>>,
+    command: &ApplicationCommandInteraction,
+    ctx: &Context,
+) {
     if call.queue().is_empty() {
         call.remove_all_global_events();
         call.add_global_event(
@@ -80,16 +94,6 @@ pub async fn play(ctx: &Context, command: &ApplicationCommandInteraction) {
             },
         );
     }
-
-    //add to queue
-    let input: Input = source.into();
-    let metadata = input.metadata.clone();
-    let (mut audio, _) = create_player(input);
-    audio.set_volume(0.5);
-    call.enqueue(audio);
-
-    // Return interaction response
-    return_response(&metadata, call.queue(), command, ctx).await;
 }
 
 fn get_query(command: &ApplicationCommandInteraction) -> &String {
