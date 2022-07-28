@@ -121,6 +121,7 @@ pub async fn leave_vc_if_alone(old: Option<VoiceState>, ctx: &Context) {
 
     if changed_voice_channel_members.len() == 1 {
         call.queue().stop();
+        call.remove_all_global_events();
         call.leave().await.expect("Couldn't leave voice channel");
     }
 }
