@@ -1,12 +1,13 @@
 use serenity::{
     client::Context,
     model::{
-        channel::Channel,
         guild::Guild,
         id::{ChannelId, UserId},
         prelude::{interaction::application_command::ApplicationCommandInteraction, VoiceState},
     },
 };
+
+use crate::client::helper_funcs::get_guild_channel;
 
 pub fn get_voice_channel_of_user(guild: &Guild, user_id: UserId) -> Option<ChannelId> {
     guild
@@ -79,12 +80,24 @@ pub async fn leave_vc_if_alone(old: Option<VoiceState>, ctx: &Context) {
         None => return,
     };
 
+    let guild_id = match old.guild_id {
+        Some(e) => e,
+        // Don't know why this would be None
+        // Maybe if the User joined from a private or group call?
+        None => return,
+    };
+
+    let channel_id = match old.channel_id {
+        Some(e) => e,
+        None => return,
+    };
+
     let manager = songbird::get(ctx)
         .await
         .expect("Songbird Voice client placed in at initialisation.")
         .clone();
 
-    let call_mutex = manager.get(old.guild_id.unwrap());
+    let call_mutex = manager.get(guild_id);
     if call_mutex.is_none() {
         return;
     }
@@ -98,14 +111,7 @@ pub async fn leave_vc_if_alone(old: Option<VoiceState>, ctx: &Context) {
     }
     let bot_voice_channel = bot_voice_channel.unwrap();
 
-    let guild = old.guild_id.unwrap().to_guild_cached(&ctx.cache).unwrap();
-
-    let changed_voice_channel =
-        if let Channel::Guild(e) = guild.channels.get(&old.channel_id.unwrap()).unwrap() {
-            e
-        } else {
-            panic!("This should be a voice channel")
-        };
+    let changed_voice_channel = get_guild_channel(guild_id, ctx, channel_id).await.unwrap();
 
     if changed_voice_channel.id.0 != bot_voice_channel.0 {
         return;
