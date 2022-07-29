@@ -25,7 +25,8 @@ pub async fn play(ctx: &Context, command: &ApplicationCommandInteraction) {
 
     command.defer(&ctx.http).await.unwrap();
 
-    let guild = &ctx.cache
+    let guild = &ctx
+        .cache
         .guild(guild_id)
         .expect("unable to fetch guild from the cache");
 
@@ -59,9 +60,9 @@ pub async fn play(ctx: &Context, command: &ApplicationCommandInteraction) {
         return;
     }
     let mut call = call_lock.lock().await;
-    
-    add_track_end_event(&mut call, &call_lock, command, ctx);
-    
+
+    add_track_end_event(&mut call, command, ctx);
+
     //get source from YouTube
     let source = get_source(query.clone(), command, ctx)
         .await
@@ -79,7 +80,6 @@ pub async fn play(ctx: &Context, command: &ApplicationCommandInteraction) {
 
 fn add_track_end_event(
     call: &mut tokio::sync::MutexGuard<songbird::Call>,
-    call_lock: &std::sync::Arc<serenity::prelude::Mutex<songbird::Call>>,
     command: &ApplicationCommandInteraction,
     ctx: &Context,
 ) {
@@ -88,8 +88,8 @@ fn add_track_end_event(
         call.add_global_event(
             songbird::Event::Track(TrackEvent::End),
             Handler {
-                call_lock: call_lock.clone(),
                 voice_text_channel: command.channel_id,
+                guild_id: command.guild_id.unwrap(),
                 ctx: ctx.clone(),
             },
         );

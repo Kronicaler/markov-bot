@@ -8,8 +8,6 @@ mod skip;
 mod stop;
 mod swap;
 
-use std::sync::Arc;
-
 pub use loop_song::loop_song;
 pub use play::play;
 pub use playing::playing;
@@ -18,10 +16,9 @@ pub use queue::queue;
 use serenity::async_trait;
 use serenity::client::Context;
 use serenity::model::id::ChannelId;
-use serenity::prelude::Mutex;
+use serenity::model::id::GuildId;
 pub use skip::skip;
 use songbird::tracks::PlayMode;
-use songbird::Call;
 use songbird::EventContext;
 use songbird::EventHandler;
 pub use stop::stop;
@@ -34,8 +31,8 @@ use crate::client::voice::play::create_track_embed;
  */
 
 struct Handler {
-    call_lock: Arc<Mutex<Call>>,
     voice_text_channel: ChannelId,
+    guild_id: GuildId,
     ctx: Context,
 }
 
@@ -63,7 +60,11 @@ impl EventHandler for Handler {
 
 impl Handler {
     async fn send_now_playing_msg(&self) {
-        let call = self.call_lock.lock().await;
+        let songbird = songbird::get(&self.ctx).await.unwrap();
+
+        let call_lock = songbird.get(self.guild_id).unwrap();
+        let call = call_lock.lock().await;
+
         let playing_track = match call.queue().current() {
             Some(e) => e,
             None => return,
