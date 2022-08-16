@@ -5,15 +5,21 @@ use std::error::Error;
 pub const HELP_MESSAGE: &str = "All of my commands are slash commands.
 /ping: Pong!
 /id: gives you the user id of the selected user
-/blacklisted-data: lists out the users the bot will not learn from
-/stop-saving-my-messages: blacklist yourself if you don't want the bot to store your messages and learn from them
-/continue-saving-my-messages: unblacklist yourself if you want the bot to save and learn from your messages
-/create-tag: create a tag that the bot will listen for and then respond to when it is said
-/remove-tag: remove a tag
-/tags: list out the current tags
-/blacklist-me-from-tags: blacklist yourself from tags so the bot won't ping you if you trip off a tag
-/set-tag-response-channel: for admins only, set the channel the bot will talk in, if you don't want users using the bot anywhere else you'll have to do it with roles
-/version: Check the version of the bot";
+/stop-saving-my-messages: tell the bot not to store your messages and not to learn from them
+/continue-saving-my-messages: tell the bot to save and learn from your messages
+/tag create: create a tag that the bot will listen for and then respond to when it is said
+/tag remove: remove a tag
+/tag list: list out the current tags
+/tag stop-pinging-me: tell the bot not to ping you if you trip off a tag
+/tag response-channel: for admins only, set the channel where the bot will respond to tags
+/play: play a song from youtube in VC. Accepts both song titles and youtube links
+/skip: skip a song
+/stop: stop the current song and clear the queue
+/playing: check which song is currently playing
+/queue: check which songs are in the queue
+/loop: loop the current song
+/swap_songs: swap 2 songs positions in the queue
+/version: check the version of the bot";
 
 /// Initialize the global data for the client so it can be used from multiple threads.
 ///
