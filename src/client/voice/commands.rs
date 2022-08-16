@@ -55,20 +55,18 @@ impl VoiceCommandBuilder for CreateApplicationCommands {
     }
 
     fn create_skip_command(&mut self) -> &mut CreateApplicationCommands {
-        self.create_play_command()
-            //skip a song
-            .create_application_command(|command| {
-                command
-                    .name(UserCommand::skip)
-                    .description("skip the current song")
-                    .create_option(|option| {
-                        option
-                            .name("number")
-                            .description("Number in queue")
-                            .kind(CommandOptionType::Integer)
-                            .required(false)
-                    })
-            })
+        self.create_application_command(|command| {
+            command
+                .name(UserCommand::skip)
+                .description("skip the current song")
+                .create_option(|option| {
+                    option
+                        .name("number")
+                        .description("Number in queue")
+                        .kind(CommandOptionType::Integer)
+                        .required(false)
+                })
+        })
     }
 
     fn create_swap_command(&mut self) -> &mut CreateApplicationCommands {
