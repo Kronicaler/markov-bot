@@ -62,6 +62,9 @@ pub async fn remove_tag(ctx: &Context, command: &ApplicationCommandInteraction) 
         .data
         .options
         .get(0)
+        .unwrap()
+        .options
+        .get(0)
         .expect("Expected listener option")
         .resolved
         .as_ref()
@@ -75,7 +78,7 @@ pub async fn remove_tag(ctx: &Context, command: &ApplicationCommandInteraction) 
                 tags.remove(&tag);
                 save_tags_to_file(&tags);
                 println!("{} removed tag {}", command.user.name, tag.listener);
-                response = "Successfully removed the tag";
+                response = "Removed the tag ".to_string() + &tag.listener;
                 command
                     .create_interaction_response(&ctx.http, |r| {
                         r.interaction_response_data(|d| d.content(response))
@@ -85,7 +88,7 @@ pub async fn remove_tag(ctx: &Context, command: &ApplicationCommandInteraction) 
                 return;
             }
         }
-        response = "Couldn't find the tag";
+        response = "Couldn't find the tag ".to_string() + listener;
         command
             .create_interaction_response(&ctx.http, |r| {
                 r.interaction_response_data(|d| d.content(response))
@@ -95,7 +98,7 @@ pub async fn remove_tag(ctx: &Context, command: &ApplicationCommandInteraction) 
         return;
     }
 
-    response = "Something went wrong";
+    response = "Something went wrong".to_string();
 
     command
         .create_interaction_response(&ctx.http, |r| {
@@ -110,12 +113,18 @@ pub async fn create_tag(ctx: &Context, command: &ApplicationCommandInteraction) 
         .data
         .options
         .get(0)
+        .unwrap()
+        .options
+        .get(0)
         .expect("Expected listener option")
         .resolved
         .as_ref()
         .expect("Expected listener value");
     let response = command
         .data
+        .options
+        .get(0)
+        .unwrap()
         .options
         .get(1)
         .expect("Expected response option")
@@ -162,7 +171,7 @@ pub async fn create_tag(ctx: &Context, command: &ApplicationCommandInteraction) 
             save_tags_to_file(&tags);
             command
                 .create_interaction_response(&ctx.http, |r| {
-                    r.interaction_response_data(|d| d.content("Set tag"))
+                    r.interaction_response_data(|d| d.content(format!("Created tag {}", listener)))
                 })
                 .await
                 .expect("Error creating interaction response");
@@ -171,7 +180,7 @@ pub async fn create_tag(ctx: &Context, command: &ApplicationCommandInteraction) 
     }
     command
         .create_interaction_response(&ctx.http, |r| {
-            r.interaction_response_data(|d| d.content("Couldn't set tag"))
+            r.interaction_response_data(|d| d.content("Couldn't create tag"))
         })
         .await
         .expect("Error creating interaction response");
@@ -188,12 +197,12 @@ pub async fn blacklist_user_from_tags_command(
         users_blacklisted_from_tags.remove(&user.id.0);
         save_user_tag_blacklist_to_file(&users_blacklisted_from_tags);
 
-        format!("Removed {} from the blacklist", &user.name)
+        "I will now ping you when you trip off a tag"
     } else {
         users_blacklisted_from_tags.insert(user.id.0);
         save_user_tag_blacklist_to_file(&users_blacklisted_from_tags);
 
-        format!("Added {} to the tag blacklist", &user.name)
+        "I won't ping you anymore when you trip off a tag"
     };
 
     command
@@ -210,11 +219,11 @@ pub async fn blacklist_user(ctx: &Context, user: &User) -> String {
     if users_blacklisted_from_tags.contains(&user.id.0) {
         users_blacklisted_from_tags.remove(&user.id.0);
         save_user_tag_blacklist_to_file(&users_blacklisted_from_tags);
-        format!("Removed {} from the blacklist", &user.name)
+        "I won't ping you anymore when you trip off a tag".to_string()
     } else {
         users_blacklisted_from_tags.insert(user.id.0);
         save_user_tag_blacklist_to_file(&users_blacklisted_from_tags);
-        format!("Added {} to the tag blacklist", &user.name)
+        "I will now ping you when you trip off a tag".to_string()
     }
 }
 

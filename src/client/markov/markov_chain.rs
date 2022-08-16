@@ -91,7 +91,7 @@ pub fn filter_message_for_markov_file(msg: &Message) -> Option<String> {
     return Some(filtered_message.trim().to_owned());
 }
 
-fn cant_find_user_in_message(user_regex: &Regex, filtered_message: &String, msg: &Message) -> bool {
+fn cant_find_user_in_message(user_regex: &Regex, filtered_message: &str, msg: &Message) -> bool {
     user_regex
         .captures_iter(filtered_message)
         .map(|caps| {
@@ -102,15 +102,9 @@ fn cant_find_user_in_message(user_regex: &Regex, filtered_message: &String, msg:
                     user_id += &char.to_string();
                 }
             }
-            let user_id = user_id.parse::<u64>().expect("Couldn't parse user id");
-            user_id
+            user_id.parse::<u64>().expect("Couldn't parse user id")
         })
-        .any(|user_id| {
-            msg.mentions
-                .iter()
-                .find(|&user| user.id.0 == user_id)
-                .is_none()
-        })
+        .any(|user_id| msg.mentions.iter().any(|user| user.id.0 == user_id))
 }
 /// Filters a string so it can be inserted into the Markov data set.
 ///

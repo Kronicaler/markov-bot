@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
 use super::{
-    helper_funcs::{ping_command, user_id_command},
+    helper_funcs::{get_full_command_name, ping_command, user_id_command},
     tags::{
         blacklist_user_from_tags_command, commands::TagCommandBuilder, create_tag, list,
         remove_tag, set_tag_response_channel,
@@ -16,11 +16,11 @@ use serenity::{
         command::Command, interaction::application_command::ApplicationCommandInteraction,
     },
 };
-use strum_macros::{Display, EnumString};
+use strum_macros::{Display, EnumProperty, EnumString};
 
 /// All the slash commands the bot has implemented
 #[allow(non_camel_case_types)]
-#[derive(Display, EnumString)]
+#[derive(Display, EnumString, EnumProperty)]
 pub enum UserCommand {
     ping,
     id,
@@ -30,17 +30,26 @@ pub enum UserCommand {
     stopsavingmymessages,
     #[strum(serialize = "continue-saving-my-messages")]
     continuesavingmymessages,
-    #[strum(serialize = "create-tag")]
-    createtag,
-    #[strum(serialize = "remove-tag")]
-    removetag,
-    tags,
-    #[strum(serialize = "blacklist-me-from-tags")]
-    blacklistmefromtags,
-    #[strum(serialize = "set-tag-response-channel")]
-    settagresponsechannel,
     help,
     version,
+
+    // =====TAGS=====
+    #[strum(props(SubCommand = "create"), serialize = "tag create")]
+    createtag,
+    #[strum(props(SubCommand = "remove"), serialize = "tag remove")]
+    removetag,
+    #[strum(props(SubCommand = "list"), serialize = "tag list")]
+    taglist,
+    #[strum(
+        props(SubCommand = "stop-pinging-me"),
+        serialize = "tag stop-pinging-me"
+    )]
+    blacklistmefromtags,
+    #[strum(
+        props(SubCommand = "response-channel"),
+        serialize = "tag response-channel"
+    )]
+    tagresponsechannel,
 
     // =====VOICE=====
     play,
@@ -58,7 +67,9 @@ pub enum UserCommand {
 pub async fn command_responses(command: &ApplicationCommandInteraction, ctx: Context) {
     let user = &command.user;
 
-    match UserCommand::from_str(&command.data.name) {
+    let full_command_name = get_full_command_name(command);
+
+    match UserCommand::from_str(&full_command_name) {
         Ok(user_command) => match user_command {
             UserCommand::ping => ping_command(ctx, command).await,
             UserCommand::id => user_id_command(ctx, command).await,
@@ -68,12 +79,12 @@ pub async fn command_responses(command: &ApplicationCommandInteraction, ctx: Con
             }
             UserCommand::createtag => create_tag(&ctx, command).await,
             UserCommand::removetag => remove_tag(&ctx, command).await,
-            UserCommand::tags => list(&ctx, command).await,
+            UserCommand::taglist => list(&ctx, command).await,
             UserCommand::blacklistmefromtags => {
                 blacklist_user_from_tags_command(&ctx, user, command).await;
             }
 
-            UserCommand::settagresponsechannel => set_tag_response_channel(&ctx, command).await,
+            UserCommand::tagresponsechannel => set_tag_response_channel(&ctx, command).await,
             UserCommand::help => command
                 .create_interaction_response(ctx.http, |r| {
                     r.interaction_response_data(|d| d.content(global_data::HELP_MESSAGE))

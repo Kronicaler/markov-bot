@@ -5,6 +5,7 @@ use serenity::{
         guild::Guild,
         id::{ChannelId, GuildId},
         prelude::{
+            command::CommandOptionType,
             interaction::application_command::{
                 ApplicationCommandInteraction, CommandDataOptionValue,
             },
@@ -129,4 +130,20 @@ pub enum GetGuildChannelError {
     ChannelNotInGuild,
     #[error("The requested channel isn't a GuildChannel")]
     NotGuildChannel,
+}
+
+pub fn get_full_command_name(command: &ApplicationCommandInteraction) -> String {
+    let mut full_command_name = command.data.name.clone();
+
+    for option in &command.data.options {
+        if option.kind == CommandOptionType::SubCommandGroup {
+            full_command_name = full_command_name + " " + &option.name;
+        }
+        if option.kind == CommandOptionType::SubCommand {
+            full_command_name = full_command_name + " " + &option.name;
+        }
+        continue;
+    }
+
+    full_command_name
 }

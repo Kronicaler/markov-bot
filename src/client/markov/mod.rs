@@ -230,9 +230,7 @@ pub async fn blacklisted_users(ctx: Context, command: &ApplicationCommandInterac
         .expect("Error creating interaction response");
 }
 
-pub fn init_markov_data(
-    data: &mut RwLockWriteGuard<TypeMap>,
-) -> Result<(), Box<dyn Error>> {
+pub fn init_markov_data(data: &mut RwLockWriteGuard<TypeMap>) -> Result<(), Box<dyn Error>> {
     let markov = init()?;
 
     let blacklisted_channels_in_file: DashSet<u64> = serde_json::from_str(&fs::read_to_string(

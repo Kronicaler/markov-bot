@@ -27,7 +27,6 @@ pub async fn init_global_data_for_client(client: &Client) -> Result<(), Box<dyn 
         println!("Debugging disabled");
     };
 
-
     init_markov_data(&mut data)?;
 
     init_tags_data(data)?;
