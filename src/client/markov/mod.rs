@@ -188,48 +188,6 @@ pub async fn remove_user_from_blacklist(
         .expect("Error creating interaction response");
 }
 
-pub async fn blacklisted_users(ctx: Context, command: &ApplicationCommandInteraction) {
-    let mut blacklisted_usernames = Vec::new();
-    let blacklisted_users = get_markov_blacklisted_users_lock(&ctx.data).await;
-
-    for user_id in blacklisted_users.iter() {
-        blacklisted_usernames.push(
-            ctx.http
-                .get_user(*user_id)
-                .await
-                .expect("Couldn't get user")
-                .name,
-        );
-    }
-
-    if blacklisted_usernames.is_empty() {
-        command
-            .create_interaction_response(ctx.http, |r| {
-                r.interaction_response_data(|d| {
-                    d.content("Currently there are no blacklisted users")
-                })
-            })
-            .await
-            .expect("Error creating interaction response");
-        return;
-    }
-
-    let mut message = String::from("Blacklisted users: ");
-    for user_name in blacklisted_usernames {
-        message += &(user_name + ", ");
-    }
-
-    //remove the trailing comma and whitespace
-    message.pop();
-    message.pop();
-    command
-        .create_interaction_response(ctx.http, |r| {
-            r.interaction_response_data(|d| d.content(message))
-        })
-        .await
-        .expect("Error creating interaction response");
-}
-
 pub fn init_markov_data(data: &mut RwLockWriteGuard<TypeMap>) -> Result<(), Box<dyn Error>> {
     let markov = init()?;
 

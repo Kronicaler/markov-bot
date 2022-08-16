@@ -24,8 +24,6 @@ use strum_macros::{Display, EnumProperty, EnumString};
 pub enum UserCommand {
     ping,
     id,
-    #[strum(serialize = "blacklisted-data")]
-    blacklisteddata,
     #[strum(serialize = "stop-saving-my-messages")]
     stopsavingmymessages,
     #[strum(serialize = "continue-saving-my-messages")]
@@ -73,7 +71,6 @@ pub async fn command_responses(command: &ApplicationCommandInteraction, ctx: Con
         Ok(user_command) => match user_command {
             UserCommand::ping => ping_command(ctx, command).await,
             UserCommand::id => user_id_command(ctx, command).await,
-            UserCommand::blacklisteddata => markov::blacklisted_users(ctx, command).await,
             UserCommand::stopsavingmymessages => {
                 markov::add_user_to_blacklist(user, &ctx, command).await;
             }
@@ -136,11 +133,6 @@ pub async fn create_global_commands(ctx: &Context) {
                             .kind(CommandOptionType::User)
                             .required(true)
                     })
-            })
-            .create_application_command(|command| {
-                command.name(UserCommand::blacklisteddata).description(
-                    "Get the list of users who's messages aren't being saved",
-                )
             })
             .create_application_command(|command| {
                 command.name(UserCommand::stopsavingmymessages).description(
