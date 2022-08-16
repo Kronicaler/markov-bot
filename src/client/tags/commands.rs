@@ -11,14 +11,54 @@ pub trait TagCommandBuilder {
     fn create_tag_commands(&mut self) -> &mut Self;
 }
 
+pub trait TagCommandOptions {
+    fn create_tag_creation_option(&mut self) -> &mut Self;
+    fn create_tag_removal_option(&mut self) -> &mut Self;
+}
+
 impl TagCommandBuilder for CreateApplicationCommands {
     fn create_tag_commands(&mut self) -> &mut Self {
         let mut command = CreateApplicationCommand::default();
 
         command
-        .name("tag")
-        .description("tagdesc")
-        .create_option(|command| 
+            .name("tag")
+            .description("tagdesc")
+            .create_tag_creation_option()
+            .create_tag_removal_option()
+            .create_option(|command| {
+                command
+                    .name(UserCommand::taglist.get_str("SubCommand").unwrap())
+                    .kind(CommandOptionType::SubCommand)
+                    .description("List all of the tags")
+            })
+            .create_option(|command| {
+                command
+                    .name(
+                        UserCommand::blacklistmefromtags
+                            .get_str("SubCommand")
+                            .unwrap(),
+                    )
+                    .kind(CommandOptionType::SubCommand)
+                    .description("The bot won't respond to your messages if you trip off a tag")
+            })
+            .create_option(|command| {
+                command
+                    .name(
+                        UserCommand::tagresponsechannel
+                            .get_str("SubCommand")
+                            .unwrap(),
+                    )
+                    .kind(CommandOptionType::SubCommand)
+                    .description("Set this channel as the channel where i will reply to tags")
+            });
+
+        self.add_application_command(command)
+    }
+}
+
+impl TagCommandOptions for CreateApplicationCommand {
+    fn create_tag_creation_option(&mut self) -> &mut Self {
+        self.create_option(|command|
             command
             .name(UserCommand::createtag.get_str("SubCommand").unwrap())
             .kind(CommandOptionType::SubCommand)
@@ -38,38 +78,21 @@ impl TagCommandBuilder for CreateApplicationCommands {
                 .required(true)
             )
         )
-        .create_option(|command| 
-            command
-            .name(UserCommand::removetag.get_str("SubCommand").unwrap())
-            .kind(CommandOptionType::SubCommand)
-            .description("Remove a tag")
-            .create_sub_option(|option|
-                option
-                .name("tag")
-                .description("The tag to remove")
-                .kind(CommandOptionType::String)
-                .required(true)
-            )
-        )
-        .create_option(|command|
-            command
-            .name(UserCommand::taglist.get_str("SubCommand").unwrap())
-            .kind(CommandOptionType::SubCommand)
-            .description("List all of the tags")
-        )
-        .create_option(|command|
-           command
-           .name(UserCommand::blacklistmefromtags.get_str("SubCommand").unwrap())
-           .kind(CommandOptionType::SubCommand)
-           .description("The bot won't respond to your messages if you trip off a tag")
-        )
-        .create_option(|command| 
-            command
-            .name(UserCommand::tagresponsechannel.get_str("SubCommand").unwrap())
-            .kind(CommandOptionType::SubCommand)
-            .description("Set this channel as the channel where i will reply to tags")
-        );
+    }
 
-        self.add_application_command(command)
+    fn create_tag_removal_option(&mut self) -> &mut Self {
+        self.create_option(|command| {
+            command
+                .name(UserCommand::removetag.get_str("SubCommand").unwrap())
+                .kind(CommandOptionType::SubCommand)
+                .description("Remove a tag")
+                .create_sub_option(|option| {
+                    option
+                        .name("tag")
+                        .description("The tag to remove")
+                        .kind(CommandOptionType::String)
+                        .required(true)
+                })
+        })
     }
 }

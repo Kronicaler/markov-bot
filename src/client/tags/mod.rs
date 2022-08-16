@@ -109,40 +109,11 @@ pub async fn remove_tag(ctx: &Context, command: &ApplicationCommandInteraction) 
 }
 
 pub async fn create_tag(ctx: &Context, command: &ApplicationCommandInteraction) {
-    let listener = command
-        .data
-        .options
-        .get(0)
-        .unwrap()
-        .options
-        .get(0)
-        .expect("Expected listener option")
-        .resolved
-        .as_ref()
-        .expect("Expected listener value");
-    let response = command
-        .data
-        .options
-        .get(0)
-        .unwrap()
-        .options
-        .get(1)
-        .expect("Expected response option")
-        .resolved
-        .as_ref()
-        .expect("Expected response value");
+    let (listener, response) = get_listener_and_response(command);
 
     if let CommandDataOptionValue::String(listener) = listener {
         if let CommandDataOptionValue::String(response) = response {
-            let user_regex = Regex::new(r"<@!?(\d+)>").expect("Invalid regular expression");
-            let role_regex = Regex::new(r"<@&(\d+)>").expect("Invalid regular expression");
-            if user_regex.is_match(response)
-                || user_regex.is_match(listener)
-                || role_regex.is_match(response)
-                || role_regex.is_match(listener)
-                || response.contains("@everyone")
-                || response.contains("@here")
-            {
+            if !is_tag_valid(response, listener) {
                 command
                     .create_interaction_response(&ctx.http, |r| {
                         r.interaction_response_data(|d| d.content("can't add a mention"))
@@ -184,6 +155,46 @@ pub async fn create_tag(ctx: &Context, command: &ApplicationCommandInteraction) 
         })
         .await
         .expect("Error creating interaction response");
+}
+
+fn is_tag_valid(response: &str, listener: &str) -> bool {
+    let user_regex = Regex::new(r"<@!?(\d+)>").expect("Invalid regular expression");
+    let role_regex = Regex::new(r"<@&(\d+)>").expect("Invalid regular expression");
+
+    !(user_regex.is_match(response)
+        || user_regex.is_match(listener)
+        || role_regex.is_match(response)
+        || role_regex.is_match(listener)
+        || response.contains("@everyone")
+        || response.contains("@here"))
+}
+
+fn get_listener_and_response(
+    command: &ApplicationCommandInteraction,
+) -> (&CommandDataOptionValue, &CommandDataOptionValue) {
+    let listener = command
+        .data
+        .options
+        .get(0)
+        .unwrap()
+        .options
+        .get(0)
+        .expect("Expected listener option")
+        .resolved
+        .as_ref()
+        .expect("Expected listener value");
+    let response = command
+        .data
+        .options
+        .get(0)
+        .unwrap()
+        .options
+        .get(1)
+        .expect("Expected response option")
+        .resolved
+        .as_ref()
+        .expect("Expected response value");
+    (listener, response)
 }
 
 pub async fn blacklist_user_from_tags_command(
@@ -356,49 +367,7 @@ pub async fn respond_to_tag(ctx: &Context, msg: &Message, message: &str) {
 
     //If the guild has a tag response channel send the response there
     if let Some(channel_id) = tag_response_channel_id {
-        let mut tag_response_channel = ctx.cache.guild_channel(*channel_id);
-
-        if tag_response_channel.is_none() {
-            let guild_channels = Guild::get(&&ctx.http, *channel_id.key())
-                .await
-                .expect("Couldn't fetch guild")
-                .channels(&ctx.http)
-                .await
-                .unwrap();
-
-            tag_response_channel = guild_channels
-                .get(&ChannelId::from(*channel_id.value()))
-                .cloned();
-        }
-
-        if let Some(tag_response_channel) = tag_response_channel {
-            tag_response_channel
-                .send_message(&ctx.http, |m| {
-                    let response_content = if msg.channel_id == tag_response_channel.id {
-                        message.to_owned()
-                    } else {
-                        // Create this button only if the user is pinged
-                        if rand::random::<f32>() < 0.05 {
-                            m.components(|c| {
-                                c.create_action_row(|a| {
-                                    a.create_button(|b| {
-                                        b.label("Stop pinging me")
-                                            .style(ButtonStyle::Primary)
-                                            .custom_id(ButtonIds::BlacklistMeFromTags)
-                                    })
-                                })
-                            });
-                        }
-
-                        msg.author.mention().to_string() + " " + message
-                    };
-
-                    m.allowed_mentions(|m| m.parse(ParseValue::Users))
-                        .content(response_content)
-                })
-                .await
-                .expect("Couldn't send message");
-        }
+        send_response_in_tag_channel(ctx, channel_id, msg, message).await;
         return;
     }
 
@@ -434,6 +403,55 @@ pub async fn respond_to_tag(ctx: &Context, msg: &Message, message: &str) {
                 Err(_) => continue,
             }
         }
+    }
+}
+
+async fn send_response_in_tag_channel(
+    ctx: &Context,
+    channel_id: dashmap::mapref::one::Ref<'_, u64, u64>,
+    msg: &Message,
+    message: &str,
+) {
+    let mut tag_response_channel = ctx.cache.guild_channel(*channel_id);
+    if tag_response_channel.is_none() {
+        let guild_channels = Guild::get(&&ctx.http, *channel_id.key())
+            .await
+            .expect("Couldn't fetch guild")
+            .channels(&ctx.http)
+            .await
+            .unwrap();
+
+        tag_response_channel = guild_channels
+            .get(&ChannelId::from(*channel_id.value()))
+            .cloned();
+    }
+    if let Some(tag_response_channel) = tag_response_channel {
+        tag_response_channel
+            .send_message(&ctx.http, |m| {
+                let response_content = if msg.channel_id == tag_response_channel.id {
+                    message.to_owned()
+                } else {
+                    // Create this button only if the user is pinged
+                    if rand::random::<f32>() < 0.05 {
+                        m.components(|c| {
+                            c.create_action_row(|a| {
+                                a.create_button(|b| {
+                                    b.label("Stop pinging me")
+                                        .style(ButtonStyle::Primary)
+                                        .custom_id(ButtonIds::BlacklistMeFromTags)
+                                })
+                            })
+                        });
+                    }
+
+                    msg.author.mention().to_string() + " " + message
+                };
+
+                m.allowed_mentions(|m| m.parse(ParseValue::Users))
+                    .content(response_content)
+            })
+            .await
+            .expect("Couldn't send message");
     }
 }
 

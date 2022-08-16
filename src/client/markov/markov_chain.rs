@@ -10,30 +10,10 @@ const MIN_NUM_OF_WORDS: usize = 5;
 ///
 /// Replaces uppercase letters with their lowercase variants.
 pub fn filter_message_for_markov_file(msg: &Message) -> Option<String> {
-    let re =
-    Regex::new(r#"(?:(?:https?|ftp)://|\b(?:[a-z\d]+\.))(?:(?:[^\s()<>]+|\((?:[^\s()<>]+|(?:\([^\s()<>]+\)))?\))+(?:\((?:[^\s()<>]+|(?:\(?:[^\s()<>]+\)))?\)|[^\s`!()\[\]{};:'".,<>?«»“”‘’]))?"#)
-    .expect("Invalid regular expression");
-
-    let mut str = re.replace_all(&msg.content, "").into_owned();
-    while str.ends_with(' ') {
-        str.pop();
-    }
-
-    let mut filtered_message = str;
+    let mut filtered_message = remove_links(msg);
 
     let user_regex = Regex::new(r"<@!?(\d+)>").expect("Invalid regular expression");
-
-    let regexes_to_replace_with_whitespace: Vec<Regex> = vec![
-        Regex::new(r"<:?(\w+:)(\d+)>").expect("Invalid regular expression"), //emote regex
-        Regex::new(r"<a:?(\w+:)(\d+)>").expect("Invalid regular expression"), //animated emote regex
-        Regex::new(r#"[,.!"\#$()=?*<>{}\[\]\\\|Łł@*;:+~ˇ^˘°˛`´˝]"#)
-            .expect("Invalid regular expression"), //non alphanumeric regex
-        Regex::new(r"^(\d{18})$").expect("Invalid regular expression"), //remaining numbers from users regex
-        Regex::new(r"\n").expect("Invalid regular expression"),         //line feed regex
-        Regex::new(r"[ ]{3}|[ ]{2}").expect("Invalid regular expression"), //double and triple whitespace regex
-        Regex::new(r"<@&(\d+)>").expect("Invalid regular expression"),     // role regex
-    ];
-
+    let regexes_to_replace_with_whitespace = create_regexes_to_replace_with_whitespace();
     let upper_case_regex = Regex::new(r"[A-Z][a-z0-9_-]{1,}").expect("Invalid regular expression");
 
     loop {
@@ -89,6 +69,31 @@ pub fn filter_message_for_markov_file(msg: &Message) -> Option<String> {
     }
 
     return Some(filtered_message.trim().to_owned());
+}
+
+fn remove_links(msg: &Message) -> String {
+    let re =
+    Regex::new(r#"(?:(?:https?|ftp)://|\b(?:[a-z\d]+\.))(?:(?:[^\s()<>]+|\((?:[^\s()<>]+|(?:\([^\s()<>]+\)))?\))+(?:\((?:[^\s()<>]+|(?:\(?:[^\s()<>]+\)))?\)|[^\s`!()\[\]{};:'".,<>?«»“”‘’]))?"#)
+    .expect("Invalid regular expression");
+    let mut str = re.replace_all(&msg.content, "").into_owned();
+    while str.ends_with(' ') {
+        str.pop();
+    }
+    str
+}
+
+fn create_regexes_to_replace_with_whitespace() -> Vec<Regex> {
+    let regexes_to_replace_with_whitespace: Vec<Regex> = vec![
+        Regex::new(r"<:?(\w+:)(\d+)>").expect("Invalid regular expression"), //emote regex
+        Regex::new(r"<a:?(\w+:)(\d+)>").expect("Invalid regular expression"), //animated emote regex
+        Regex::new(r#"[,.!"\#$()=?*<>{}\[\]\\\|Łł@*;:+~ˇ^˘°˛`´˝]"#)
+            .expect("Invalid regular expression"), //non alphanumeric regex
+        Regex::new(r"^(\d{18})$").expect("Invalid regular expression"), //remaining numbers from users regex
+        Regex::new(r"\n").expect("Invalid regular expression"),         //line feed regex
+        Regex::new(r"[ ]{3}|[ ]{2}").expect("Invalid regular expression"), //double and triple whitespace regex
+        Regex::new(r"<@&(\d+)>").expect("Invalid regular expression"),     // role regex
+    ];
+    regexes_to_replace_with_whitespace
 }
 
 fn cant_find_user_in_message(user_regex: &Regex, filtered_message: &str, msg: &Message) -> bool {

@@ -40,7 +40,7 @@ use std::{env, str::FromStr};
 use strum_macros::{Display, EnumString};
 use tokio::join;
 
-#[derive(Display, EnumString, PartialEq)]
+#[derive(Display, EnumString, PartialEq, Eq)]
 pub enum ButtonIds {
     BlacklistMeFromTags,
     QueueNext,
