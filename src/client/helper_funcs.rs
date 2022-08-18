@@ -146,12 +146,10 @@ pub fn get_full_command_name(command: &ApplicationCommandInteraction) -> String 
         continue;
     }
 
-    let full_command_name = match (sub_command_group, sub_command) {
+     match (sub_command_group, sub_command) {
         (None, None) => command.data.name.clone(),
         (None, Some(b)) => command.data.name.clone() + " " + b,
         (Some(a), None) => command.data.name.clone() + " " + a,
         (Some(a), Some(b)) => command.data.name.clone() + " " + a + " " + b,
-    };
-
-    full_command_name
+    }
 }
