@@ -137,16 +137,18 @@ pub fn get_full_command_name(command: &ApplicationCommandInteraction) -> String 
     let mut sub_command = None;
 
     for option in &command.data.options {
-        if option.kind == CommandOptionType::SubCommandGroup {
-            sub_command_group = Some(&option.name);
-        }
-        if option.kind == CommandOptionType::SubCommand {
-            sub_command = Some(&option.name);
-        }
-        continue;
+        match option.kind {
+            CommandOptionType::SubCommand => {
+                sub_command_group = Some(&option.name);
+            }
+            CommandOptionType::SubCommandGroup => {
+                sub_command = Some(&option.name);
+            }
+            _ => continue,
+        };
     }
 
-     match (sub_command_group, sub_command) {
+    match (sub_command_group, sub_command) {
         (None, None) => command.data.name.clone(),
         (None, Some(b)) => command.data.name.clone() + " " + b,
         (Some(a), None) => command.data.name.clone() + " " + a,
