@@ -58,13 +58,12 @@ impl EventHandler for Handler {
     async fn ready(&self, ctx: Context, ready: Ready) {
         println!("{} is connected!", ready.user.name);
 
-        leave_unknown_guilds(&ready, &ctx).await;
-
         let t1 = create_global_commands(&ctx);
+        let t2 = leave_unknown_guilds(&ready, &ctx);
 
         if cfg!(debug_assertions) {
             let t3 = create_test_commands(&ctx);
-            join!(t1, t3);
+            join!(t1, t2, t3);
         } else {
             t1.await;
         }
