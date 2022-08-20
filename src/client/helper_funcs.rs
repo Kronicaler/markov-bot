@@ -133,17 +133,25 @@ pub enum GetGuildChannelError {
 }
 
 pub fn get_full_command_name(command: &ApplicationCommandInteraction) -> String {
-    let mut full_command_name = command.data.name.clone();
+    let mut sub_command_group = None;
+    let mut sub_command = None;
 
     for option in &command.data.options {
-        if option.kind == CommandOptionType::SubCommandGroup {
-            full_command_name = full_command_name + " " + &option.name;
-        }
-        if option.kind == CommandOptionType::SubCommand {
-            full_command_name = full_command_name + " " + &option.name;
-        }
-        continue;
+        match option.kind {
+            CommandOptionType::SubCommand => {
+                sub_command_group = Some(&option.name);
+            }
+            CommandOptionType::SubCommandGroup => {
+                sub_command = Some(&option.name);
+            }
+            _ => continue,
+        };
     }
 
-    full_command_name
+    match (sub_command_group, sub_command) {
+        (None, None) => command.data.name.clone(),
+        (None, Some(b)) => command.data.name.clone() + " " + b,
+        (Some(a), None) => command.data.name.clone() + " " + a,
+        (Some(a), Some(b)) => command.data.name.clone() + " " + a + " " + b,
+    }
 }
