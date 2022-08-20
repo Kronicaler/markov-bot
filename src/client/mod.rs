@@ -69,14 +69,21 @@ impl EventHandler for Handler {
             t1.await;
         }
     }
-    // Is called when the bot joins a guild/server
+    // Is called when the bot gets data for a guild
+    // if is_new is true then the bot just joined a new guild
     async fn guild_create(&self, ctx: Context, guild: Guild, is_new: bool) {
         if is_new {
             let owner = guild.member(&ctx.http, guild.owner_id).await.unwrap().user;
 
             println!("Joined guild {} owned by {}", guild.name, owner.tag());
-        } else {
-            println!("Got data for server {}", guild.name);
+
+            owner.direct_message(&ctx.http, |msg|
+                msg.content("
+Hi I'm a general purpose bot. I can play music, chat and have tag functionality. type /help if you want to see all of my commands.\n\n
+Due to my chatting functionality i save every message that gets said in the server. These saved messages aren't linked to any usernames so they're anonimized.
+The owner of the server can prevent the saving of messages in certain channels (/stop-saving-messages-channel) or in the whole server (/stop-saving-messages-server)
+and the users can choose themselves if they don't want their messages saved (/stop-saving-my-messages)")
+            ).await.unwrap();
         }
     }
 
