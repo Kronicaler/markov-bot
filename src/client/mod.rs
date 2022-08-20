@@ -23,7 +23,10 @@ use serenity::{
         channel::Message,
         gateway::Ready,
         id::UserId,
-        prelude::interaction::{Interaction, InteractionType, MessageFlags},
+        prelude::{
+            interaction::{Interaction, MessageFlags},
+            Guild,
+        },
         voice::VoiceState,
     },
     prelude::GatewayIntents,
@@ -66,6 +69,17 @@ impl EventHandler for Handler {
             t1.await;
         }
     }
+    // Is called when the bot joins a guild/server
+    async fn guild_create(&self, ctx: Context, guild: Guild, is_new: bool) {
+        if is_new {
+            let owner = guild.member(&ctx.http, guild.owner_id).await.unwrap().user;
+
+            println!("Joined guild {} owned by {}", guild.name, owner.tag());
+        } else {
+            println!("Got data for server {}", guild.name);
+        }
+    }
+
     /// Is called when a user starts an [`Interaction`]
     async fn interaction_create(&self, ctx: Context, interaction: Interaction) {
         match interaction {
