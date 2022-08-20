@@ -16,6 +16,7 @@ use serenity::{
         command::Command, interaction::application_command::ApplicationCommandInteraction,
     },
 };
+use sqlx::{MySql, Pool};
 use strum_macros::{Display, EnumProperty, EnumString};
 
 /// All the slash commands the bot has implemented
@@ -28,6 +29,8 @@ pub enum UserCommand {
     stopsavingmymessages,
     #[strum(serialize = "continue-saving-my-messages")]
     continuesavingmymessages,
+    #[strum(serialize = "stop-saving-messages-server")]
+    stopsavingmessagesserver,
     help,
     version,
 
@@ -62,7 +65,11 @@ pub enum UserCommand {
 }
 
 /// Check which slash command was triggered, call the appropriate function and return a response to the user
-pub async fn command_responses(command: &ApplicationCommandInteraction, ctx: Context) {
+pub async fn command_responses(
+    command: &ApplicationCommandInteraction,
+    ctx: Context,
+    pool: &Pool<MySql>,
+) {
     let user = &command.user;
 
     let full_command_name = get_full_command_name(command);
@@ -98,6 +105,9 @@ pub async fn command_responses(command: &ApplicationCommandInteraction, ctx: Con
                 .expect("Error creating interaction response"),
             UserCommand::continuesavingmymessages => {
                 markov::remove_user_from_blacklist(user, &ctx, command).await;
+            }
+            UserCommand::stopsavingmessagesserver => {
+                markov::stop_saving_messages_server(&ctx, command, pool).await
             }
 
             // ===== VOICE =====
@@ -138,6 +148,13 @@ pub async fn create_global_commands(ctx: &Context) {
                 command.name(UserCommand::stopsavingmymessages).description(
                     "Blacklist yourself if you don't want me to save and learn from your messages",
                 )
+            })
+            .create_application_command(|command| {
+                command
+                .name(UserCommand::stopsavingmessagesserver)
+                .description("Blacklist this server if you don't want me to save and learn from the messages sent in this server")
+                .dm_permission(false)
+                .default_member_permissions(serenity::model::Permissions::ADMINISTRATOR)
             })
             .create_application_command(|command| {
                 command.name(UserCommand::continuesavingmymessages).description(

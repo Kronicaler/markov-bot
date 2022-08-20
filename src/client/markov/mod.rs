@@ -1,8 +1,13 @@
+mod data_access;
 mod file_operations;
 mod global_data;
 mod markov_chain;
 
 use self::{
+    data_access::{
+        create_markov_blacklisted_server, delete_markov_blacklisted_server,
+        get_markov_blacklisted_server,
+    },
     file_operations::{
         export_corpus_to_file, generate_new_corpus_from_msg_file, import_corpus_from_file,
         import_messages_from_file, save_markov_blacklisted_users,
@@ -24,26 +29,28 @@ use serenity::{
     },
     prelude::{RwLock, TypeMap},
 };
+use sqlx::{MySql, Pool};
 use std::{error::Error, fs, sync::Arc};
 use tokio::sync::RwLockWriteGuard;
 
-pub async fn add_message_to_chain(msg: &Message, ctx: &Context) -> Result<bool, std::io::Error> {
+pub async fn add_message_to_chain(
+    msg: &Message,
+    ctx: &Context,
+    pool: &Pool<MySql>,
+) -> Result<bool, std::io::Error> {
     // if the message was not sent in a guild
-    if msg
-        .channel_id
-        .to_channel(&ctx.http)
-        .await
-        .expect("Couldn't get channel")
-        .guild()
-        .is_none()
-    {
-        return Ok(false);
-    }
+    let guild_id = match msg.guild_id {
+        Some(g) => g,
+        None => return Ok(false),
+    };
 
     let markov_blacklisted_users = get_markov_blacklisted_users_lock(&ctx.data).await;
     let markov_blacklisted_channels = get_markov_blacklisted_channels_lock(&ctx.data).await;
 
-    if markov_blacklisted_channels.contains(&msg.channel_id.0)
+    if get_markov_blacklisted_server(guild_id.0, &pool)
+        .await
+        .is_none()
+        || markov_blacklisted_channels.contains(&msg.channel_id.0)
         || markov_blacklisted_users.contains(&msg.author.id.0)
         || msg
             .mentions_me(&ctx.http)
@@ -186,6 +193,58 @@ pub async fn remove_user_from_blacklist(
         })
         .await
         .expect("Error creating interaction response");
+}
+
+pub async fn stop_saving_messages_server(
+    ctx: &Context,
+    command: &ApplicationCommandInteraction,
+    pool: &Pool<MySql>,
+) {
+    let guild_id = match command.guild_id {
+        Some(g) => g,
+        None => {
+            command
+                .create_interaction_response(&ctx.http, |r| {
+                    r.interaction_response_data(|d| {
+                        d.content("This command can only be used in a server")
+                    })
+                })
+                .await
+                .unwrap();
+            return;
+        }
+    };
+
+    let markov_blacklisted_server = get_markov_blacklisted_server(guild_id.into(), &pool).await;
+
+    match markov_blacklisted_server {
+        Some(s) => {
+            delete_markov_blacklisted_server(s.server_id, &pool)
+                .await
+                .unwrap();
+            command
+                .create_interaction_response(&ctx.http, |r| {
+                    r.interaction_response_data(|d| {
+                        d.content("Continuing message saving in this server")
+                    })
+                })
+                .await
+                .unwrap();
+        }
+        None => {
+            create_markov_blacklisted_server(guild_id.into(), &pool)
+                .await
+                .unwrap();
+            command
+                .create_interaction_response(&ctx.http, |r| {
+                    r.interaction_response_data(|d| {
+                        d.content("Stopping message saving in this server")
+                    })
+                })
+                .await
+                .unwrap();
+        }
+    }
 }
 
 pub fn init_markov_data(data: &mut RwLockWriteGuard<TypeMap>) -> Result<(), Box<dyn Error>> {

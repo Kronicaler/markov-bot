@@ -24,6 +24,10 @@ impl TypeMapKey for MarkovBlacklistedChannels {
 }
 pub const MARKOV_BLACKLISTED_CHANNELS_PATH: &str = "data/markov data/blacklisted channels.json";
 
+pub struct MarkovBlacklistedServer {
+    pub server_id: u64,
+}
+
 pub async fn get_markov_blacklisted_users_lock(data: &Arc<RwLock<TypeMap>>) -> Arc<DashSet<u64>> {
     let markov_blacklisted_users_lock = data
         .read()

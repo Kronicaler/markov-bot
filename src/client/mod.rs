@@ -10,6 +10,7 @@ use file_operations::create_file_if_missing;
 use global_data::{init_global_data_for_client, HELP_MESSAGE};
 use helper_funcs::leave_unknown_guilds;
 use slash_commands::{command_responses, create_global_commands, create_test_commands};
+use sqlx::{Pool, MySql};
 
 use self::{
     tags::{blacklist_user, respond_to_tag},
@@ -50,7 +51,9 @@ pub enum ButtonIds {
     QueuePrevious,
 }
 
-struct Handler {}
+struct Handler {
+    pool: Pool<MySql>
+}
 
 #[async_trait]
 impl EventHandler for Handler {
@@ -79,7 +82,7 @@ impl EventHandler for Handler {
             owner.direct_message(&ctx.http, |msg|
                 msg.content("
 Hi I'm a general purpose bot. I can play music, chat and have tag functionality. type /help if you want to see all of my commands.\n\n
-Due to my chatting functionality i save every message that gets said in the server. These saved messages aren't linked to any usernames so they're anonimized.
+Due to my chatting functionality i save every message that gets said in the server. These saved messages aren't linked to any usernames so they're anonymized.
 The owner of the server can prevent the saving of messages in certain channels (/stop-saving-messages-channel) or in the whole server (/stop-saving-messages-server)
 and the users can choose themselves if they don't want their messages saved (/stop-saving-my-messages)")
             ).await.unwrap();
@@ -91,7 +94,7 @@ and the users can choose themselves if they don't want their messages saved (/st
         match interaction {
             Interaction::Ping(_) => todo!(),
             Interaction::ApplicationCommand(command) => {
-                command_responses(&command, ctx).await;
+                command_responses(&command, ctx, &self.pool).await;
             }
             Interaction::MessageComponent(mut component) => {
                 let button_id =
@@ -125,7 +128,7 @@ and the users can choose themselves if they don't want their messages saved (/st
             return;
         }
 
-        markov::add_message_to_chain(&msg, &ctx).await.ok();
+        markov::add_message_to_chain(&msg, &ctx, &self.pool).await.ok();
 
         let words_in_message = msg
             .content
@@ -196,9 +199,14 @@ pub async fn start() {
         | GatewayIntents::MESSAGE_CONTENT
         | GatewayIntents::non_privileged();
 
+    let database_url =
+        env::var("DATABASE_URL").expect("Expected a DATABASE_URL in the environment");
+    let pool = sqlx::MySqlPool::connect(&database_url).await.unwrap();
+
+
     let mut client = Client::builder(token, intents)
         .application_id(application_id.0)
-        .event_handler(Handler {})
+        .event_handler(Handler {pool})
         .register_songbird_from_config(songbird_config)
         .await
         .expect("Error creating client");
