@@ -68,27 +68,20 @@ impl EventHandler for Handler {
     }
     /// Is called when a user starts an [`Interaction`]
     async fn interaction_create(&self, ctx: Context, interaction: Interaction) {
-        match interaction.kind() {
-            InteractionType::Ping => todo!(),
-            InteractionType::ApplicationCommand => {
-                let command = interaction.application_command().expect(
-                    "it's already known that this is an ApplicationCommand and shouldn't break",
-                );
+        match interaction {
+            Interaction::Ping(_) => todo!(),
+            Interaction::ApplicationCommand(command) => {
                 command_responses(&command, ctx).await;
             }
-            InteractionType::MessageComponent => {
-                let mut button = interaction.message_component().expect(
-                    "it's already known that this is a message component and shouldn't break",
-                );
-
+            Interaction::MessageComponent(mut component) => {
                 let button_id =
-                    ButtonIds::from_str(&button.data.custom_id).expect("unexpected button ID");
+                    ButtonIds::from_str(&component.data.custom_id).expect("unexpected button ID");
 
                 match button_id {
                     ButtonIds::BlacklistMeFromTags => {
-                        let response = blacklist_user(&ctx, &button.user).await;
+                        let response = blacklist_user(&ctx, &component.user).await;
 
-                        button
+                        component
                             .create_interaction_response(&ctx.http, |r| {
                                 r.interaction_response_data(|d| {
                                     d.content(response).flags(MessageFlags::EPHEMERAL)
@@ -98,12 +91,12 @@ impl EventHandler for Handler {
                             .expect("couldn't create response");
                     }
                     ButtonIds::QueueNext | ButtonIds::QueuePrevious => {
-                        change_queue_page(&ctx, &mut button, button_id).await;
+                        change_queue_page(&ctx, &mut component, button_id).await;
                     }
                 };
             }
             _ => {}
-        }
+        };
     }
 
     /// Is called by the framework whenever a user sends a message in a guild or in the bots DMs
