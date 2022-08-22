@@ -199,8 +199,8 @@ pub async fn start() {
     let songbird_config = Config::default()
         .decode_mode(DecodeMode::Pass)
         .driver_retry(Retry {
-            retry_limit: Some(2),
-            strategy: Strategy::Backoff(ExponentialBackoff::default()),
+            retry_limit: Some(60),
+            strategy: Strategy::Every(std::time::Duration::from_secs(10)),
         })
         .preallocated_tracks(2);
 
