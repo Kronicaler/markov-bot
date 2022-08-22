@@ -35,7 +35,7 @@ use serenity::{
 };
 use songbird::{
     driver::{
-        retry::{ExponentialBackoff, Retry, Strategy},
+        retry::{Retry, Strategy},
         DecodeMode,
     },
     Config, SerenityInit,
