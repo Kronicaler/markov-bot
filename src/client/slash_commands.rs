@@ -81,9 +81,9 @@ pub async fn command_responses(
             UserCommand::stopsavingmymessages => {
                 markov::add_user_to_blacklist(user, &ctx, command).await;
             }
-            UserCommand::createtag => create_tag(&ctx, command).await,
-            UserCommand::removetag => remove_tag(&ctx, command).await,
-            UserCommand::taglist => list(&ctx, command).await,
+            UserCommand::createtag => create_tag(&ctx, command, pool).await,
+            UserCommand::removetag => remove_tag(&ctx, command, pool).await,
+            UserCommand::taglist => list(&ctx, command, pool).await,
             UserCommand::blacklistmefromtags => {
                 blacklist_user_from_tags_command(&ctx, user, command).await;
             }

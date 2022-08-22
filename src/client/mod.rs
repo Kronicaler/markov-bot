@@ -10,7 +10,7 @@ use file_operations::create_file_if_missing;
 use global_data::{init_global_data_for_client, HELP_MESSAGE};
 use helper_funcs::leave_unknown_guilds;
 use slash_commands::{command_responses, create_global_commands, create_test_commands};
-use sqlx::{Pool, MySql};
+use sqlx::{MySql, Pool};
 
 use self::{
     tags::{blacklist_user, respond_to_tag},
@@ -52,7 +52,7 @@ pub enum ButtonIds {
 }
 
 struct Handler {
-    pool: Pool<MySql>
+    pool: Pool<MySql>,
 }
 
 #[async_trait]
@@ -128,7 +128,9 @@ and the users can choose themselves if they don't want their messages saved (/st
             return;
         }
 
-        markov::add_message_to_chain(&msg, &ctx, &self.pool).await.ok();
+        markov::add_message_to_chain(&msg, &ctx, &self.pool)
+            .await
+            .ok();
 
         let words_in_message = msg
             .content
@@ -138,7 +140,7 @@ and the users can choose themselves if they don't want their messages saved (/st
             .collect::<Vec<String>>();
 
         if let Some(response) =
-            check_for_tag_listeners(&ctx, &words_in_message, msg.author.id).await
+            check_for_tag_listeners(&ctx, &words_in_message, msg.author.id, &self.pool).await
         {
             respond_to_tag(&ctx, &msg, &response).await;
             return;
@@ -203,10 +205,9 @@ pub async fn start() {
         env::var("DATABASE_URL").expect("Expected a DATABASE_URL in the environment");
     let pool = sqlx::MySqlPool::connect(&database_url).await.unwrap();
 
-
     let mut client = Client::builder(token, intents)
         .application_id(application_id.0)
-        .event_handler(Handler {pool})
+        .event_handler(Handler { pool })
         .register_songbird_from_config(songbird_config)
         .await
         .expect("Error creating client");

@@ -1,6 +1,5 @@
 use super::{
-    global_data::{BLACKLISTED_USERS_PATH, BOT_CHANNEL_PATH, TAG_PATH},
-    Tag,
+    global_data::{BLACKLISTED_USERS_PATH, BOT_CHANNEL_PATH},
 };
 use dashmap::{DashMap, DashSet};
 use std::fs;
@@ -9,14 +8,6 @@ pub fn save_user_tag_blacklist_to_file(blacklist: &DashSet<u64>) {
     fs::write(
         BLACKLISTED_USERS_PATH,
         serde_json::to_string(&blacklist).expect("Serialization failed"),
-    )
-    .expect("Something went wrong while writing to file.");
-}
-
-pub fn save_tags_to_file(tags: &DashSet<Tag>) {
-    fs::write(
-        TAG_PATH,
-        serde_json::to_string(&tags).expect("Serialization failed"),
     )
     .expect("Something went wrong while writing to file.");
 }

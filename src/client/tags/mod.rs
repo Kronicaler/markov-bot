@@ -1,10 +1,10 @@
 pub mod commands;
+mod data_access;
 mod file_operations;
 mod global_data;
 
 use self::global_data::{
-    TagBlacklistedUsers, TagResponseChannelIds, TagsContainer, BLACKLISTED_USERS_PATH,
-    BOT_CHANNEL_PATH, TAG_PATH,
+    TagBlacklistedUsers, TagResponseChannelIds, BLACKLISTED_USERS_PATH, BOT_CHANNEL_PATH,
 };
 use super::{create_file_if_missing, ButtonIds};
 use crate::client::tags::file_operations::save_user_tag_blacklist_to_file;
@@ -28,22 +28,21 @@ use serenity::{
     },
     prelude::{Mentionable, TypeMap},
 };
+use sqlx::{MySql, Pool};
 use std::fmt::Write;
 use std::{error::Error, fs, sync::Arc};
 use tokio::sync::RwLockWriteGuard;
 use {
-    file_operations::{save_tag_response_channel, save_tags_to_file},
-    global_data::{
-        get_tag_response_channel_id_lock, get_tags_blacklisted_users_lock, get_tags_lock,
-    },
+    file_operations::save_tag_response_channel,
+    global_data::{get_tag_response_channel_id_lock, get_tags_blacklisted_users_lock},
 };
 
-pub async fn list(ctx: &Context, command: &ApplicationCommandInteraction) {
-    let tag = get_tags_lock(&ctx.data).await;
+pub async fn list(ctx: &Context, command: &ApplicationCommandInteraction, pool: &Pool<MySql>) {
+    let tags = data_access::get_all_tags(pool).await;
 
     let mut message = String::new();
 
-    for tag in tag.iter() {
+    for tag in tags.iter() {
         write!(&mut message, "{}, ", tag.listener).unwrap();
     }
     message.pop();
@@ -57,7 +56,11 @@ pub async fn list(ctx: &Context, command: &ApplicationCommandInteraction) {
         .expect("Error creating interaction response");
 }
 
-pub async fn remove_tag(ctx: &Context, command: &ApplicationCommandInteraction) {
+pub async fn remove_tag(
+    ctx: &Context,
+    command: &ApplicationCommandInteraction,
+    pool: &Pool<MySql>,
+) {
     let listener = command
         .data
         .options
@@ -69,46 +72,53 @@ pub async fn remove_tag(ctx: &Context, command: &ApplicationCommandInteraction) 
         .resolved
         .as_ref()
         .expect("Expected listener value");
-    let tags = get_tags_lock(&ctx.data).await;
 
-    let response;
-    if let CommandDataOptionValue::String(listener) = listener {
-        for tag in tags.as_ref().clone().iter() {
-            if &tag.listener == listener {
-                tags.remove(&tag);
-                save_tags_to_file(&tags);
-                println!("{} removed tag {}", command.user.name, tag.listener);
-                response = "Removed the tag ".to_string() + &tag.listener;
-                command
-                    .create_interaction_response(&ctx.http, |r| {
-                        r.interaction_response_data(|d| d.content(response))
-                    })
-                    .await
-                    .expect("Error creating interaction response");
-                return;
-            }
-        }
-        response = "Couldn't find the tag ".to_string() + listener;
+    let listener = if let CommandDataOptionValue::String(listener) = listener {
+        listener
+    } else {
         command
             .create_interaction_response(&ctx.http, |r| {
-                r.interaction_response_data(|d| d.content(response))
+                r.interaction_response_data(|d| d.content("Something went wrong"))
             })
             .await
             .expect("Error creating interaction response");
         return;
+    };
+
+    let tag = data_access::get_tag_by_listener(listener, pool).await;
+
+    match tag {
+        Some(tag) => {
+            data_access::delete_tag(tag.id, pool).await;
+
+            println!("{} removed tag {}", command.user.name, tag.listener);
+            command
+                .create_interaction_response(&ctx.http, |r| {
+                    r.interaction_response_data(|d| {
+                        d.content(format!("Removed the tag {}", &tag.listener))
+                    })
+                })
+                .await
+                .expect("Error creating interaction response");
+            return;
+        }
+        None => {
+            command
+                .create_interaction_response(&ctx.http, |r| {
+                    r.interaction_response_data(|d| d.content(format!("Couldn't find the tag {}",listener)))
+                })
+                .await
+                .expect("Error creating interaction response");
+            return;
+        }
     }
-
-    response = "Something went wrong".to_string();
-
-    command
-        .create_interaction_response(&ctx.http, |r| {
-            r.interaction_response_data(|d| d.content(response))
-        })
-        .await
-        .expect("Error creating interaction response");
 }
 
-pub async fn create_tag(ctx: &Context, command: &ApplicationCommandInteraction) {
+pub async fn create_tag(
+    ctx: &Context,
+    command: &ApplicationCommandInteraction,
+    pool: &Pool<MySql>,
+) {
     let (listener, response) = get_listener_and_response(command);
 
     if let CommandDataOptionValue::String(listener) = listener {
@@ -123,38 +133,41 @@ pub async fn create_tag(ctx: &Context, command: &ApplicationCommandInteraction) 
                 return;
             }
 
-            let tags = get_tags_lock(&ctx.data).await;
-
-            let tag = Tag {
-                listener: listener.to_lowercase().trim().to_owned(),
-                response: response.trim().to_owned(),
-                creator_name: command.user.name.clone(),
-                creator_id: command.user.id.0,
-            };
-
-            for tag in tags.as_ref().clone().iter() {
-                if &tag.listener == listener {
-                    tags.remove(&tag);
+            match data_access::create_tag(
+                listener.to_lowercase().trim().to_owned(),
+                response.trim().to_owned(),
+                command.user.name.clone(),
+                command.user.id.0,
+                pool,
+            )
+            .await
+            {
+                Ok(tag) => {
+                    command
+                        .create_interaction_response(&ctx.http, |r| {
+                            r.interaction_response_data(|d| {
+                                d.content(format!("Created tag {}", tag.listener))
+                            })
+                        })
+                        .await
+                        .expect("Error creating interaction response");
                 }
-            }
-
-            tags.insert(tag);
-            save_tags_to_file(&tags);
-            command
-                .create_interaction_response(&ctx.http, |r| {
-                    r.interaction_response_data(|d| d.content(format!("Created tag {}", listener)))
-                })
-                .await
-                .expect("Error creating interaction response");
-            return;
+                Err(e) => match e {
+                    data_access::CreateTagError::TagWithSameListenerExists => {
+                        command
+                            .create_interaction_response(&ctx.http, |r| {
+                                r.interaction_response_data(|d| {
+                                    d.content(format!("The tag \"{}\" already exists", listener))
+                                })
+                            })
+                            .await
+                            .expect("Error creating interaction response");
+                        return;
+                    }
+                },
+            };
         }
     }
-    command
-        .create_interaction_response(&ctx.http, |r| {
-            r.interaction_response_data(|d| d.content("Couldn't create tag"))
-        })
-        .await
-        .expect("Error creating interaction response");
 }
 
 fn is_tag_valid(response: &str, listener: &str) -> bool {
@@ -247,8 +260,9 @@ pub async fn check_for_tag_listeners(
     ctx: &Context,
     words_in_message: &[String],
     user_id: UserId,
+    pool: &Pool<MySql>
 ) -> Option<String> {
-    let tags = get_tags_lock(&ctx.data).await;
+    let tags = data_access::get_all_tags(pool).await;
     let tag_blacklisted_users = get_tags_blacklisted_users_lock(&ctx.data).await;
 
     if tag_blacklisted_users.contains(&user_id.0) {
@@ -456,16 +470,12 @@ async fn send_response_in_tag_channel(
 }
 
 pub fn init_tags_data(mut data: RwLockWriteGuard<TypeMap>) -> Result<(), Box<dyn Error>> {
-    let tags: DashSet<Tag> = serde_json::from_str(&fs::read_to_string(create_file_if_missing(
-        TAG_PATH, "[]",
-    )?)?)?;
     let user_tag_blacklist: DashSet<u64> = serde_json::from_str(&fs::read_to_string(
         create_file_if_missing(BLACKLISTED_USERS_PATH, "[]")?,
     )?)?;
     let bot_channel: DashMap<u64, u64> = serde_json::from_str(&fs::read_to_string(
         create_file_if_missing(BOT_CHANNEL_PATH, "{}")?,
     )?)?;
-    data.insert::<TagsContainer>(Arc::new(tags));
     data.insert::<TagBlacklistedUsers>(Arc::new(user_tag_blacklist));
     data.insert::<TagResponseChannelIds>(Arc::new(bot_channel));
     Ok(())

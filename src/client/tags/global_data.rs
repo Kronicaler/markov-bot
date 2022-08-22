@@ -5,16 +5,12 @@ use std::sync::Arc;
 
 #[derive(Hash, Eq, PartialEq, Clone, Serialize, Deserialize)]
 pub struct Tag {
+    pub id: u64,
     pub listener: String,
     pub response: String,
     pub creator_name: String,
     pub creator_id: u64,
 }
-pub struct TagsContainer;
-impl TypeMapKey for TagsContainer {
-    type Value = Arc<DashSet<Tag>>;
-}
-pub const TAG_PATH: &str = "data/tags.json";
 
 pub struct TagBlacklistedUsers;
 impl TypeMapKey for TagBlacklistedUsers {
@@ -28,16 +24,6 @@ impl TypeMapKey for TagResponseChannelIds {
     type Value = Arc<DashMap<u64, u64>>;
 }
 pub const BOT_CHANNEL_PATH: &str = "data/bot channel.json";
-
-pub async fn get_tags_lock(data: &Arc<RwLock<TypeMap>>) -> Arc<DashSet<Tag>> {
-    let tag_lock = data
-        .read()
-        .await
-        .get::<TagsContainer>()
-        .expect("expected Tags in TypeMap")
-        .clone();
-    tag_lock
-}
 
 pub async fn get_tags_blacklisted_users_lock(data: &Arc<RwLock<TypeMap>>) -> Arc<DashSet<u64>> {
     let tag_blacklisted_users_lock = data
