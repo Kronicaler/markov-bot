@@ -138,7 +138,7 @@ async fn get_source(
     .expect("Invalid regular expression");
 
     if link_regex.is_match(&query) {
-        match Restartable::ytdl(query, false).await {
+        match Restartable::ytdl(query, true).await {
             Ok(source) => return Ok(source),
             Err(why) => {
                 println!("Err starting source: {:?}", why);
@@ -153,7 +153,7 @@ async fn get_source(
         }
     }
 
-    match Restartable::ytdl_search(query, false).await {
+    match Restartable::ytdl_search(query, true).await {
         Ok(source) => Ok(source),
         Err(why) => {
             println!("Err starting source: {:?}", why);
