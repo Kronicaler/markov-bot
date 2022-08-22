@@ -38,7 +38,7 @@ use {
 };
 
 pub async fn list(ctx: &Context, command: &ApplicationCommandInteraction, pool: &Pool<MySql>) {
-    let tags = data_access::get_all_tags(pool).await;
+    let tags = data_access::get_tags_by_server_id(command.guild_id.unwrap().0, pool).await;
 
     let mut message = String::new();
 
@@ -85,13 +85,24 @@ pub async fn remove_tag(
         return;
     };
 
-    let tag = data_access::get_tag_by_listener(listener, pool).await;
+    let tag = data_access::get_tag_by_listener(
+        listener,
+        command
+            .guild_id
+            .expect("This command can't be called outside guilds")
+            .0,
+        pool,
+    )
+    .await;
 
     match tag {
         Some(tag) => {
             data_access::delete_tag(tag.id, pool).await;
 
-            println!("{} removed tag {}", command.user.name, tag.listener);
+            println!(
+                "{} removed tag {} in server {}",
+                command.user.name, tag.listener, tag.server_id
+            );
             command
                 .create_interaction_response(&ctx.http, |r| {
                     r.interaction_response_data(|d| {
@@ -105,7 +116,9 @@ pub async fn remove_tag(
         None => {
             command
                 .create_interaction_response(&ctx.http, |r| {
-                    r.interaction_response_data(|d| d.content(format!("Couldn't find the tag {}",listener)))
+                    r.interaction_response_data(|d| {
+                        d.content(format!("Couldn't find the tag {}", listener))
+                    })
                 })
                 .await
                 .expect("Error creating interaction response");
@@ -119,55 +132,67 @@ pub async fn create_tag(
     command: &ApplicationCommandInteraction,
     pool: &Pool<MySql>,
 ) {
+    let guild_id = match command.guild_id {
+        Some(g) => g,
+        None => {
+            command
+                .create_interaction_response(&ctx.http, |r| {
+                    r.interaction_response_data(|d| {
+                        d.content("Can't create a tag outside of a server")
+                    })
+                })
+                .await
+                .expect("Error creating interaction response");
+            return;
+        }
+    };
+
     let (listener, response) = get_listener_and_response(command);
 
-    if let CommandDataOptionValue::String(listener) = listener {
-        if let CommandDataOptionValue::String(response) = response {
-            if !is_tag_valid(response, listener) {
+    if !is_tag_valid(response, listener) {
+        command
+            .create_interaction_response(&ctx.http, |r| {
+                r.interaction_response_data(|d| d.content("can't add a mention"))
+            })
+            .await
+            .expect("Error creating interaction response");
+        return;
+    }
+
+    match data_access::create_tag(
+        listener.to_lowercase().trim().to_owned(),
+        response.trim().to_owned(),
+        command.user.name.clone(),
+        command.user.id.0,
+        guild_id.0,
+        pool,
+    )
+    .await
+    {
+        Ok(tag) => {
+            command
+                .create_interaction_response(&ctx.http, |r| {
+                    r.interaction_response_data(|d| {
+                        d.content(format!("Created tag {}", tag.listener))
+                    })
+                })
+                .await
+                .expect("Error creating interaction response");
+        }
+        Err(e) => match e {
+            data_access::CreateTagError::TagWithSameListenerExists => {
                 command
                     .create_interaction_response(&ctx.http, |r| {
-                        r.interaction_response_data(|d| d.content("can't add a mention"))
+                        r.interaction_response_data(|d| {
+                            d.content(format!("The tag \"{}\" already exists", listener))
+                        })
                     })
                     .await
                     .expect("Error creating interaction response");
                 return;
             }
-
-            match data_access::create_tag(
-                listener.to_lowercase().trim().to_owned(),
-                response.trim().to_owned(),
-                command.user.name.clone(),
-                command.user.id.0,
-                pool,
-            )
-            .await
-            {
-                Ok(tag) => {
-                    command
-                        .create_interaction_response(&ctx.http, |r| {
-                            r.interaction_response_data(|d| {
-                                d.content(format!("Created tag {}", tag.listener))
-                            })
-                        })
-                        .await
-                        .expect("Error creating interaction response");
-                }
-                Err(e) => match e {
-                    data_access::CreateTagError::TagWithSameListenerExists => {
-                        command
-                            .create_interaction_response(&ctx.http, |r| {
-                                r.interaction_response_data(|d| {
-                                    d.content(format!("The tag \"{}\" already exists", listener))
-                                })
-                            })
-                            .await
-                            .expect("Error creating interaction response");
-                        return;
-                    }
-                },
-            };
-        }
-    }
+        },
+    };
 }
 
 fn is_tag_valid(response: &str, listener: &str) -> bool {
@@ -182,9 +207,7 @@ fn is_tag_valid(response: &str, listener: &str) -> bool {
         || response.contains("@here"))
 }
 
-fn get_listener_and_response(
-    command: &ApplicationCommandInteraction,
-) -> (&CommandDataOptionValue, &CommandDataOptionValue) {
+fn get_listener_and_response(command: &ApplicationCommandInteraction) -> (&String, &String) {
     let listener = command
         .data
         .options
@@ -207,6 +230,17 @@ fn get_listener_and_response(
         .resolved
         .as_ref()
         .expect("Expected response value");
+
+    let listener = match listener {
+        CommandDataOptionValue::String(s) => s,
+        _ => panic!("Expected listener to be a string"),
+    };
+
+    let response = match response {
+        CommandDataOptionValue::String(s) => s,
+        _ => panic!("Expected listener to be a string"),
+    };
+
     (listener, response)
 }
 
@@ -260,9 +294,10 @@ pub async fn check_for_tag_listeners(
     ctx: &Context,
     words_in_message: &[String],
     user_id: UserId,
-    pool: &Pool<MySql>
+    server_id: u64,
+    pool: &Pool<MySql>,
 ) -> Option<String> {
-    let tags = data_access::get_all_tags(pool).await;
+    let tags = data_access::get_tags_by_server_id(server_id, pool).await;
     let tag_blacklisted_users = get_tags_blacklisted_users_lock(&ctx.data).await;
 
     if tag_blacklisted_users.contains(&user_id.0) {

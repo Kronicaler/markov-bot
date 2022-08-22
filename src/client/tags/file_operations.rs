@@ -1,6 +1,4 @@
-use super::{
-    global_data::{BLACKLISTED_USERS_PATH, BOT_CHANNEL_PATH},
-};
+use super::global_data::{BLACKLISTED_USERS_PATH, BOT_CHANNEL_PATH};
 use dashmap::{DashMap, DashSet};
 use std::fs;
 

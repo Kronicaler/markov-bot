@@ -139,11 +139,19 @@ and the users can choose themselves if they don't want their messages saved (/st
             .map(ToString::to_string)
             .collect::<Vec<String>>();
 
-        if let Some(response) =
-            check_for_tag_listeners(&ctx, &words_in_message, msg.author.id, &self.pool).await
-        {
-            respond_to_tag(&ctx, &msg, &response).await;
-            return;
+        if msg.guild_id.is_some() {
+            if let Some(response) = check_for_tag_listeners(
+                &ctx,
+                &words_in_message,
+                msg.author.id,
+                msg.guild_id.unwrap().0,
+                &self.pool,
+            )
+            .await
+            {
+                respond_to_tag(&ctx, &msg, &response).await;
+                return;
+            }
         }
 
         if msg

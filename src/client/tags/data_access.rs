@@ -14,17 +14,19 @@ pub async fn create_tag(
     response: String,
     creator_name: String,
     creator_id: u64,
+    server_id: u64,
     pool: &MySqlPool,
 ) -> Result<Tag, CreateTagError> {
     let created_tag_id = sqlx::query!(
         r#"
-		INSERT INTO tags ( listener, response, creator_name, creator_id )
-		VALUES ( ?, ?, ?, ?)
+		INSERT INTO tags ( listener, response, creator_name, creator_id, server_id )
+		VALUES ( ?, ?, ?, ?, ?)
 		"#,
         listener,
         response,
         creator_name,
-        creator_id
+        creator_id,
+        server_id
     )
     .execute(pool)
     .await
@@ -32,27 +34,6 @@ pub async fn create_tag(
     .last_insert_id();
 
     Ok(get_tag_by_id(created_tag_id, pool).await.unwrap())
-}
-
-pub async fn update_tag(tag: Tag, pool: &MySqlPool) -> Tag {
-    let created_tag_id = sqlx::query!(
-        r#"
-		UPDATE tags
-		SET listener = ?, response = ?, creator_name = ?, creator_id = ?
-        WHERE id = ?
-		"#,
-        tag.listener,
-        tag.response,
-        tag.creator_name,
-        tag.creator_id,
-        tag.id
-    )
-    .execute(pool)
-    .await
-    .unwrap()
-    .last_insert_id();
-
-    get_tag_by_id(created_tag_id, pool).await.unwrap()
 }
 
 pub async fn delete_tag(id: u64, pool: &MySqlPool) -> u64 {
@@ -69,14 +50,15 @@ pub async fn delete_tag(id: u64, pool: &MySqlPool) -> u64 {
     .rows_affected()
 }
 
-pub async fn get_tag_by_listener(listener: &str, pool: &MySqlPool) -> Option<Tag> {
+pub async fn get_tag_by_listener(listener: &str, server_id: u64, pool: &MySqlPool) -> Option<Tag> {
     sqlx::query_as!(
         Tag,
         r#"
         SELECT * FROM tags
-        WHERE listener = ?
+        WHERE listener = ? AND server_id = ?
         "#,
-        listener
+        listener,
+        server_id
     )
     .fetch_optional(pool)
     .await
@@ -97,12 +79,14 @@ pub async fn get_tag_by_id(id: u64, pool: &MySqlPool) -> Option<Tag> {
     .unwrap()
 }
 
-pub async fn get_all_tags(pool: &MySqlPool) -> Vec<Tag> {
+pub async fn get_tags_by_server_id(server_id: u64, pool: &MySqlPool) -> Vec<Tag> {
     sqlx::query_as!(
         Tag,
         r#"
         SELECT * FROM tags
+        WHERE server_id = ?
         "#,
+        server_id
     )
     .fetch_all(pool)
     .await

@@ -22,6 +22,7 @@ impl TagCommandBuilder for CreateApplicationCommands {
 
         command
             .name("tag")
+            .dm_permission(false)
             .description("tagdesc")
             .create_tag_creation_option()
             .create_tag_removal_option()

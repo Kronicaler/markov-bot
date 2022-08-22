@@ -1,4 +1,4 @@
-use sqlx::{query, query_as, MySqlPool, mysql::MySqlQueryResult};
+use sqlx::{mysql::MySqlQueryResult, query, query_as, MySqlPool};
 
 use crate::client::markov::global_data::MarkovBlacklistedServer;
 
@@ -18,22 +18,32 @@ pub async fn get_markov_blacklisted_server(
     .unwrap()
 }
 
-pub async fn create_markov_blacklisted_server(server_id: u64, pool: &MySqlPool) -> anyhow::Result<MySqlQueryResult> {
+pub async fn create_markov_blacklisted_server(
+    server_id: u64,
+    pool: &MySqlPool,
+) -> anyhow::Result<MySqlQueryResult> {
     Ok(query!(
         r#"
 		INSERT INTO markov_blacklisted_servers (server_id)
 		VALUES (?)
 		"#,
         server_id
-    ).execute(pool).await?)
+    )
+    .execute(pool)
+    .await?)
 }
 
-pub async fn delete_markov_blacklisted_server(server_id: u64, pool: &MySqlPool) -> anyhow::Result<MySqlQueryResult> {
+pub async fn delete_markov_blacklisted_server(
+    server_id: u64,
+    pool: &MySqlPool,
+) -> anyhow::Result<MySqlQueryResult> {
     Ok(query!(
         r#"
 		DELETE FROM markov_blacklisted_servers 
 		WHERE server_id = ?
 		"#,
         server_id
-    ).execute(pool).await?)
+    )
+    .execute(pool)
+    .await?)
 }

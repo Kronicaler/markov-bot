@@ -10,6 +10,7 @@ pub struct Tag {
     pub response: String,
     pub creator_name: String,
     pub creator_id: u64,
+    pub server_id: u64,
 }
 
 pub struct TagBlacklistedUsers;
