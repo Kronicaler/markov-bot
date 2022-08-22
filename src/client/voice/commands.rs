@@ -3,7 +3,7 @@ use serenity::{builder::CreateApplicationCommands, model::prelude::command::Comm
 use crate::client::slash_commands::UserCommand;
 
 pub trait VoiceCommandBuilder {
-    fn create_voice_commands(&mut self) -> &mut Self;
+    fn create_voice_commands(&mut self) -> &mut CreateApplicationCommands;
     fn create_play_command(&mut self) -> &mut CreateApplicationCommands;
     fn create_skip_command(&mut self) -> &mut CreateApplicationCommands;
     fn create_swap_command(&mut self) -> &mut CreateApplicationCommands;

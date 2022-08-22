@@ -8,12 +8,12 @@ use crate::client::slash_commands::UserCommand;
 
 /// Create the tag slash commands
 pub trait TagCommandBuilder {
-    fn create_tag_commands(&mut self) -> &mut Self;
+    fn create_tag_commands(&mut self) -> &mut CreateApplicationCommands;
 }
 
 pub trait TagCommandOptions {
-    fn create_tag_creation_option(&mut self) -> &mut Self;
-    fn create_tag_removal_option(&mut self) -> &mut Self;
+    fn create_tag_creation_option(&mut self) -> &mut CreateApplicationCommand;
+    fn create_tag_removal_option(&mut self) -> &mut CreateApplicationCommand;
 }
 
 impl TagCommandBuilder for CreateApplicationCommands {

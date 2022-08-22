@@ -6,7 +6,7 @@ use super::{
         blacklist_user_from_tags_command, commands::TagCommandBuilder, create_tag, list,
         remove_tag, set_tag_response_channel,
     },
-    voice::commands::VoiceCommandBuilder,
+    voice::commands::VoiceCommandBuilder, markov::commands::MarkovCommandBuilder,
 };
 use crate::{global_data, markov, voice, GuildId};
 use serenity::{
@@ -107,7 +107,7 @@ pub async fn command_responses(
                 markov::remove_user_from_blacklist(user, &ctx, command).await;
             }
             UserCommand::stopsavingmessagesserver => {
-                markov::stop_saving_messages_server(&ctx, command, pool).await
+                markov::stop_saving_messages_server(&ctx, command, pool).await;
             }
 
             // ===== VOICE =====
@@ -130,7 +130,9 @@ pub async fn create_global_commands(ctx: &Context) {
     Command::set_global_application_commands(&ctx.http, |commands| {
         commands
             .create_application_command(|command| {
-                command.name(UserCommand::ping).description("A ping command")
+                command
+                    .name(UserCommand::ping)
+                    .description("A ping command")
             })
             .create_application_command(|command| {
                 command
@@ -145,23 +147,6 @@ pub async fn create_global_commands(ctx: &Context) {
                     })
             })
             .create_application_command(|command| {
-                command.name(UserCommand::stopsavingmymessages).description(
-                    "Blacklist yourself if you don't want me to save and learn from your messages",
-                )
-            })
-            .create_application_command(|command| {
-                command
-                .name(UserCommand::stopsavingmessagesserver)
-                .description("Blacklist this server if you don't want me to save and learn from the messages sent in this server")
-                .dm_permission(false)
-                .default_member_permissions(serenity::model::Permissions::ADMINISTRATOR)
-            })
-            .create_application_command(|command| {
-                command.name(UserCommand::continuesavingmymessages).description(
-                    "Remove yourself from the blacklist if you want me to save and learn from your messages",
-                )
-            })
-            .create_application_command(|command| {
                 command
                     .name(UserCommand::help)
                     .description("Information about my commands")
@@ -171,6 +156,7 @@ pub async fn create_global_commands(ctx: &Context) {
                     .name(UserCommand::version)
                     .description("My current version")
             })
+            .create_markov_commands()
             .create_voice_commands()
             .create_tag_commands()
     })

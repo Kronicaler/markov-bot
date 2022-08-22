@@ -1,3 +1,4 @@
+pub mod commands;
 mod data_access;
 mod file_operations;
 mod global_data;
@@ -47,7 +48,7 @@ pub async fn add_message_to_chain(
     let markov_blacklisted_users = get_markov_blacklisted_users_lock(&ctx.data).await;
     let markov_blacklisted_channels = get_markov_blacklisted_channels_lock(&ctx.data).await;
 
-    if get_markov_blacklisted_server(guild_id.0, &pool)
+    if get_markov_blacklisted_server(guild_id.0, pool)
         .await
         .is_none()
         || markov_blacklisted_channels.contains(&msg.channel_id.0)
@@ -215,11 +216,11 @@ pub async fn stop_saving_messages_server(
         }
     };
 
-    let markov_blacklisted_server = get_markov_blacklisted_server(guild_id.into(), &pool).await;
+    let markov_blacklisted_server = get_markov_blacklisted_server(guild_id.into(), pool).await;
 
     match markov_blacklisted_server {
         Some(s) => {
-            delete_markov_blacklisted_server(s.server_id, &pool)
+            delete_markov_blacklisted_server(s.server_id, pool)
                 .await
                 .unwrap();
             command
@@ -232,7 +233,7 @@ pub async fn stop_saving_messages_server(
                 .unwrap();
         }
         None => {
-            create_markov_blacklisted_server(guild_id.into(), &pool)
+            create_markov_blacklisted_server(guild_id.into(), pool)
                 .await
                 .unwrap();
             command
