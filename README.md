@@ -21,7 +21,11 @@ The bot _will_ work without these dependencies but it's music functionality won'
 
 ### Linux instructions for installing the dependencies:
 
-* yt-dlp - ``apt install yt-dlp`` on Ubuntu or ``pacman -S yt-dlp`` on Arch Linux.
+* yt-dlp - 
+```
+sudo curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp
+sudo chmod a+rx /usr/local/bin/yt-dlp
+```
 * Opus - ``apt install libopus-dev`` on Ubuntu or ``pacman -S opus`` on Arch Linux
 * FFmpeg - ``apt install ffmpeg`` on Ubuntu or ``pacman -S ffmpeg`` on Arch Linux
 
