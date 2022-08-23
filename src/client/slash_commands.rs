@@ -80,7 +80,7 @@ pub async fn command_responses(
             UserCommand::ping => ping_command(ctx, command).await,
             UserCommand::id => user_id_command(ctx, command).await,
             UserCommand::stopsavingmymessages => {
-                markov::add_user_to_blacklist(user, &ctx, command).await;
+                markov::add_user_to_blacklist(user, &ctx, command, pool).await;
             }
             UserCommand::createtag => create_tag(&ctx, command, pool).await,
             UserCommand::removetag => remove_tag(&ctx, command, pool).await,
@@ -105,7 +105,7 @@ pub async fn command_responses(
                 .await
                 .expect("Error creating interaction response"),
             UserCommand::continuesavingmymessages => {
-                markov::remove_user_from_blacklist(user, &ctx, command).await;
+                markov::remove_user_from_blacklist(user, &ctx, command, pool).await;
             }
             UserCommand::stopsavingmessagesserver => {
                 markov::stop_saving_messages_server(&ctx, command, pool).await;

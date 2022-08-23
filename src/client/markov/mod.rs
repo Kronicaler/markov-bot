@@ -6,16 +6,16 @@ mod markov_chain;
 
 use self::{
     data_access::{
-        create_markov_blacklisted_server, delete_markov_blacklisted_server,
-        get_markov_blacklisted_server,
+        create_markov_blacklisted_server, create_markov_blacklisted_user,
+        delete_markov_blacklisted_server, delete_markov_blacklisted_user,
+        get_markov_blacklisted_server, get_markov_blacklisted_user,
     },
     file_operations::{
         export_corpus_to_file, generate_new_corpus_from_msg_file, import_corpus_from_file,
-        import_messages_from_file, save_markov_blacklisted_users,
+        import_messages_from_file,
     },
     global_data::{
-        get_markov_blacklisted_channels_lock, get_markov_blacklisted_users_lock,
-        get_markov_chain_lock, MARKOV_EXPORT_PATH,
+        get_markov_blacklisted_channels_lock, get_markov_chain_lock, MARKOV_EXPORT_PATH,
     },
     markov_chain::filter_message_for_markov_file,
 };
@@ -30,7 +30,7 @@ use serenity::{
     },
     prelude::{RwLock, TypeMap},
 };
-use sqlx::{MySql, Pool};
+use sqlx::{MySql, MySqlPool, Pool};
 use std::{error::Error, fs, sync::Arc};
 use tokio::sync::RwLockWriteGuard;
 
@@ -45,14 +45,14 @@ pub async fn add_message_to_chain(
         None => return Ok(false),
     };
 
-    let markov_blacklisted_users = get_markov_blacklisted_users_lock(&ctx.data).await;
+    let markov_blacklisted_user = get_markov_blacklisted_user(msg.author.id.0, pool).await;
     let markov_blacklisted_channels = get_markov_blacklisted_channels_lock(&ctx.data).await;
 
     if get_markov_blacklisted_server(guild_id.0, pool)
         .await
         .is_none()
         || markov_blacklisted_channels.contains(&msg.channel_id.0)
-        || markov_blacklisted_users.contains(&msg.author.id.0)
+        || markov_blacklisted_user.is_some()
         || msg
             .mentions_me(&ctx.http)
             .await
@@ -137,12 +137,21 @@ pub async fn add_user_to_blacklist(
     user: &User,
     ctx: &Context,
     command: &ApplicationCommandInteraction,
+    pool: &MySqlPool,
 ) {
-    let blacklisted_users = get_markov_blacklisted_users_lock(&ctx.data).await;
+    let markov_blacklisted_user = get_markov_blacklisted_user(user.id.0, pool).await;
 
-    blacklisted_users.insert(user.id.0);
+    if markov_blacklisted_user.is_some() {
+        command
+            .create_interaction_response(&ctx.http, |r| {
+                r.interaction_response_data(|d| d.content("I'm already not saving your messages"))
+            })
+            .await
+            .expect("Error creating interaction response");
+        return;
+    }
 
-    let response = match save_markov_blacklisted_users(&*blacklisted_users) {
+    let response = match create_markov_blacklisted_user(user.id.0, pool).await {
         Ok(_) => format!(
             "Added {} to data collection blacklist",
             match command.guild_id {
@@ -169,11 +178,9 @@ pub async fn remove_user_from_blacklist(
     user: &User,
     ctx: &Context,
     command: &ApplicationCommandInteraction,
+    pool: &MySqlPool,
 ) {
-    let blacklisted_users = get_markov_blacklisted_users_lock(&ctx.data).await;
-
-    blacklisted_users.remove(&user.id.0);
-    let response = match save_markov_blacklisted_users(&*blacklisted_users) {
+    let response = match delete_markov_blacklisted_user(user.id.0, pool).await {
         Ok(_) => format!(
             "removed {} from data collection blacklist",
             match command.guild_id {
@@ -254,11 +261,7 @@ pub fn init_markov_data(data: &mut RwLockWriteGuard<TypeMap>) -> Result<(), Box<
     let blacklisted_channels_in_file: DashSet<u64> = serde_json::from_str(&fs::read_to_string(
         create_file_if_missing(global_data::MARKOV_BLACKLISTED_CHANNELS_PATH, "[]")?,
     )?)?;
-    let blacklisted_users_in_file: DashSet<u64> = serde_json::from_str(&fs::read_to_string(
-        create_file_if_missing(global_data::MARKOV_BLACKLISTED_USERS_PATH, "[]")?,
-    )?)?;
     data.insert::<global_data::MarkovChain>(Arc::new(RwLock::new(markov)));
     data.insert::<global_data::MarkovBlacklistedChannels>(Arc::new(blacklisted_channels_in_file));
-    data.insert::<global_data::MarkovBlacklistedUsers>(Arc::new(blacklisted_users_in_file));
     Ok(())
 }

@@ -1,11 +1,10 @@
 use super::{
     create_default_chain,
-    global_data::{MARKOV_BLACKLISTED_USERS_PATH, MARKOV_DATA_SET_PATH, MARKOV_EXPORT_PATH},
+    global_data::{MARKOV_DATA_SET_PATH, MARKOV_EXPORT_PATH},
     markov_chain::filter_string_for_markov_file,
 };
 use crate::client::file_operations::create_file_if_missing;
 use anyhow::Result;
-use dashmap::DashSet;
 use markov_strings::{ImportExport, InputData};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use std::{
@@ -72,15 +71,6 @@ pub fn import_messages_from_file() -> Result<Vec<InputData>> {
             meta: None,
         })
         .collect())
-}
-
-pub fn save_markov_blacklisted_users(
-    blacklisted_users: &DashSet<u64>,
-) -> Result<(), std::io::Error> {
-    fs::write(
-        MARKOV_BLACKLISTED_USERS_PATH,
-        serde_json::to_string(blacklisted_users).expect("Serialization failed"),
-    )
 }
 
 pub fn generate_new_corpus_from_msg_file() -> Result<ImportExport> {

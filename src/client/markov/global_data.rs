@@ -11,11 +11,9 @@ pub const MARKOV_DATA_SET_PATH: &str = "data/markov data/markov data set.txt";
 pub const MARKOV_EXPORT_PATH: &str = "data/markov data/corpus.json";
 
 /// User Ids that the bot will not learn from
-pub struct MarkovBlacklistedUsers;
-impl TypeMapKey for MarkovBlacklistedUsers {
-    type Value = Arc<DashSet<u64>>;
+pub struct MarkovBlacklistedUser{
+    pub user_id: u64,
 }
-pub const MARKOV_BLACKLISTED_USERS_PATH: &str = "data/markov data/blacklisted users.json";
 
 /// Channel Ids that the bot will not learn from
 pub struct MarkovBlacklistedChannels;
@@ -26,16 +24,6 @@ pub const MARKOV_BLACKLISTED_CHANNELS_PATH: &str = "data/markov data/blacklisted
 
 pub struct MarkovBlacklistedServer {
     pub server_id: u64,
-}
-
-pub async fn get_markov_blacklisted_users_lock(data: &Arc<RwLock<TypeMap>>) -> Arc<DashSet<u64>> {
-    let markov_blacklisted_users_lock = data
-        .read()
-        .await
-        .get::<MarkovBlacklistedUsers>()
-        .expect("expected MarkovBlacklistedUsers in TypeMap")
-        .clone();
-    markov_blacklisted_users_lock
 }
 
 pub async fn get_markov_blacklisted_channels_lock(
