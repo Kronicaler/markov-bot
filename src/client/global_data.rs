@@ -1,4 +1,4 @@
-use super::{markov::init_markov_data, tags::init_tags_data};
+use super::markov::init_markov_data;
 use serenity::Client;
 use std::error::Error;
 
@@ -34,8 +34,6 @@ pub async fn init_global_data_for_client(client: &Client) -> Result<(), Box<dyn 
     };
 
     init_markov_data(&mut data)?;
-
-    init_tags_data(data)?;
 
     Ok(())
 }

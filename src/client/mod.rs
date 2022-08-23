@@ -6,7 +6,6 @@ pub mod slash_commands;
 pub mod tags;
 pub mod voice;
 
-use file_operations::create_file_if_missing;
 use global_data::{init_global_data_for_client, HELP_MESSAGE};
 use helper_funcs::leave_unknown_guilds;
 use slash_commands::{command_responses, create_global_commands, create_test_commands};
@@ -148,7 +147,7 @@ and the users can choose themselves if they don't want their messages saved (/st
             )
             .await
             {
-                respond_to_tag(&ctx, &msg, &response).await;
+                respond_to_tag(&ctx, &msg, &response, &self.pool).await;
                 return;
             }
         }

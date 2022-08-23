@@ -1,7 +1,10 @@
 use sqlx::MySqlPool;
 use thiserror::Error;
 
-use super::{global_data::TagBlacklistedUser, Tag};
+use super::{
+    model::{TagBlacklistedUser, TagChannel},
+    Tag,
+};
 
 #[derive(Debug, Error)]
 pub enum CreateTagError {
@@ -136,7 +139,51 @@ pub async fn create_tag_blacklisted_user(user_id: u64, pool: &MySqlPool) -> TagB
     .await
     .unwrap();
 
-    get_tag_blacklisted_user(user_id, pool)
-        .await
-        .unwrap()
+    get_tag_blacklisted_user(user_id, pool).await.unwrap()
+}
+
+pub async fn get_tag_channel(server_id: u64, pool: &MySqlPool) -> Option<TagChannel> {
+    sqlx::query_as!(
+        TagChannel,
+        r#"
+        SELECT * FROM tag_channels
+        WHERE server_id = ?
+        "#,
+        server_id,
+    )
+    .fetch_optional(pool)
+    .await
+    .unwrap()
+}
+
+pub async fn update_tag_channel(server_id: u64, channel_id: u64, pool: &MySqlPool) -> u64 {
+    sqlx::query!(
+        r#"
+        UPDATE tag_channels
+        SET channel_id = ?
+        WHERE server_id = ?
+        "#,
+        channel_id,
+        server_id,
+    )
+    .execute(pool)
+    .await
+    .unwrap()
+    .rows_affected()
+}
+
+pub async fn create_tag_channel(server_id: u64, channel_id: u64, pool: &MySqlPool) -> TagChannel {
+    sqlx::query!(
+        r#"
+		INSERT INTO tag_channels ( server_id, channel_id )
+		VALUES ( ?, ? )
+		"#,
+        server_id,
+        channel_id
+    )
+    .execute(pool)
+    .await
+    .unwrap();
+
+    get_tag_channel(server_id, pool).await.unwrap()
 }

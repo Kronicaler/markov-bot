@@ -1,22 +1,18 @@
 pub mod commands;
 mod create_tag;
 mod data_access;
-mod file_operations;
-mod global_data;
+mod model;
 mod remove_tag;
 
 pub use create_tag::create_tag;
 pub use remove_tag::remove_tag;
 
-use self::{
-    data_access::{
-        create_tag_blacklisted_user, delete_tag_blacklisted_user, get_tag_blacklisted_user,
-    },
-    global_data::{TagResponseChannelIds, BOT_CHANNEL_PATH},
+use self::data_access::{
+    create_tag_blacklisted_user, create_tag_channel, delete_tag_blacklisted_user,
+    get_tag_blacklisted_user, get_tag_channel, update_tag_channel,
 };
-use super::{create_file_if_missing, ButtonIds};
-use dashmap::DashMap;
-pub use global_data::Tag;
+use super::ButtonIds;
+pub use model::Tag;
 use serenity::{
     builder::ParseValue,
     client::Context,
@@ -29,13 +25,10 @@ use serenity::{
             interaction::application_command::ApplicationCommandInteraction, User,
         },
     },
-    prelude::{Mentionable, TypeMap},
+    prelude::Mentionable,
 };
 use sqlx::{MySql, MySqlPool, Pool};
 use std::fmt::Write;
-use std::{error::Error, fs, sync::Arc};
-use tokio::sync::RwLockWriteGuard;
-use {file_operations::save_tag_response_channel, global_data::get_tag_response_channel_id_lock};
 
 pub async fn list(ctx: &Context, command: &ApplicationCommandInteraction, pool: &Pool<MySql>) {
     let tags = data_access::get_tags_by_server_id(command.guild_id.unwrap().0, pool).await;
@@ -75,14 +68,14 @@ pub async fn blacklist_user_from_tags_command(
 pub async fn blacklist_user(user: &User, pool: &MySqlPool) -> String {
     let is_user_blacklisted = get_tag_blacklisted_user(user.id.0, pool).await.is_some();
 
-    if !is_user_blacklisted {
-        create_tag_blacklisted_user(user.id.0, pool).await;
-
-        "I won't ping you anymore when you trip off a tag".to_string()
-    } else {
+    if is_user_blacklisted {
         delete_tag_blacklisted_user(user.id.0, pool).await;
 
         "I will now ping you when you trip off a tag".to_string()
+    } else {
+        create_tag_blacklisted_user(user.id.0, pool).await;
+
+        "I won't ping you anymore when you trip off a tag".to_string()
     }
 }
 
@@ -146,7 +139,11 @@ pub async fn check_for_tag_listeners(
     None
 }
 
-pub async fn set_tag_response_channel(ctx: &Context, command: &ApplicationCommandInteraction) {
+pub async fn set_tag_response_channel(
+    ctx: &Context,
+    command: &ApplicationCommandInteraction,
+    pool: &MySqlPool,
+) {
     let guild_id = if let Some(guild_id) = command.guild_id {
         guild_id
     } else {
@@ -161,42 +158,22 @@ pub async fn set_tag_response_channel(ctx: &Context, command: &ApplicationComman
         return;
     };
 
-    let member = command.member.as_ref().expect("Expected member");
-    let member_perms = member.permissions.expect("Couldn't get member permissions");
+    let tag_channel = get_tag_channel(guild_id.0, pool).await;
 
-    let response;
-    if !member_perms.administrator()
-        && member.user.id
-            != ctx
-                .http
-                .get_current_application_info()
-                .await
-                .expect("Couldn't fetch the owner id")
-                .owner
-                .id
-    {
-        response = "You need to have the Administrator permission to invoke this command";
-        command
-            .create_interaction_response(&ctx.http, |r| {
-                r.interaction_response_data(|d| d.content(response))
-            })
-            .await
-            .expect("Error creating interaction response");
-        return;
+    match tag_channel {
+        Some(t) => {
+            update_tag_channel(t.server_id, command.channel_id.0, pool).await;
+        }
+        None => {
+            create_tag_channel(guild_id.0, command.channel_id.0, pool).await;
+        }
     }
-
-    let channel_id = command.channel_id.0;
-    let bot_channel_ids = get_tag_response_channel_id_lock(&ctx.data).await;
-    bot_channel_ids.insert(guild_id.0, channel_id);
-
-    response = match save_tag_response_channel(&bot_channel_ids) {
-        Ok(_) => "Successfully set this channel as the tag response channel",
-        Err(_) => "Something went wrong setting the tag response channel",
-    };
 
     command
         .create_interaction_response(&ctx.http, |r| {
-            r.interaction_response_data(|d| d.content(response))
+            r.interaction_response_data(|d| {
+                d.content("Successfully set this channel as the tag response channel")
+            })
         })
         .await
         .expect("Error creating interaction response");
@@ -209,14 +186,12 @@ pub async fn set_tag_response_channel(ctx: &Context, command: &ApplicationComman
 /// If there is no tag response channel set then it first tries to send a message in the same channel.
 /// If that fails then it sends the message to the tag response channel if one is set
 /// If that fails then it iterates through every channel in the guild until it finds one it can send a message in
-pub async fn respond_to_tag(ctx: &Context, msg: &Message, message: &str) {
-    let tag_response_channels = get_tag_response_channel_id_lock(&ctx.data).await;
-    let tag_response_channel_id =
-        tag_response_channels.get(&msg.guild_id.expect("Couldn't get the guild id").0);
+pub async fn respond_to_tag(ctx: &Context, msg: &Message, message: &str, pool: &MySqlPool) {
+    let tag_channel = get_tag_channel(msg.guild_id.unwrap().0, pool).await;
 
     //If the guild has a tag response channel send the response there
-    if let Some(channel_id) = tag_response_channel_id {
-        send_response_in_tag_channel(ctx, channel_id, msg, message).await;
+    if let Some(tag_channel) = tag_channel {
+        send_response_in_tag_channel(ctx, tag_channel.channel_id, msg, message).await;
         return;
     }
 
@@ -257,22 +232,20 @@ pub async fn respond_to_tag(ctx: &Context, msg: &Message, message: &str) {
 
 async fn send_response_in_tag_channel(
     ctx: &Context,
-    channel_id: dashmap::mapref::one::Ref<'_, u64, u64>,
+    channel_id: u64,
     msg: &Message,
     message: &str,
 ) {
-    let mut tag_response_channel = ctx.cache.guild_channel(*channel_id);
+    let mut tag_response_channel = ctx.cache.guild_channel(channel_id);
     if tag_response_channel.is_none() {
-        let guild_channels = Guild::get(&&ctx.http, *channel_id.key())
+        let guild_channels = Guild::get(&&ctx.http, msg.guild_id.unwrap())
             .await
             .expect("Couldn't fetch guild")
             .channels(&ctx.http)
             .await
             .unwrap();
 
-        tag_response_channel = guild_channels
-            .get(&ChannelId::from(*channel_id.value()))
-            .cloned();
+        tag_response_channel = guild_channels.get(&ChannelId::from(channel_id)).cloned();
     }
     if let Some(tag_response_channel) = tag_response_channel {
         tag_response_channel
@@ -302,12 +275,4 @@ async fn send_response_in_tag_channel(
             .await
             .expect("Couldn't send message");
     }
-}
-
-pub fn init_tags_data(mut data: RwLockWriteGuard<TypeMap>) -> Result<(), Box<dyn Error>> {
-    let bot_channel: DashMap<u64, u64> = serde_json::from_str(&fs::read_to_string(
-        create_file_if_missing(BOT_CHANNEL_PATH, "{}")?,
-    )?)?;
-    data.insert::<TagResponseChannelIds>(Arc::new(bot_channel));
-    Ok(())
 }

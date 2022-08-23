@@ -89,7 +89,7 @@ pub async fn command_responses(
                 blacklist_user_from_tags_command(&ctx, user, command, pool).await;
             }
 
-            UserCommand::tagresponsechannel => set_tag_response_channel(&ctx, command).await,
+            UserCommand::tagresponsechannel => set_tag_response_channel(&ctx, command, pool).await,
             UserCommand::help => command
                 .create_interaction_response(ctx.http, |r| {
                     r.interaction_response_data(|d| d.content(global_data::HELP_MESSAGE))
