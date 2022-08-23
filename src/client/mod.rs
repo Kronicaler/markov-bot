@@ -81,9 +81,9 @@ impl EventHandler for Handler {
 
             owner.direct_message(&ctx.http, |msg|
                 msg.content("
-Hi I'm a general purpose bot. I can play music, chat and have tag functionality. type /help if you want to see all of my commands.\n\n
-Due to my chatting functionality i save every message that gets said in the server. These saved messages aren't linked to any usernames so they're anonymized.
-The owner of the server can prevent the saving of messages in certain channels (/stop-saving-messages-channel) or in the whole server (/stop-saving-messages-server)
+Hi, I'm a general purpose bot. I can play music, chat and i also have tag functionality. Type /help if you want to see all of my commands.\n\n
+Due to my chatting functionality I save every message that gets said in the server. These saved messages aren't linked to any usernames so they're anonymized.
+The admins of the server can prevent the saving of messages in certain channels (/stop-saving-messages-channel) or in the whole server (/stop-saving-messages-server)
 and the users can choose themselves if they don't want their messages saved (/stop-saving-my-messages)")
             ).await.unwrap();
         }
