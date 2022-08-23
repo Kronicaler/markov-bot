@@ -2,11 +2,12 @@ use std::str::FromStr;
 
 use super::{
     helper_funcs::{get_full_command_name, ping_command, user_id_command},
+    markov::commands::MarkovCommandBuilder,
     tags::{
         blacklist_user_from_tags_command, commands::TagCommandBuilder, create_tag, list,
         remove_tag, set_tag_response_channel,
     },
-    voice::commands::VoiceCommandBuilder, markov::commands::MarkovCommandBuilder,
+    voice::commands::VoiceCommandBuilder,
 };
 use crate::{global_data, markov, voice, GuildId};
 use serenity::{
@@ -85,7 +86,7 @@ pub async fn command_responses(
             UserCommand::removetag => remove_tag(&ctx, command, pool).await,
             UserCommand::taglist => list(&ctx, command, pool).await,
             UserCommand::blacklistmefromtags => {
-                blacklist_user_from_tags_command(&ctx, user, command).await;
+                blacklist_user_from_tags_command(&ctx, user, command, pool).await;
             }
 
             UserCommand::tagresponsechannel => set_tag_response_channel(&ctx, command).await,

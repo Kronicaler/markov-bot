@@ -1,14 +1,6 @@
-use super::global_data::{BLACKLISTED_USERS_PATH, BOT_CHANNEL_PATH};
-use dashmap::{DashMap, DashSet};
+use super::global_data::BOT_CHANNEL_PATH;
+use dashmap::DashMap;
 use std::fs;
-
-pub fn save_user_tag_blacklist_to_file(blacklist: &DashSet<u64>) {
-    fs::write(
-        BLACKLISTED_USERS_PATH,
-        serde_json::to_string(&blacklist).expect("Serialization failed"),
-    )
-    .expect("Something went wrong while writing to file.");
-}
 
 pub fn save_tag_response_channel(bot_channels: &DashMap<u64, u64>) -> Result<(), std::io::Error> {
     fs::write(

@@ -1,7 +1,7 @@
 use sqlx::MySqlPool;
 use thiserror::Error;
 
-use super::Tag;
+use super::{global_data::TagBlacklistedUser, Tag};
 
 #[derive(Debug, Error)]
 pub enum CreateTagError {
@@ -91,4 +91,52 @@ pub async fn get_tags_by_server_id(server_id: u64, pool: &MySqlPool) -> Vec<Tag>
     .fetch_all(pool)
     .await
     .unwrap()
+}
+
+pub async fn get_tag_blacklisted_user(
+    user_id: u64,
+    pool: &MySqlPool,
+) -> Option<TagBlacklistedUser> {
+    sqlx::query_as!(
+        TagBlacklistedUser,
+        r#"
+        SELECT * FROM tag_blacklisted_users
+        WHERE user_id = ?
+        "#,
+        user_id
+    )
+    .fetch_optional(pool)
+    .await
+    .unwrap()
+}
+
+pub async fn delete_tag_blacklisted_user(user_id: u64, pool: &MySqlPool) -> u64 {
+    sqlx::query!(
+        r#"
+        DELETE FROM tag_blacklisted_users
+        WHERE user_id= ?
+        "#,
+        user_id
+    )
+    .execute(pool)
+    .await
+    .unwrap()
+    .rows_affected()
+}
+
+pub async fn create_tag_blacklisted_user(user_id: u64, pool: &MySqlPool) -> TagBlacklistedUser {
+    sqlx::query!(
+        r#"
+		INSERT INTO tag_blacklisted_users ( user_id )
+		VALUES ( ? )
+		"#,
+        user_id
+    )
+    .execute(pool)
+    .await
+    .unwrap();
+
+    get_tag_blacklisted_user(user_id, pool)
+        .await
+        .unwrap()
 }

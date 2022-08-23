@@ -102,7 +102,7 @@ and the users can choose themselves if they don't want their messages saved (/st
 
                 match button_id {
                     ButtonIds::BlacklistMeFromTags => {
-                        let response = blacklist_user(&ctx, &component.user).await;
+                        let response = blacklist_user(&component.user, &self.pool).await;
 
                         component
                             .create_interaction_response(&ctx.http, |r| {
@@ -141,7 +141,6 @@ and the users can choose themselves if they don't want their messages saved (/st
 
         if msg.guild_id.is_some() {
             if let Some(response) = check_for_tag_listeners(
-                &ctx,
                 &words_in_message,
                 msg.author.id,
                 msg.guild_id.unwrap().0,

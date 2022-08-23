@@ -8,12 +8,14 @@ mod remove_tag;
 pub use create_tag::create_tag;
 pub use remove_tag::remove_tag;
 
-use self::global_data::{
-    TagBlacklistedUsers, TagResponseChannelIds, BLACKLISTED_USERS_PATH, BOT_CHANNEL_PATH,
+use self::{
+    data_access::{
+        create_tag_blacklisted_user, delete_tag_blacklisted_user, get_tag_blacklisted_user,
+    },
+    global_data::{TagResponseChannelIds, BOT_CHANNEL_PATH},
 };
 use super::{create_file_if_missing, ButtonIds};
-use crate::client::tags::file_operations::save_user_tag_blacklist_to_file;
-use dashmap::{DashMap, DashSet};
+use dashmap::DashMap;
 pub use global_data::Tag;
 use serenity::{
     builder::ParseValue,
@@ -29,14 +31,11 @@ use serenity::{
     },
     prelude::{Mentionable, TypeMap},
 };
-use sqlx::{MySql, Pool};
+use sqlx::{MySql, MySqlPool, Pool};
 use std::fmt::Write;
 use std::{error::Error, fs, sync::Arc};
 use tokio::sync::RwLockWriteGuard;
-use {
-    file_operations::save_tag_response_channel,
-    global_data::{get_tag_response_channel_id_lock, get_tags_blacklisted_users_lock},
-};
+use {file_operations::save_tag_response_channel, global_data::get_tag_response_channel_id_lock};
 
 pub async fn list(ctx: &Context, command: &ApplicationCommandInteraction, pool: &Pool<MySql>) {
     let tags = data_access::get_tags_by_server_id(command.guild_id.unwrap().0, pool).await;
@@ -61,20 +60,9 @@ pub async fn blacklist_user_from_tags_command(
     ctx: &Context,
     user: &User,
     command: &ApplicationCommandInteraction,
+    pool: &MySqlPool,
 ) {
-    let users_blacklisted_from_tags = get_tags_blacklisted_users_lock(&ctx.data).await;
-
-    let response = if users_blacklisted_from_tags.contains(&user.id.0) {
-        users_blacklisted_from_tags.remove(&user.id.0);
-        save_user_tag_blacklist_to_file(&users_blacklisted_from_tags);
-
-        "I will now ping you when you trip off a tag"
-    } else {
-        users_blacklisted_from_tags.insert(user.id.0);
-        save_user_tag_blacklist_to_file(&users_blacklisted_from_tags);
-
-        "I won't ping you anymore when you trip off a tag"
-    };
+    let response = blacklist_user(user, pool).await;
 
     command
         .create_interaction_response(&ctx.http, |r| {
@@ -84,16 +72,16 @@ pub async fn blacklist_user_from_tags_command(
         .expect("Error creating interaction response");
 }
 
-pub async fn blacklist_user(ctx: &Context, user: &User) -> String {
-    let users_blacklisted_from_tags = get_tags_blacklisted_users_lock(&ctx.data).await;
+pub async fn blacklist_user(user: &User, pool: &MySqlPool) -> String {
+    let is_user_blacklisted = get_tag_blacklisted_user(user.id.0, pool).await.is_some();
 
-    if users_blacklisted_from_tags.contains(&user.id.0) {
-        users_blacklisted_from_tags.remove(&user.id.0);
-        save_user_tag_blacklist_to_file(&users_blacklisted_from_tags);
+    if !is_user_blacklisted {
+        create_tag_blacklisted_user(user.id.0, pool).await;
+
         "I won't ping you anymore when you trip off a tag".to_string()
     } else {
-        users_blacklisted_from_tags.insert(user.id.0);
-        save_user_tag_blacklist_to_file(&users_blacklisted_from_tags);
+        delete_tag_blacklisted_user(user.id.0, pool).await;
+
         "I will now ping you when you trip off a tag".to_string()
     }
 }
@@ -104,16 +92,15 @@ pub async fn blacklist_user(ctx: &Context, user: &User) -> String {
 ///
 /// [L]: self::global_data::Listener
 pub async fn check_for_tag_listeners(
-    ctx: &Context,
     words_in_message: &[String],
     user_id: UserId,
     server_id: u64,
     pool: &Pool<MySql>,
 ) -> Option<String> {
     let tags = data_access::get_tags_by_server_id(server_id, pool).await;
-    let tag_blacklisted_users = get_tags_blacklisted_users_lock(&ctx.data).await;
+    let is_user_blacklisted = get_tag_blacklisted_user(user_id.0, pool).await.is_some();
 
-    if tag_blacklisted_users.contains(&user_id.0) {
+    if is_user_blacklisted {
         return None;
     }
 
@@ -318,13 +305,9 @@ async fn send_response_in_tag_channel(
 }
 
 pub fn init_tags_data(mut data: RwLockWriteGuard<TypeMap>) -> Result<(), Box<dyn Error>> {
-    let user_tag_blacklist: DashSet<u64> = serde_json::from_str(&fs::read_to_string(
-        create_file_if_missing(BLACKLISTED_USERS_PATH, "[]")?,
-    )?)?;
     let bot_channel: DashMap<u64, u64> = serde_json::from_str(&fs::read_to_string(
         create_file_if_missing(BOT_CHANNEL_PATH, "{}")?,
     )?)?;
-    data.insert::<TagBlacklistedUsers>(Arc::new(user_tag_blacklist));
     data.insert::<TagResponseChannelIds>(Arc::new(bot_channel));
     Ok(())
 }
