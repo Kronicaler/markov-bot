@@ -41,4 +41,11 @@ dashmap = { version = "5.3.4", features = ["serde"] }
 serde = "1.0.140"
 anyhow = "1.0.58"
 thiserror = "1.0.31"
-sqlx = { version = "0.5.5", features = ["runtime-tokio-native-tls", "mysql"] }
+sqlx = { version = "0.5.5", features = [
+	"runtime-tokio-native-tls",
+	"mysql",
+	"offline",
+] }
+
+[profile.dev.package.sqlx-macros]
+opt-level = 3
