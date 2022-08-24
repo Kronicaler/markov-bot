@@ -7,7 +7,6 @@ pub mod tags;
 pub mod voice;
 
 use global_data::{init_global_data_for_client, HELP_MESSAGE};
-use helper_funcs::leave_unknown_guilds;
 use slash_commands::{command_responses, create_global_commands, create_test_commands};
 use sqlx::{MySql, Pool};
 
@@ -61,11 +60,10 @@ impl EventHandler for Handler {
         println!("{} is connected!", ready.user.name);
 
         let t1 = create_global_commands(&ctx);
-        let t2 = leave_unknown_guilds(&ready, &ctx);
 
         if cfg!(debug_assertions) {
             let t3 = create_test_commands(&ctx);
-            join!(t1, t2, t3);
+            join!(t1, t3);
         } else {
             t1.await;
         }
