@@ -9,7 +9,6 @@ use serenity::{
             interaction::application_command::{
                 ApplicationCommandInteraction, CommandDataOptionValue,
             },
-            Ready,
         },
     },
 };
