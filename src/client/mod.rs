@@ -211,6 +211,8 @@ pub async fn start() {
         env::var("DATABASE_URL").expect("Expected a DATABASE_URL in the environment");
     let pool = sqlx::MySqlPool::connect(&database_url).await.unwrap();
 
+    sqlx::migrate!("./migrations").run(&pool).await.unwrap();
+
     let mut client = Client::builder(token, intents)
         .application_id(application_id.0)
         .event_handler(Handler { pool })
