@@ -11,7 +11,6 @@ use serenity::{
     utils::Colour,
 };
 use songbird::{
-    create_player,
     input::{Input, Metadata, Restartable},
     tracks::TrackQueue,
     TrackEvent,
@@ -70,12 +69,9 @@ pub async fn play(ctx: &Context, command: &ApplicationCommandInteraction) {
 
     //add to queue
     let input: Input = source.into();
-    let metadata = input.metadata.clone();
-    let (mut audio, _) = create_player(input);
-    audio.set_volume(0.5);
-    call.enqueue(audio);
+    let track_handle = call.enqueue_source(input);
 
-    return_response(&metadata, call.queue(), command, ctx).await;
+    return_response(track_handle.metadata(), call.queue(), command, ctx).await;
 }
 
 fn add_track_end_event(
