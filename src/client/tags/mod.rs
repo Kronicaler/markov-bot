@@ -41,6 +41,10 @@ pub async fn list(ctx: &Context, command: &ApplicationCommandInteraction, pool: 
     message.pop();
     message.pop();
 
+    if message.is_empty() {
+        message = "There are no tags in this server".to_string();
+    }
+
     command
         .create_interaction_response(&ctx.http, |r| {
             r.interaction_response_data(|d| d.content(message))
