@@ -22,6 +22,13 @@ impl MarkovCommandBuilder for CreateApplicationCommands {
 			.default_member_permissions(serenity::model::Permissions::ADMINISTRATOR)
 		})
 		.create_application_command(|command| {
+			command
+			.name(UserCommand::stopsavingmessageschannel)
+			.description("Blacklist this channel if you don't want me to save and learn from the messages sent in this channel")
+			.dm_permission(false)
+			.default_member_permissions(serenity::model::Permissions::ADMINISTRATOR)
+		})
+		.create_application_command(|command| {
 			command.name(UserCommand::continuesavingmymessages).description(
 				"Remove yourself from the blacklist if you want me to save and learn from your messages",
 			)

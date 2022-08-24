@@ -30,6 +30,8 @@ pub enum UserCommand {
     stopsavingmymessages,
     #[strum(serialize = "continue-saving-my-messages")]
     continuesavingmymessages,
+    #[strum(serialize = "stop-saving-messages-channel")]
+    stopsavingmessageschannel,
     #[strum(serialize = "stop-saving-messages-server")]
     stopsavingmessagesserver,
     help,
@@ -66,6 +68,7 @@ pub enum UserCommand {
 }
 
 /// Check which slash command was triggered, call the appropriate function and return a response to the user
+#[allow(clippy::too_many_lines)]
 pub async fn command_responses(
     command: &ApplicationCommandInteraction,
     ctx: Context,
@@ -106,6 +109,9 @@ pub async fn command_responses(
                 .expect("Error creating interaction response"),
             UserCommand::continuesavingmymessages => {
                 markov::remove_user_from_blacklist(user, &ctx, command, pool).await;
+            }
+            UserCommand::stopsavingmessageschannel => {
+                markov::stop_saving_messages_channel(&ctx, command, pool).await;
             }
             UserCommand::stopsavingmessagesserver => {
                 markov::stop_saving_messages_server(&ctx, command, pool).await;

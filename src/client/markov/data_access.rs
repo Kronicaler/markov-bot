@@ -2,7 +2,7 @@ use sqlx::{mysql::MySqlQueryResult, query, query_as, MySqlPool};
 
 use crate::client::markov::global_data::MarkovBlacklistedServer;
 
-use super::global_data::MarkovBlacklistedUser;
+use super::global_data::{MarkovBlacklistedChannel, MarkovBlacklistedUser};
 
 pub async fn get_markov_blacklisted_server(
     server_id: u64,
@@ -91,6 +91,52 @@ pub async fn delete_markov_blacklisted_user(
 		WHERE user_id = ?
 		"#,
         user_id
+    )
+    .execute(pool)
+    .await?)
+}
+
+pub async fn get_markov_blacklisted_channel(
+    channel_id: u64,
+    pool: &MySqlPool,
+) -> Option<MarkovBlacklistedChannel> {
+    query_as!(
+        MarkovBlacklistedChannel,
+        "
+		SELECT * FROM markov_blacklisted_channels where channel_id = ?
+		",
+        channel_id
+    )
+    .fetch_optional(pool)
+    .await
+    .unwrap()
+}
+
+pub async fn create_markov_blacklisted_channel(
+    channel_id: u64,
+    pool: &MySqlPool,
+) -> anyhow::Result<MySqlQueryResult> {
+    Ok(query!(
+        r#"
+		INSERT INTO markov_blacklisted_channels (channel_id)
+		VALUES (?)
+		"#,
+        channel_id
+    )
+    .execute(pool)
+    .await?)
+}
+
+pub async fn delete_markov_blacklisted_channel(
+    channel_id: u64,
+    pool: &MySqlPool,
+) -> anyhow::Result<MySqlQueryResult> {
+    Ok(query!(
+        r#"
+		DELETE FROM markov_blacklisted_channels
+		WHERE channel_id = ?
+		"#,
+        channel_id
     )
     .execute(pool)
     .await?)
