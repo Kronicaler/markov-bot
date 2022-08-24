@@ -19,6 +19,7 @@ pub struct MarkovBlacklistedChannel {
     pub channel_id: u64,
 }
 
+// Server Ids that the bot will not learn from
 pub struct MarkovBlacklistedServer {
     pub server_id: u64,
 }

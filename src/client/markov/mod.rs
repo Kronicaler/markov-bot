@@ -1,7 +1,7 @@
 pub mod commands;
 mod data_access;
 mod file_operations;
-mod global_data;
+mod model;
 mod markov_chain;
 
 use self::{
@@ -15,7 +15,7 @@ use self::{
         export_corpus_to_file, generate_new_corpus_from_msg_file, import_corpus_from_file,
         import_messages_from_file,
     },
-    global_data::{get_markov_chain_lock, MARKOV_EXPORT_PATH},
+    model::{get_markov_chain_lock, MARKOV_EXPORT_PATH},
     markov_chain::filter_message_for_markov_file,
 };
 use markov_strings::Markov;
@@ -292,6 +292,6 @@ pub async fn stop_saving_messages_server(
 pub fn init_markov_data(data: &mut RwLockWriteGuard<TypeMap>) -> Result<(), Box<dyn Error>> {
     let markov = init()?;
 
-    data.insert::<global_data::MarkovChain>(Arc::new(RwLock::new(markov)));
+    data.insert::<model::MarkovChain>(Arc::new(RwLock::new(markov)));
     Ok(())
 }

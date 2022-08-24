@@ -1,8 +1,8 @@
 use sqlx::{mysql::MySqlQueryResult, query, query_as, MySqlPool};
 
-use crate::client::markov::global_data::MarkovBlacklistedServer;
+use crate::client::markov::model::MarkovBlacklistedServer;
 
-use super::global_data::{MarkovBlacklistedChannel, MarkovBlacklistedUser};
+use super::model::{MarkovBlacklistedChannel, MarkovBlacklistedUser};
 
 pub async fn get_markov_blacklisted_server(
     server_id: u64,
