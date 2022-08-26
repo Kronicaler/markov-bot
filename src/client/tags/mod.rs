@@ -6,6 +6,7 @@ mod remove_tag;
 
 pub use create_tag::create_tag;
 pub use remove_tag::remove_tag;
+use tokio::task;
 
 use self::data_access::{
     create_tag_blacklisted_user, create_tag_channel, delete_tag_blacklisted_user,
@@ -14,7 +15,7 @@ use self::data_access::{
 use super::ButtonIds;
 pub use model::Tag;
 use serenity::{
-    builder::ParseValue,
+    builder::{CreateComponents, ParseValue},
     client::Context,
     model::{
         channel::{Channel, Message},
@@ -28,7 +29,7 @@ use serenity::{
     prelude::Mentionable,
 };
 use sqlx::{MySql, MySqlPool, Pool};
-use std::fmt::Write;
+use std::{fmt::Write, time::Duration};
 
 pub async fn list(ctx: &Context, command: &ApplicationCommandInteraction, pool: &Pool<MySql>) {
     let tags = data_access::get_tags_by_server_id(command.guild_id.unwrap().0, pool).await;
@@ -227,7 +228,17 @@ pub async fn respond_to_tag(ctx: &Context, msg: &Message, message: &str, pool: &
                 })
                 .await
             {
-                Ok(_) => break,
+                Ok(mut msg) => {
+                    let http = ctx.http.clone();
+                    task::spawn(async move {
+                        tokio::time::sleep(Duration::from_secs(10)).await;
+                        msg.edit(&http, |msg| msg.set_components(CreateComponents::default()))
+                            .await
+                            .unwrap();
+                    });
+
+                    break;
+                }
                 Err(_) => continue,
             }
         }
@@ -251,24 +262,23 @@ async fn send_response_in_tag_channel(
 
         tag_response_channel = guild_channels.get(&ChannelId::from(channel_id)).cloned();
     }
+
     if let Some(tag_response_channel) = tag_response_channel {
-        tag_response_channel
+        match tag_response_channel
             .send_message(&ctx.http, |m| {
                 let response_content = if msg.channel_id == tag_response_channel.id {
                     message.to_owned()
                 } else {
                     // Create this button only if the user is pinged
-                    if rand::random::<f32>() < 0.05 {
-                        m.components(|c| {
-                            c.create_action_row(|a| {
-                                a.create_button(|b| {
-                                    b.label("Stop pinging me")
-                                        .style(ButtonStyle::Primary)
-                                        .custom_id(ButtonIds::BlacklistMeFromTags)
-                                })
+                    m.components(|c| {
+                        c.create_action_row(|a| {
+                            a.create_button(|b| {
+                                b.label("Stop pinging me")
+                                    .style(ButtonStyle::Primary)
+                                    .custom_id(ButtonIds::BlacklistMeFromTags)
                             })
-                        });
-                    }
+                        })
+                    });
 
                     msg.author.mention().to_string() + " " + message
                 };
@@ -277,6 +287,17 @@ async fn send_response_in_tag_channel(
                     .content(response_content)
             })
             .await
-            .expect("Couldn't send message");
+        {
+            Ok(mut msg) => {
+                let http = ctx.http.clone();
+                task::spawn(async move {
+                    tokio::time::sleep(Duration::from_secs(10)).await;
+                    msg.edit(&http, |msg| msg.set_components(CreateComponents::default()))
+                        .await
+                        .unwrap();
+                });
+            }
+            Err(err) => eprintln!("{err}"),
+        };
     }
 }
