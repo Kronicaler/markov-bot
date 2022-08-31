@@ -140,7 +140,7 @@ async fn get_source(
                 println!("Err starting source: {:?}", why);
                 command
                     .edit_original_interaction_response(&ctx.http, |r| {
-                        r.content("Coulnd't find the video on Youtube")
+                        r.content("Couldn't find the video on Youtube")
                     })
                     .await
                     .expect("Error creating interaction response");
@@ -155,7 +155,7 @@ async fn get_source(
             println!("Err starting source: {:?}", why);
             command
                 .edit_original_interaction_response(&ctx.http, |r| {
-                    r.content("Coulnd't find the video on Youtube")
+                    r.content("Couldn't find the video on Youtube")
                 })
                 .await
                 .expect("Error creating interaction response");
