@@ -33,7 +33,7 @@ pub async fn user_id_command(ctx: Context, command: &ApplicationCommandInteracti
             r.interaction_response_data(|d| d.content(response))
         })
         .await
-        .expect("Couldnt create interaction response");
+        .expect("Couldn't create interaction response");
 }
 
 pub async fn ping_command(ctx: Context, command: &ApplicationCommandInteraction) {
