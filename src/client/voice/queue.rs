@@ -46,7 +46,7 @@ pub async fn queue(ctx: &Context, command: &ApplicationCommandInteraction) {
         let i = if queue.len() < 10 { queue.len() } else { 10 };
 
         let colour = Colour::from_rgb(149, 8, 2);
-        let duration = get_queue_duration(queue);
+        let duration = get_queue_duration(queue).await;
         //embed
         command
             .create_interaction_response(
@@ -54,7 +54,7 @@ pub async fn queue(ctx: &Context, command: &ApplicationCommandInteraction) {
                 CreateInteractionResponse::new().interaction_response_data(
                     CreateInteractionResponseData::new()
                         .content("0")
-                        .embed(create_queue_embed(queue, &duration, colour, 0usize, i))
+                        .embed(create_queue_embed(queue, &duration, colour, 0usize, i).await)
                         .components(create_queue_buttons(queue)),
                 ),
             )
@@ -74,21 +74,27 @@ pub async fn queue(ctx: &Context, command: &ApplicationCommandInteraction) {
     }
 }
 
-fn get_queue_duration(queue: &songbird::tracks::TrackQueue) -> String {
-    let total_queue_time = queue
-        .current_queue()
-        .iter()
-        .map(|f| {
-            f.typemap()
-                .blocking_read()
+async fn get_queue_duration(queue: &songbird::tracks::TrackQueue) -> String {
+    let mut durations = vec![];
+
+    for track in queue.current_queue() {
+        durations.push(
+            track
+                .typemap()
+                .read()
+                .await
                 .get::<MyAuxMetadata>()
                 .unwrap()
                 .read()
                 .unwrap()
                 .0
                 .duration
-                .unwrap()
-        })
+                .unwrap(),
+        )
+    }
+
+    let total_queue_time = durations
+        .into_iter()
         .reduce(|a, f| a.checked_add(f).unwrap())
         .unwrap_or_default();
     let minutes = total_queue_time.as_secs() / 60;
@@ -177,7 +183,7 @@ async fn change_page(
 ) {
     let (queue_start, queue_end) = get_page_ends(button, &button_id, queue);
 
-    let duration = get_queue_duration(queue);
+    let duration = get_queue_duration(queue).await;
     let colour = Colour::from_rgb(149, 8, 2);
 
     button
@@ -191,14 +197,14 @@ async fn change_page(
                     colour,
                     queue_start,
                     queue_end,
-                ))
+                ).await)
                 .components(create_queue_buttons(queue)),
         )
         .await
         .expect("Error creating interaction response");
 }
 
-fn create_queue_embed(
+async fn create_queue_embed(
     queue: &songbird::tracks::TrackQueue,
     duration: &str,
     colour: Colour,
@@ -220,7 +226,7 @@ fn create_queue_embed(
             .get(i)
             .unwrap()
             .typemap()
-            .blocking_read()
+            .read().await
             .get::<MyAuxMetadata>()
             .unwrap()
             .read()
@@ -276,5 +282,8 @@ fn get_page_ends(
             queue_start += 10;
         }
     }
-    (queue_start.try_into().unwrap(), queue_end.try_into().unwrap())
+    (
+        queue_start.try_into().unwrap(),
+        queue_end.try_into().unwrap(),
+    )
 }

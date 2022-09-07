@@ -165,23 +165,32 @@ async fn return_response(
     let mut embed = create_track_embed(metadata);
 
     let time = metadata.duration.unwrap_or_else(|| Duration::new(0, 0));
-    let time_before_song = queue
-        .current_queue()
-        .iter()
-        .map(|f| {
-            f.typemap()
-                .blocking_read()
+
+    let mut durations = vec![];
+
+    for track in queue.current_queue() {
+        durations.push(
+            track
+                .typemap()
+                .read()
+                .await
                 .get::<MyAuxMetadata>()
                 .unwrap()
                 .read()
                 .unwrap()
                 .0
                 .duration
-                .unwrap()
-        })
+                .unwrap(),
+        )
+    }
+
+    let time_before_song = durations
+        .into_iter()
         .reduce(|a, f| a.checked_add(f).unwrap())
+        .and_then(|d| Some(d))
         .unwrap_or_default()
         - time;
+
     let time_before_song = format!(
         "{}:{:02}",
         time_before_song.as_secs() / 60,

@@ -35,7 +35,7 @@ pub async fn playing(ctx: &Context, command: &ApplicationCommandInteraction) {
             .create_interaction_response(
                 &ctx.http,
                 CreateInteractionResponse::new().interaction_response_data(
-                    CreateInteractionResponseData::new().embed(create_playing_embed(queue)),
+                    CreateInteractionResponseData::new().embed(create_playing_embed(queue).await),
                 ),
             )
             .await
@@ -57,12 +57,12 @@ async fn nothing_playing_response(command: &ApplicationCommandInteraction, ctx: 
         .expect("Error creating interaction response");
 }
 
-fn create_playing_embed(queue: &songbird::tracks::TrackQueue) -> serenity::builder::CreateEmbed {
+async fn create_playing_embed(queue: &songbird::tracks::TrackQueue) -> serenity::builder::CreateEmbed {
     let song = queue
         .current()
         .unwrap()
         .typemap()
-        .blocking_read()
+        .read().await
         .get::<MyAuxMetadata>()
         .unwrap()
         .read()
