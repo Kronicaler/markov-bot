@@ -34,7 +34,6 @@ use serenity::{
 use songbird::{
     driver::{
         retry::{Retry, Strategy},
-        DecodeMode,
     },
     Config, SerenityInit,
 };
@@ -193,7 +192,6 @@ pub async fn start() {
         .expect("Couldn't parse the APPLICATION_ID");
 
     let songbird_config = Config::default()
-        .decode_mode(DecodeMode::Pass)
         .driver_retry(Retry {
             retry_limit: Some(60),
             strategy: Strategy::Every(std::time::Duration::from_secs(10)),

@@ -2,7 +2,7 @@ use std::str::FromStr;
 
 use super::{
     helper_funcs::{get_full_command_name, ping_command, user_id_command},
-    markov::commands::MarkovCommandBuilder,
+    markov::commands::{create_markov_commands, MarkovCommandBuilder},
     tags::{
         blacklist_user_from_tags_command, commands::TagCommandBuilder, create_tag, list,
         remove_tag, set_tag_response_channel,
@@ -11,6 +11,7 @@ use super::{
 };
 use crate::{global_data, markov, voice, GuildId};
 use serenity::{
+    builder::{CreateApplicationCommand, CreateApplicationCommandOption},
     client::Context,
     model::application::command::CommandOptionType,
     model::prelude::{
@@ -134,36 +135,27 @@ pub async fn command_responses(
 
 /// Create the slash commands
 pub async fn create_global_commands(ctx: &Context) {
+    let commands = vec![
+        CreateApplicationCommand::new(UserCommand::ping.to_string()).description("A ping command"),
+        CreateApplicationCommand::new(UserCommand::id.to_string())
+            .description("The user to lookup")
+            .add_option(
+                CreateApplicationCommandOption::new(
+                    CommandOptionType::User,
+                    "id",
+                    "The user to lookup",
+                )
+                .required(true),
+            ),
+        CreateApplicationCommand::new(UserCommand::help.to_string())
+            .description("Information about my commands"),
+        CreateApplicationCommand::new(UserCommand::version.to_string())
+            .description("My current version"),
+    ]
+    .append(&mut create_markov_commands());
+
     Command::set_global_application_commands(&ctx.http, |commands| {
         commands
-            .create_application_command(|command| {
-                command
-                    .name(UserCommand::ping)
-                    .description("A ping command")
-            })
-            .create_application_command(|command| {
-                command
-                    .name(UserCommand::id)
-                    .description("Get a user id")
-                    .create_option(|option| {
-                        option
-                            .name("id")
-                            .description("The user to lookup")
-                            .kind(CommandOptionType::User)
-                            .required(true)
-                    })
-            })
-            .create_application_command(|command| {
-                command
-                    .name(UserCommand::help)
-                    .description("Information about my commands")
-            })
-            .create_application_command(|command| {
-                command
-                    .name(UserCommand::version)
-                    .description("My current version")
-            })
-            .create_markov_commands()
             .create_voice_commands()
             .create_tag_commands()
     })

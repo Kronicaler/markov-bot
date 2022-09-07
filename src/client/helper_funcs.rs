@@ -1,4 +1,5 @@
 use serenity::{
+    builder::{CreateInteractionResponse, CreateInteractionResponseData},
     client::Context,
     model::{
         channel::GuildChannel,
@@ -14,33 +15,40 @@ use serenity::{
 };
 
 pub async fn user_id_command(ctx: Context, command: &ApplicationCommandInteraction) {
-    let options = command
+    let options = &command
         .data
         .options
         .get(0)
         .expect("Expected user option")
-        .resolved
-        .as_ref()
-        .expect("Expected user object");
-    let response = if let CommandDataOptionValue::User(user, _member) = options {
-        format!("{}'s id is {}", user, user.id)
+        .value;
+
+    let response = if let CommandDataOptionValue::User(user) = options {
+        format!(
+            "{}'s id is {}",
+            user.to_user(&ctx.http).await.unwrap().name,
+            user.0
+        )
     } else {
         "Please provide a valid user".to_owned()
     };
 
     command
-        .create_interaction_response(ctx.http, |r| {
-            r.interaction_response_data(|d| d.content(response))
-        })
+        .create_interaction_response(
+            ctx.http,
+            CreateInteractionResponse::new()
+                .interaction_response_data(CreateInteractionResponseData::new().content(response)),
+        )
         .await
         .expect("Couldn't create interaction response");
 }
 
 pub async fn ping_command(ctx: Context, command: &ApplicationCommandInteraction) {
     command
-        .create_interaction_response(&ctx.http, |r| {
-            r.interaction_response_data(|d| d.content("Pong!"))
-        })
+        .create_interaction_response(
+            ctx.http,
+            CreateInteractionResponse::new()
+                .interaction_response_data(CreateInteractionResponseData::new().content("Pong!")),
+        )
         .await
         .expect("Couldn't create interaction response");
 }
@@ -97,7 +105,7 @@ pub fn get_full_command_name(command: &ApplicationCommandInteraction) -> String 
     let mut sub_command = None;
 
     for option in &command.data.options {
-        match option.kind {
+        match option.kind() {
             CommandOptionType::SubCommand => {
                 sub_command_group = Some(&option.name);
             }

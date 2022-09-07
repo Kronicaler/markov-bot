@@ -8,21 +8,6 @@ authors = ["Kroni"]
 edition = "2021"
 
 [dependencies]
-serenity = { version = "0.11.4", default-features = false, features = [
-	"cache",
-	"client",
-	"gateway",
-	"rustls_backend",
-	"model",
-	"unstable_discord_api",
-	"voice",
-] }
-# requires yt-dlp, opus and ffmpeg in order for voice commands to work
-songbird = { version = "0.3.0", features = [
-	"builtin-queue",
-	"serenity",
-	"yt-dlp",
-] }
 tokio = { version = "1.20.0", features = [
 	"macros",
 	"rt-multi-thread",
@@ -46,6 +31,34 @@ sqlx = { version = "0.5.5", features = [
 	"mysql",
 	"offline",
 ] }
+
+[dependencies.serenity]
+default-features = false
+features = [
+	"cache",
+	"client",
+	"gateway",
+	"rustls_backend",
+	"model",
+	"unstable_discord_api",
+	"voice",
+]
+git = "https://github.com/serenity-rs/serenity"
+branch = "next"
+
+# requires yt-dlp, opus and ffmpeg in order for voice commands to work
+[dependencies.songbird]
+git = "https://github.com/serenity-rs/songbird"
+branch = "next"
+features = ["builtin-queue", "serenity"]
+
+[dependencies.symphonia]
+# version = "0.5"
+features = ["aac", "mp3", "isomp4", "alac"] # ...as well as any extras you need!
+# **NOTE**: For now, please use this fork in pre-releases for a key fix to
+# seeking on streamed MKV/WebM files.
+git = "https://github.com/FelixMcFelix/Symphonia"
+branch = "songbird-fixes"
 
 [profile.dev.package.sqlx-macros]
 opt-level = 3
