@@ -1,4 +1,5 @@
 use serenity::{
+    builder::{CreateInteractionResponse, CreateInteractionResponseData},
     client::Context,
     model::{
         guild::Guild,
@@ -55,15 +56,17 @@ pub async fn get_call_lock(
         .expect("Songbird Voice client placed in at initialisation.")
         .clone();
 
-    let call_lock = match manager.get(guild_id.0) {
+    let call_lock = match manager.get(guild_id) {
         Some(c) => c,
         None => {
             command
-                .create_interaction_response(&ctx.http, |r| {
-                    r.interaction_response_data(|d| {
-                        d.content("Must be in a voice channel to use that command!")
-                    })
-                })
+                .create_interaction_response(
+                    &ctx.http,
+                    CreateInteractionResponse::new().interaction_response_data(
+                        CreateInteractionResponseData::new()
+                            .content("Must be in a voice channel to use that command!"),
+                    ),
+                )
                 .await
                 .expect("Error creating interaction response");
             return None;
@@ -94,7 +97,7 @@ pub async fn leave_vc_if_alone(old: Option<VoiceState>, ctx: &Context) {
 
     let manager = songbird::get(ctx)
         .await
-        .expect("Songbird Voice client placed in at initialisation.")
+        .expect("Songbird Voice client placed in at initialization.")
         .clone();
 
     let call_mutex = manager.get(guild_id);
@@ -117,7 +120,7 @@ pub async fn leave_vc_if_alone(old: Option<VoiceState>, ctx: &Context) {
         return;
     }
 
-    let changed_voice_channel_members = changed_voice_channel.members(&ctx.cache).await.unwrap();
+    let changed_voice_channel_members = changed_voice_channel.members(&ctx.cache).unwrap();
 
     if changed_voice_channel_members.len() == 1 {
         call.queue().stop();

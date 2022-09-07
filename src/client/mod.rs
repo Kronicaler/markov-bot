@@ -17,14 +17,15 @@ use self::{
 use super::tags::check_for_tag_listeners;
 use serenity::{
     async_trait,
+    builder::{CreateMessage, CreateInteractionResponse, CreateInteractionResponseData},
     client::{Context, EventHandler},
     model::{
         channel::Message,
         gateway::Ready,
         id::UserId,
         prelude::{
-            interaction::{Interaction, MessageFlags},
-            Guild,
+            interaction::{Interaction},
+            Guild, MessageFlags,
         },
         voice::VoiceState,
     },
@@ -32,9 +33,7 @@ use serenity::{
     Client,
 };
 use songbird::{
-    driver::{
-        retry::{Retry, Strategy},
-    },
+    driver::retry::{Retry, Strategy},
     Config, SerenityInit,
 };
 use std::{env, str::FromStr};
@@ -71,12 +70,11 @@ impl EventHandler for Handler {
     // if is_new is true then the bot just joined a new guild
     async fn guild_create(&self, ctx: Context, guild: Guild, is_new: bool) {
         if is_new {
-            let owner = guild.member(&ctx.http, guild.owner_id).await.unwrap().user;
+            let owner = guild.member(&ctx.http, guild.owner_id).await.unwrap().user.clone();
 
             println!("Joined guild {} owned by {}", guild.name, owner.tag());
 
-            owner.direct_message(&ctx.http, |msg|
-                msg.content("
+            owner.direct_message(&ctx.http, CreateMessage::new().content("
 Hi, I'm a general purpose bot. I can play music, chat and i also have tag functionality. Type /help if you want to see all of my commands.\n\n
 Due to my chatting functionality I save every message that gets said in the server. These saved messages aren't linked to any usernames so they're anonymized.
 The admins of the server can prevent the saving of messages in certain channels (/stop-saving-messages-channel) or in the whole server (/stop-saving-messages-server)
@@ -101,11 +99,14 @@ and the users can choose themselves if they don't want their messages saved (/st
                         let response = blacklist_user(&component.user, &self.pool).await;
 
                         component
-                            .create_interaction_response(&ctx.http, |r| {
-                                r.interaction_response_data(|d| {
-                                    d.content(response).flags(MessageFlags::EPHEMERAL)
-                                })
-                            })
+                            .create_interaction_response(
+                                &ctx.http,
+                                CreateInteractionResponse::new().interaction_response_data(
+                                    CreateInteractionResponseData::new()
+                                        .content(response)
+                                        .flags(MessageFlags::EPHEMERAL),
+                                ),
+                            )
                             .await
                             .expect("couldn't create response");
                     }
@@ -139,7 +140,7 @@ and the users can choose themselves if they don't want their messages saved (/st
             if let Some(response) = check_for_tag_listeners(
                 &words_in_message,
                 msg.author.id,
-                msg.guild_id.unwrap().0,
+                msg.guild_id.unwrap().get(),
                 &self.pool,
             )
             .await
@@ -172,7 +173,7 @@ and the users can choose themselves if they don't want their messages saved (/st
     async fn voice_state_update(&self, ctx: Context, old: Option<VoiceState>, new: VoiceState) {
         leave_vc_if_alone(old, &ctx).await;
 
-        if new.channel_id.is_none() && new.user_id == ctx.http.application_id().unwrap() {
+        if new.channel_id.is_none() && new.user_id == ctx.http.application_id().unwrap().get() {
             let manager = songbird::get(&ctx).await.unwrap();
 
             let call_lock = manager.get(new.guild_id.unwrap()).unwrap();
@@ -210,7 +211,7 @@ pub async fn start() {
     sqlx::migrate!("./migrations").run(&pool).await.unwrap();
 
     let mut client = Client::builder(token, intents)
-        .application_id(application_id.0)
+        .application_id(application_id.get())
         .event_handler(Handler { pool })
         .register_songbird_from_config(songbird_config)
         .await

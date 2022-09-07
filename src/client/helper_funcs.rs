@@ -26,7 +26,7 @@ pub async fn user_id_command(ctx: Context, command: &ApplicationCommandInteracti
         format!(
             "{}'s id is {}",
             user.to_user(&ctx.http).await.unwrap().name,
-            user.0
+            user.get()
         )
     } else {
         "Please provide a valid user".to_owned()
@@ -59,18 +59,21 @@ pub async fn get_guild_channel(
     ctx: &Context,
     channel_id: ChannelId,
 ) -> anyhow::Result<GuildChannel> {
-    let changed_voice_channel = match guild_id.to_guild_cached(&ctx.cache) {
+    let guild = guild_id
+        .to_guild_cached(&ctx.cache)
+        .and_then(|g| Some(g.to_owned()));
+
+    Ok(match guild {
         Some(guild) => get_guild_channel_from_cache(&guild, channel_id)?,
         None => fetch_guild_channel(guild_id, ctx, channel_id).await?,
-    };
-    Ok(changed_voice_channel)
+    })
 }
 
 async fn fetch_guild_channel(
     guild_id: GuildId,
     ctx: &Context,
     channel_id: ChannelId,
-) -> Result<GuildChannel, anyhow::Error> {
+) -> anyhow::Result<GuildChannel> {
     Ok(guild_id
         .channels(&ctx.http)
         .await?
@@ -82,7 +85,7 @@ async fn fetch_guild_channel(
 fn get_guild_channel_from_cache(
     guild: &Guild,
     channel_id: ChannelId,
-) -> Result<GuildChannel, anyhow::Error> {
+) -> anyhow::Result<GuildChannel> {
     Ok(guild
         .channels
         .get(&channel_id)

@@ -1,4 +1,10 @@
+use std::convert::TryInto;
+
 use serenity::{
+    builder::{
+        CreateActionRow, CreateButton, CreateComponents, CreateEmbed, CreateInteractionResponse,
+        CreateInteractionResponseData, EditInteractionResponse,
+    },
     client::Context,
     model::prelude::{
         component::ButtonStyle,
@@ -6,17 +12,19 @@ use serenity::{
             application_command::ApplicationCommandInteraction,
             message_component::MessageComponentInteraction,
         },
+        Colour,
     },
-    utils::Colour,
 };
 
 use crate::client::ButtonIds;
+
+use super::MyAuxMetadata;
 
 ///get the queue
 pub async fn queue(ctx: &Context, command: &ApplicationCommandInteraction) {
     let manager = songbird::get(ctx)
         .await
-        .expect("Songbird Voice client placed in at initialisation.")
+        .expect("Songbird Voice client placed in at initialization.")
         .clone();
 
     if let Some(handler_lock) = manager.get(command.guild_id.unwrap()) {
@@ -25,45 +33,42 @@ pub async fn queue(ctx: &Context, command: &ApplicationCommandInteraction) {
 
         if queue.is_empty() {
             command
-                .create_interaction_response(&ctx.http, |r| {
-                    r.interaction_response_data(|d| d.content("The queue is empty!"))
-                })
+                .create_interaction_response(
+                    &ctx.http,
+                    CreateInteractionResponse::new().interaction_response_data(
+                        CreateInteractionResponseData::new().content("The queue is empty!"),
+                    ),
+                )
                 .await
                 .expect("Error creating interaction response");
             return;
         }
+        let i = if queue.len() < 10 { queue.len() } else { 10 };
+
+        let colour = Colour::from_rgb(149, 8, 2);
+        let duration = get_queue_duration(queue);
         //embed
         command
-            .create_interaction_response(&ctx.http, |m| {
-                let i = if queue.len() < 10 { queue.len() } else { 10 };
-
-                let colour = Colour::from_rgb(149, 8, 2);
-                let duration = get_queue_duration(queue);
-
-                m.interaction_response_data(|d| {
-                    d.content("0")
-                        .embed(|e| {
-                            create_queue_embed(
-                                e,
-                                queue,
-                                &duration,
-                                colour,
-                                0,
-                                i.try_into().unwrap(),
-                            )
-                        })
-                        .components(|c| create_queue_buttons(queue, c))
-                })
-            })
+            .create_interaction_response(
+                &ctx.http,
+                CreateInteractionResponse::new().interaction_response_data(
+                    CreateInteractionResponseData::new()
+                        .content("0")
+                        .embed(create_queue_embed(queue, &duration, colour, 0usize, i))
+                        .components(create_queue_buttons(queue)),
+                ),
+            )
             .await
             .expect("Error creating interaction response");
     } else {
         command
-            .create_interaction_response(&ctx.http, |r| {
-                r.interaction_response_data(|d| {
-                    d.content("You must be in a voice channel to use that command!")
-                })
-            })
+            .create_interaction_response(
+                &ctx.http,
+                CreateInteractionResponse::new().interaction_response_data(
+                    CreateInteractionResponseData::new()
+                        .content("You must be in a voice channel to use that command!"),
+                ),
+            )
             .await
             .expect("Error creating interaction response");
     }
@@ -73,7 +78,17 @@ fn get_queue_duration(queue: &songbird::tracks::TrackQueue) -> String {
     let total_queue_time = queue
         .current_queue()
         .iter()
-        .map(|f| f.metadata().duration.unwrap())
+        .map(|f| {
+            f.typemap()
+                .blocking_read()
+                .get::<MyAuxMetadata>()
+                .unwrap()
+                .read()
+                .unwrap()
+                .0
+                .duration
+                .unwrap()
+        })
         .reduce(|a, f| a.checked_add(f).unwrap())
         .unwrap_or_default();
     let minutes = total_queue_time.as_secs() / 60;
@@ -85,27 +100,29 @@ fn get_queue_duration(queue: &songbird::tracks::TrackQueue) -> String {
 
 fn create_queue_buttons<'a>(
     queue: &songbird::tracks::TrackQueue,
-    c: &'a mut serenity::builder::CreateComponents,
-) -> &'a mut serenity::builder::CreateComponents {
+) -> serenity::builder::CreateComponents {
     if queue.len() > 10 {
-        c.create_action_row(|a| {
-            a.create_button(|b| {
-                b.emoji(serenity::model::channel::ReactionType::Unicode(
-                    "◀".to_string(),
-                ))
-                .style(ButtonStyle::Primary)
-                .custom_id(ButtonIds::QueuePrevious)
-            })
-            .create_button(|b| {
-                b.emoji(serenity::model::channel::ReactionType::Unicode(
-                    "▶".to_string(),
-                ))
-                .style(ButtonStyle::Primary)
-                .custom_id(ButtonIds::QueueNext)
-            })
-        })
+        CreateComponents::new().set_action_row(
+            CreateActionRow::new()
+                .add_button(
+                    CreateButton::new()
+                        .emoji(serenity::model::channel::ReactionType::Unicode(
+                            "◀".to_string(),
+                        ))
+                        .style(ButtonStyle::Primary)
+                        .custom_id(ButtonIds::QueuePrevious.to_string()),
+                )
+                .add_button(
+                    CreateButton::new()
+                        .emoji(serenity::model::channel::ReactionType::Unicode(
+                            "▶".to_string(),
+                        ))
+                        .style(ButtonStyle::Primary)
+                        .custom_id(ButtonIds::QueueNext.to_string()),
+                ),
+        )
     } else {
-        c
+        CreateComponents::new()
     }
 }
 
@@ -116,7 +133,7 @@ pub async fn change_queue_page(
 ) {
     let manager = songbird::get(ctx)
         .await
-        .expect("Songbird Voice client placed in at initialisation.")
+        .expect("Songbird Voice client placed in at initialization.")
         .clone();
 
     match manager.get(button.guild_id.unwrap()) {
@@ -128,9 +145,10 @@ pub async fn change_queue_page(
 
             if queue.is_empty() {
                 button
-                    .edit_original_interaction_response(&ctx.http, |r| {
-                        r.content("The queue is empty!")
-                    })
+                    .edit_original_interaction_response(
+                        &ctx.http,
+                        EditInteractionResponse::new().content("The queue is empty!"),
+                    )
                     .await
                     .expect("Error creating interaction response");
                 return;
@@ -140,9 +158,11 @@ pub async fn change_queue_page(
         }
         None => {
             button
-                .edit_original_interaction_response(&ctx.http, |d| {
-                    d.content("You must be in a voice channel to use that command!")
-                })
+                .edit_original_interaction_response(
+                    &ctx.http,
+                    EditInteractionResponse::new()
+                        .content("You must be in a voice channel to use that command!"),
+                )
                 .await
                 .expect("Error creating interaction response");
         }
@@ -155,30 +175,38 @@ async fn change_page(
     button_id: ButtonIds,
     queue: &songbird::tracks::TrackQueue,
 ) {
+    let (queue_start, queue_end) = get_page_ends(button, &button_id, queue);
+
+    let duration = get_queue_duration(queue);
+    let colour = Colour::from_rgb(149, 8, 2);
+
     button
-        .edit_original_interaction_response(&ctx.http, |d| {
-            let (queue_start, queue_end) = get_page_ends(button, &button_id, queue);
-
-            let duration = get_queue_duration(queue);
-            let colour = Colour::from_rgb(149, 8, 2);
-
-            d.content(queue_start.to_string())
-                .embed(|e| create_queue_embed(e, queue, &duration, colour, queue_start, queue_end))
-                .components(|c| create_queue_buttons(queue, c))
-        })
+        .edit_original_interaction_response(
+            &ctx.http,
+            EditInteractionResponse::new()
+                .content(queue_start.to_string())
+                .embed(create_queue_embed(
+                    queue,
+                    &duration,
+                    colour,
+                    queue_start,
+                    queue_end,
+                ))
+                .components(create_queue_buttons(queue)),
+        )
         .await
         .expect("Error creating interaction response");
 }
 
-fn create_queue_embed<'a>(
-    e: &'a mut serenity::builder::CreateEmbed,
+fn create_queue_embed(
     queue: &songbird::tracks::TrackQueue,
     duration: &str,
     colour: Colour,
-    queue_start: i64,
-    queue_end: i64,
-) -> &'a mut serenity::builder::CreateEmbed {
-    e.title("queue")
+    queue_start: usize,
+    queue_end: usize,
+) -> serenity::builder::CreateEmbed {
+    let mut e = CreateEmbed::new()
+        .title("queue")
         .title("Current Queue:")
         .description(format!(
             "Current size: {} | Total queue length: {}",
@@ -187,11 +215,17 @@ fn create_queue_embed<'a>(
         ))
         .color(colour);
     for i in queue_start..queue_end {
-        let song = &queue
+        let song = queue
             .current_queue()
-            .get(usize::try_from(i).unwrap())
+            .get(i)
             .unwrap()
-            .metadata()
+            .typemap()
+            .blocking_read()
+            .get::<MyAuxMetadata>()
+            .unwrap()
+            .read()
+            .unwrap()
+            .0
             .clone();
 
         let channel = &song.channel.as_ref().unwrap();
@@ -202,7 +236,7 @@ fn create_queue_embed<'a>(
         let seconds = time.as_secs() - minutes * 60;
         let duration = format!("{}:{:02}", minutes, seconds);
         let arg1 = format!("{}. {} | {}", i + 1, title, channel);
-        e.field(arg1, duration, false);
+        e = e.field(arg1, duration, false);
     }
     e
 }
@@ -211,7 +245,7 @@ fn get_page_ends(
     button: &MessageComponentInteraction,
     button_id: &ButtonIds,
     queue: &songbird::tracks::TrackQueue,
-) -> (i64, i64) {
+) -> (usize, usize) {
     let queue_end: i64;
     let mut queue_start: i64 = button.message.content.parse().unwrap();
     if button_id == &ButtonIds::QueueNext {
@@ -242,5 +276,5 @@ fn get_page_ends(
             queue_start += 10;
         }
     }
-    (queue_start, queue_end)
+    (queue_start.try_into().unwrap(), queue_end.try_into().unwrap())
 }

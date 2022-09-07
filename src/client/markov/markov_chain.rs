@@ -40,7 +40,7 @@ pub fn filter_message_for_markov_file(msg: &Message) -> Option<String> {
                     let user = &msg
                         .mentions
                         .iter()
-                        .find(|&user| user.id.0 == user_id)
+                        .find(|&user| user.id.get() == user_id)
                         .expect("Couldn't find user mention in message")
                         .name;
                     " ".to_owned() + user + " "
@@ -109,7 +109,7 @@ fn cant_find_user_in_message(user_regex: &Regex, filtered_message: &str, msg: &M
             }
             user_id.parse::<u64>().expect("Couldn't parse user id")
         })
-        .any(|user_id| msg.mentions.iter().any(|user| user.id.0 == user_id))
+        .any(|user_id| msg.mentions.iter().any(|user| user.id.get() == user_id))
 }
 /// Filters a string so it can be inserted into the Markov data set.
 ///

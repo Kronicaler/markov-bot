@@ -31,6 +31,7 @@ sqlx = { version = "0.5.5", features = [
 	"mysql",
 	"offline",
 ] }
+reqwest="0.11.11"
 
 [dependencies.serenity]
 default-features = false

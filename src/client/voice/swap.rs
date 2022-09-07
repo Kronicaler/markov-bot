@@ -1,4 +1,5 @@
 use serenity::{
+    builder::{CreateInteractionResponse, CreateInteractionResponseData},
     client::Context,
     model::prelude::interaction::application_command::{
         ApplicationCommandInteraction, CommandDataOptionValue,
@@ -68,7 +69,11 @@ pub async fn swap(ctx: &Context, command: &ApplicationCommandInteraction) {
 
     let call = call_lock.lock().await;
 
-    if let Some(guild) = guild_id.to_guild_cached(&ctx.cache) {
+    let guild = guild_id
+        .to_guild_cached(&ctx.cache)
+        .and_then(|g| Some(g.to_owned()));
+
+    if let Some(guild) = guild {
         if is_bot_in_another_channel(ctx, &guild, command.user.id) {
             user_not_in_vc_response(command, ctx).await;
             return;
@@ -96,14 +101,15 @@ pub async fn swap(ctx: &Context, command: &ApplicationCommandInteraction) {
     match queue.swap(first_track_idx, second_track_idx) {
         Ok(_) => {
             command
-                .create_interaction_response(&ctx.http, |r| {
-                    r.interaction_response_data(|d| {
-                        d.content(format!(
+                .create_interaction_response(
+                    &ctx.http,
+                    CreateInteractionResponse::new().interaction_response_data(
+                        CreateInteractionResponseData::new().content(format!(
                             "Swapped track {} and {}.",
                             first_track_idx, second_track_idx
-                        ))
-                    })
-                })
+                        )),
+                    ),
+                )
                 .await
                 .expect("Error creating interaction response");
         }
@@ -113,9 +119,12 @@ pub async fn swap(ctx: &Context, command: &ApplicationCommandInteraction) {
 
 async fn invalid_number_response(command: &ApplicationCommandInteraction, ctx: &Context) {
     command
-        .create_interaction_response(&ctx.http, |r| {
-            r.interaction_response_data(|d| d.content("Invalid number!"))
-        })
+        .create_interaction_response(
+            &ctx.http,
+            CreateInteractionResponse::new().interaction_response_data(
+                CreateInteractionResponseData::new().content("Invalid number!"),
+            ),
+        )
         .await
         .expect("Error creating interaction response");
 }
@@ -132,11 +141,13 @@ fn parse_track_numbers(
 
 async fn user_not_in_vc_response(command: &ApplicationCommandInteraction, ctx: &Context) {
     command
-        .create_interaction_response(&ctx.http, |r| {
-            r.interaction_response_data(|d| {
-                d.content("Must be in the same voice channel to use that command!")
-            })
-        })
+        .create_interaction_response(
+            &ctx.http,
+            CreateInteractionResponse::new().interaction_response_data(
+                CreateInteractionResponseData::new()
+                    .content("Must be in the same voice channel to use that command!"),
+            ),
+        )
         .await
         .expect("Error creating interaction response");
 }
@@ -149,35 +160,47 @@ async fn swapping_error_response(
     match e {
         SwapableError::IndexOutOfBounds => {
             command
-                .create_interaction_response(&ctx.http, |r| {
-                    r.interaction_response_data(|d| d.content("That track isn't in the queue!"))
-                })
+                .create_interaction_response(
+                    &ctx.http,
+                    CreateInteractionResponse::new().interaction_response_data(
+                        CreateInteractionResponseData::new()
+                            .content("That track isn't in the queue!"),
+                    ),
+                )
                 .await
                 .expect("Error creating interaction response");
         }
         SwapableError::NothingIsPlaying => {
             command
-                .create_interaction_response(&ctx.http, |r| {
-                    r.interaction_response_data(|d| d.content("Nothing is playing!"))
-                })
+                .create_interaction_response(
+                    &ctx.http,
+                    CreateInteractionResponse::new().interaction_response_data(
+                        CreateInteractionResponseData::new().content("Nothing is playing!"),
+                    ),
+                )
                 .await
                 .expect("Error creating interaction response");
         }
         SwapableError::CannotSwapCurrentSong => {
             command
-                .create_interaction_response(&ctx.http, |r| {
-                    r.interaction_response_data(|d| {
-                        d.content("Can't swap the song that's currently playing!")
-                    })
-                })
+                .create_interaction_response(
+                    &ctx.http,
+                    CreateInteractionResponse::new().interaction_response_data(
+                        CreateInteractionResponseData::new()
+                            .content("Can't swap the song that's currently playing!"),
+                    ),
+                )
                 .await
                 .expect("Error creating interaction response");
         }
         SwapableError::CannotSwapSameSong => {
             command
-                .create_interaction_response(&ctx.http, |r| {
-                    r.interaction_response_data(|d| d.content("Can't swap the same song!"))
-                })
+                .create_interaction_response(
+                    &ctx.http,
+                    CreateInteractionResponse::new().interaction_response_data(
+                        CreateInteractionResponseData::new().content("Can't swap the same song!"),
+                    ),
+                )
                 .await
                 .expect("Error creating interaction response");
         }
@@ -185,13 +208,13 @@ async fn swapping_error_response(
 }
 
 fn get_track_numbers(command: &ApplicationCommandInteraction) -> Option<(i64, i64)> {
-    let first_track_idx = match command.data.options.get(0)?.resolved.as_ref()? {
-        CommandDataOptionValue::Integer(i) => *i,
+    let first_track_idx = match command.data.options.get(0).unwrap().value {
+        CommandDataOptionValue::Integer(i) => i,
         _ => return None,
     };
 
-    let second_track_idx = match command.data.options.get(1)?.resolved.as_ref()? {
-        CommandDataOptionValue::Integer(i) => *i,
+    let second_track_idx = match command.data.options.get(1).unwrap().value {
+        CommandDataOptionValue::Integer(i) => i,
         _ => return None,
     };
 

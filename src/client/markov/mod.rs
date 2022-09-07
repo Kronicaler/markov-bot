@@ -1,8 +1,8 @@
 pub mod commands;
 mod data_access;
 mod file_operations;
-mod model;
 mod markov_chain;
+mod model;
 
 use self::{
     data_access::{
@@ -15,11 +15,12 @@ use self::{
         export_corpus_to_file, generate_new_corpus_from_msg_file, import_corpus_from_file,
         import_messages_from_file,
     },
-    model::{get_markov_chain_lock, MARKOV_EXPORT_PATH},
     markov_chain::filter_message_for_markov_file,
+    model::{get_markov_chain_lock, MARKOV_EXPORT_PATH},
 };
 use markov_strings::Markov;
 use serenity::{
+    builder::{CreateInteractionResponse, CreateInteractionResponseData},
     client::Context,
     model::{
         channel::Message,
@@ -42,9 +43,10 @@ pub async fn add_message_to_chain(
         None => return Ok(false),
     };
 
-    let markov_blacklisted_user = get_markov_blacklisted_user(msg.author.id.0, pool).await;
-    let markov_blacklisted_channel = get_markov_blacklisted_channel(msg.channel_id.0, pool).await;
-    let markov_blacklisted_server = get_markov_blacklisted_server(guild_id.0, pool).await;
+    let markov_blacklisted_user = get_markov_blacklisted_user(msg.author.id.get(), pool).await;
+    let markov_blacklisted_channel =
+        get_markov_blacklisted_channel(msg.channel_id.get(), pool).await;
+    let markov_blacklisted_server = get_markov_blacklisted_server(guild_id.get(), pool).await;
 
     if markov_blacklisted_server.is_some()
         || markov_blacklisted_channel.is_some()
@@ -135,19 +137,23 @@ pub async fn add_user_to_blacklist(
     command: &ApplicationCommandInteraction,
     pool: &MySqlPool,
 ) {
-    let markov_blacklisted_user = get_markov_blacklisted_user(user.id.0, pool).await;
+    let markov_blacklisted_user = get_markov_blacklisted_user(user.id.get(), pool).await;
 
     if markov_blacklisted_user.is_some() {
         command
-            .create_interaction_response(&ctx.http, |r| {
-                r.interaction_response_data(|d| d.content("I'm already not saving your messages"))
-            })
+            .create_interaction_response(
+                &ctx.http,
+                CreateInteractionResponse::new().interaction_response_data(
+                    CreateInteractionResponseData::new()
+                        .content("I'm already not saving your messages"),
+                ),
+            )
             .await
             .expect("Error creating interaction response");
         return;
     }
 
-    let response = match create_markov_blacklisted_user(user.id.0, pool).await {
+    let response = match create_markov_blacklisted_user(user.id.get(), pool).await {
         Ok(_) => format!(
             "Added {} to data collection blacklist",
             match command.guild_id {
@@ -163,9 +169,11 @@ pub async fn add_user_to_blacklist(
     };
 
     command
-        .create_interaction_response(&ctx.http, |r| {
-            r.interaction_response_data(|d| d.content(response))
-        })
+        .create_interaction_response(
+            &ctx.http,
+            CreateInteractionResponse::new()
+                .interaction_response_data(CreateInteractionResponseData::new().content(response)),
+        )
         .await
         .expect("Error creating interaction response");
 }
@@ -176,7 +184,7 @@ pub async fn remove_user_from_blacklist(
     command: &ApplicationCommandInteraction,
     pool: &MySqlPool,
 ) {
-    let response = match delete_markov_blacklisted_user(user.id.0, pool).await {
+    let response = match delete_markov_blacklisted_user(user.id.get(), pool).await {
         Ok(_) => format!(
             "removed {} from data collection blacklist",
             match command.guild_id {
@@ -192,9 +200,11 @@ pub async fn remove_user_from_blacklist(
     };
 
     command
-        .create_interaction_response(&ctx.http, |r| {
-            r.interaction_response_data(|d| d.content(response))
-        })
+        .create_interaction_response(
+            &ctx.http,
+            CreateInteractionResponse::new()
+                .interaction_response_data(CreateInteractionResponseData::new().content(response)),
+        )
         .await
         .expect("Error creating interaction response");
 }
@@ -205,7 +215,7 @@ pub async fn stop_saving_messages_channel(
     pool: &Pool<MySql>,
 ) {
     let markov_blacklisted_channel =
-        get_markov_blacklisted_channel(command.channel_id.0, pool).await;
+        get_markov_blacklisted_channel(command.channel_id.get(), pool).await;
 
     match markov_blacklisted_channel {
         Some(c) => {
@@ -213,24 +223,28 @@ pub async fn stop_saving_messages_channel(
                 .await
                 .unwrap();
             command
-                .create_interaction_response(&ctx.http, |r| {
-                    r.interaction_response_data(|d| {
-                        d.content("Continuing message saving in this channel")
-                    })
-                })
+                .create_interaction_response(
+                    &ctx.http,
+                    CreateInteractionResponse::new().interaction_response_data(
+                        CreateInteractionResponseData::new()
+                            .content("Continuing message saving in this channel"),
+                    ),
+                )
                 .await
                 .unwrap();
         }
         None => {
-            create_markov_blacklisted_channel(command.channel_id.0, pool)
+            create_markov_blacklisted_channel(command.channel_id.get(), pool)
                 .await
                 .unwrap();
             command
-                .create_interaction_response(&ctx.http, |r| {
-                    r.interaction_response_data(|d| {
-                        d.content("Stopping message saving in this channel")
-                    })
-                })
+                .create_interaction_response(
+                    &ctx.http,
+                    CreateInteractionResponse::new().interaction_response_data(
+                        CreateInteractionResponseData::new()
+                            .content("Stopping message saving in this channel"),
+                    ),
+                )
                 .await
                 .unwrap();
         }
@@ -246,11 +260,13 @@ pub async fn stop_saving_messages_server(
         Some(g) => g,
         None => {
             command
-                .create_interaction_response(&ctx.http, |r| {
-                    r.interaction_response_data(|d| {
-                        d.content("This command can only be used in a server")
-                    })
-                })
+                .create_interaction_response(
+                    &ctx.http,
+                    CreateInteractionResponse::new().interaction_response_data(
+                        CreateInteractionResponseData::new()
+                            .content("This command can only be used in a server"),
+                    ),
+                )
                 .await
                 .unwrap();
             return;
@@ -265,11 +281,13 @@ pub async fn stop_saving_messages_server(
                 .await
                 .unwrap();
             command
-                .create_interaction_response(&ctx.http, |r| {
-                    r.interaction_response_data(|d| {
-                        d.content("Continuing message saving in this server")
-                    })
-                })
+                .create_interaction_response(
+                    &ctx.http,
+                    CreateInteractionResponse::new().interaction_response_data(
+                        CreateInteractionResponseData::new()
+                            .content("Continuing message saving in this server"),
+                    ),
+                )
                 .await
                 .unwrap();
         }
@@ -278,11 +296,13 @@ pub async fn stop_saving_messages_server(
                 .await
                 .unwrap();
             command
-                .create_interaction_response(&ctx.http, |r| {
-                    r.interaction_response_data(|d| {
-                        d.content("Stopping message saving in this server")
-                    })
-                })
+                .create_interaction_response(
+                    &ctx.http,
+                    CreateInteractionResponse::new().interaction_response_data(
+                        CreateInteractionResponseData::new()
+                            .content("Stopping message saving in this server"),
+                    ),
+                )
                 .await
                 .unwrap();
         }

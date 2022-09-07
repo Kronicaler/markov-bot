@@ -1,11 +1,12 @@
 use std::ops::ControlFlow;
 
 use serenity::{
+    builder::{CreateEmbed, CreateInteractionResponse, CreateInteractionResponseData},
     client::Context,
-    model::prelude::interaction::application_command::{
-        ApplicationCommandInteraction, CommandDataOptionValue,
+    model::prelude::{
+        interaction::application_command::{ApplicationCommandInteraction, CommandDataOptionValue},
+        Colour,
     },
-    utils::Colour,
 };
 
 use super::helper_funcs::{get_call_lock, is_bot_in_another_channel};
@@ -26,9 +27,12 @@ pub async fn skip(ctx: &Context, command: &ApplicationCommandInteraction) {
 
     if call.queue().is_empty() {
         command
-            .create_interaction_response(&ctx.http, |r| {
-                r.interaction_response_data(|d| d.content("The queue is empty."))
-            })
+            .create_interaction_response(
+                &ctx.http,
+                CreateInteractionResponse::new().interaction_response_data(
+                    CreateInteractionResponseData::new().content("The queue is empty."),
+                ),
+            )
             .await
             .expect("Couldn't create response");
         return;
@@ -45,9 +49,13 @@ pub async fn skip(ctx: &Context, command: &ApplicationCommandInteraction) {
 
         if !success {
             command
-                .create_interaction_response(&ctx.http, |m| {
-                    m.interaction_response_data(|d| d.embed(|e| e.title("Couldn't skip song")))
-                })
+                .create_interaction_response(
+                    &ctx.http,
+                    CreateInteractionResponse::new().interaction_response_data(
+                        CreateInteractionResponseData::new()
+                            .embed(CreateEmbed::new().title("Couldn't skip song")),
+                    ),
+                )
                 .await
                 .expect("Error creating interaction response");
             return;
@@ -61,9 +69,13 @@ pub async fn skip(ctx: &Context, command: &ApplicationCommandInteraction) {
     let colour = Colour::from_rgb(149, 8, 2);
 
     command
-        .create_interaction_response(&ctx.http, |m| {
-            m.interaction_response_data(|d| d.embed(|e| e.title(title).colour(colour)))
-        })
+        .create_interaction_response(
+            &ctx.http,
+            CreateInteractionResponse::new().interaction_response_data(
+                CreateInteractionResponseData::new()
+                    .embed(CreateEmbed::new().title(title).colour(colour)),
+            ),
+        )
         .await
         .expect("Error creating interaction response");
 }
@@ -73,14 +85,20 @@ async fn respond_if_not_same_vc(
     ctx: &Context,
     command: &ApplicationCommandInteraction,
 ) -> ControlFlow<()> {
-    if let Some(guild) = guild_id.to_guild_cached(&ctx.cache) {
+    let guild = guild_id
+        .to_guild_cached(&ctx.cache)
+        .and_then(|g| Some(g.to_owned()));
+
+    if let Some(guild) = guild {
         if is_bot_in_another_channel(ctx, &guild, command.user.id) {
             command
-                .create_interaction_response(&ctx.http, |r| {
-                    r.interaction_response_data(|d| {
-                        d.content("Must be in the same voice channel to use that command!")
-                    })
-                })
+                .create_interaction_response(
+                    &ctx.http,
+                    CreateInteractionResponse::new().interaction_response_data(
+                        CreateInteractionResponseData::new()
+                            .content("Must be in the same voice channel to use that command!"),
+                    ),
+                )
                 .await
                 .expect("Error creating interaction response");
             return ControlFlow::Break(());
@@ -96,8 +114,8 @@ fn get_track_number(command: &ApplicationCommandInteraction) -> Option<usize> {
         .iter()
         .find(|opt| opt.name == "number")?;
 
-    match track_number.resolved.as_ref().unwrap() {
-        CommandDataOptionValue::Integer(s) => Some((*s).try_into().expect("invalid number")),
+    match track_number.value {
+        CommandDataOptionValue::Integer(s) => Some((s).try_into().expect("invalid number")),
         _ => panic!("expected an integer!"),
     }
 }

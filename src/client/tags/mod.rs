@@ -15,7 +15,11 @@ use self::data_access::{
 use super::ButtonIds;
 pub use model::Tag;
 use serenity::{
-    builder::{CreateComponents, ParseValue},
+    builder::{
+        CreateActionRow, CreateAllowedMentions, CreateButton, CreateComponents,
+        CreateInteractionResponse, CreateInteractionResponseData, CreateMessage, EditMessage,
+        ParseValue,
+    },
     client::Context,
     model::{
         channel::{Channel, Message},
@@ -32,7 +36,7 @@ use sqlx::{MySql, MySqlPool, Pool};
 use std::{fmt::Write, time::Duration};
 
 pub async fn list(ctx: &Context, command: &ApplicationCommandInteraction, pool: &Pool<MySql>) {
-    let tags = data_access::get_tags_by_server_id(command.guild_id.unwrap().0, pool).await;
+    let tags = data_access::get_tags_by_server_id(command.guild_id.unwrap().get(), pool).await;
 
     let mut message = String::new();
 
@@ -47,9 +51,11 @@ pub async fn list(ctx: &Context, command: &ApplicationCommandInteraction, pool: 
     }
 
     command
-        .create_interaction_response(&ctx.http, |r| {
-            r.interaction_response_data(|d| d.content(message))
-        })
+        .create_interaction_response(
+            &ctx.http,
+            CreateInteractionResponse::new()
+                .interaction_response_data(CreateInteractionResponseData::new().content(message)),
+        )
         .await
         .expect("Error creating interaction response");
 }
@@ -63,22 +69,26 @@ pub async fn blacklist_user_from_tags_command(
     let response = blacklist_user(user, pool).await;
 
     command
-        .create_interaction_response(&ctx.http, |r| {
-            r.interaction_response_data(|d| d.content(response))
-        })
+        .create_interaction_response(
+            &ctx.http,
+            CreateInteractionResponse::new()
+                .interaction_response_data(CreateInteractionResponseData::new().content(response)),
+        )
         .await
         .expect("Error creating interaction response");
 }
 
 pub async fn blacklist_user(user: &User, pool: &MySqlPool) -> String {
-    let is_user_blacklisted = get_tag_blacklisted_user(user.id.0, pool).await.is_some();
+    let is_user_blacklisted = get_tag_blacklisted_user(user.id.get(), pool)
+        .await
+        .is_some();
 
     if is_user_blacklisted {
-        delete_tag_blacklisted_user(user.id.0, pool).await;
+        delete_tag_blacklisted_user(user.id.get(), pool).await;
 
         "I will now ping you when you trip off a tag".to_string()
     } else {
-        create_tag_blacklisted_user(user.id.0, pool).await;
+        create_tag_blacklisted_user(user.id.get(), pool).await;
 
         "I won't ping you anymore when you trip off a tag".to_string()
     }
@@ -96,7 +106,9 @@ pub async fn check_for_tag_listeners(
     pool: &Pool<MySql>,
 ) -> Option<String> {
     let tags = data_access::get_tags_by_server_id(server_id, pool).await;
-    let is_user_blacklisted = get_tag_blacklisted_user(user_id.0, pool).await.is_some();
+    let is_user_blacklisted = get_tag_blacklisted_user(user_id.get(), pool)
+        .await
+        .is_some();
 
     if is_user_blacklisted {
         return None;
@@ -153,33 +165,37 @@ pub async fn set_tag_response_channel(
         guild_id
     } else {
         command
-            .create_interaction_response(&ctx.http, |r| {
-                r.interaction_response_data(|d| {
-                    d.content("You can only use this command in a server")
-                })
-            })
+            .create_interaction_response(
+                &ctx.http,
+                CreateInteractionResponse::new().interaction_response_data(
+                    CreateInteractionResponseData::new()
+                        .content("You can only use this command in a server"),
+                ),
+            )
             .await
             .expect("Error creating interaction response");
         return;
     };
 
-    let tag_channel = get_tag_channel(guild_id.0, pool).await;
+    let tag_channel = get_tag_channel(guild_id.get(), pool).await;
 
     match tag_channel {
         Some(t) => {
-            update_tag_channel(t.server_id, command.channel_id.0, pool).await;
+            update_tag_channel(t.server_id, command.channel_id.get(), pool).await;
         }
         None => {
-            create_tag_channel(guild_id.0, command.channel_id.0, pool).await;
+            create_tag_channel(guild_id.get(), command.channel_id.get(), pool).await;
         }
     }
 
     command
-        .create_interaction_response(&ctx.http, |r| {
-            r.interaction_response_data(|d| {
-                d.content("Successfully set this channel as the tag response channel")
-            })
-        })
+        .create_interaction_response(
+            &ctx.http,
+            CreateInteractionResponse::new().interaction_response_data(
+                CreateInteractionResponseData::new()
+                    .content("Successfully set this channel as the tag response channel"),
+            ),
+        )
         .await
         .expect("Error creating interaction response");
 }
@@ -192,7 +208,7 @@ pub async fn set_tag_response_channel(
 /// If that fails then it sends the message to the tag response channel if one is set
 /// If that fails then it iterates through every channel in the guild until it finds one it can send a message in
 pub async fn respond_to_tag(ctx: &Context, msg: &Message, message: &str, pool: &MySqlPool) {
-    let tag_channel = get_tag_channel(msg.guild_id.unwrap().0, pool).await;
+    let tag_channel = get_tag_channel(msg.guild_id.unwrap().get(), pool).await;
 
     //If the guild has a tag response channel send the response there
     if let Some(tag_channel) = tag_channel {
@@ -213,28 +229,34 @@ pub async fn respond_to_tag(ctx: &Context, msg: &Message, message: &str, pool: &
         for channel in channels {
             match channel
                 .id()
-                .send_message(&ctx.http, |m| {
-                    m.components(|c| {
-                        c.create_action_row(|a| {
-                            a.create_button(|b| {
-                                b.label("Stop pinging me")
-                                    .style(ButtonStyle::Primary)
-                                    .custom_id(ButtonIds::BlacklistMeFromTags)
-                            })
-                        })
-                    })
-                    .allowed_mentions(|m| m.parse(ParseValue::Users))
-                    .content(msg.author.mention().to_string() + " " + message)
-                })
+                .send_message(
+                    &ctx.http,
+                    CreateMessage::new()
+                        .components(
+                            CreateComponents::new().set_action_row(
+                                CreateActionRow::new().add_button(
+                                    CreateButton::new()
+                                        .label("Stop pinging me")
+                                        .style(ButtonStyle::Primary)
+                                        .custom_id(ButtonIds::BlacklistMeFromTags.to_string()),
+                                ),
+                            ),
+                        )
+                        .allowed_mentions(CreateAllowedMentions::new().parse(ParseValue::Users))
+                        .content(msg.author.mention().to_string() + " " + message),
+                )
                 .await
             {
                 Ok(mut msg) => {
                     let http = ctx.http.clone();
                     task::spawn(async move {
                         tokio::time::sleep(Duration::from_secs(10)).await;
-                        msg.edit(&http, |msg| msg.set_components(CreateComponents::default()))
-                            .await
-                            .unwrap();
+                        msg.edit(
+                            &http,
+                            EditMessage::new().components(CreateComponents::default()),
+                        )
+                        .await
+                        .unwrap();
                     });
 
                     break;
@@ -251,7 +273,11 @@ async fn send_response_in_tag_channel(
     msg: &Message,
     message: &str,
 ) {
-    let mut tag_response_channel = ctx.cache.guild_channel(channel_id);
+    let mut tag_response_channel = ctx
+        .cache
+        .guild_channel(channel_id)
+        .and_then(|c| Some(c.to_owned()));
+
     if tag_response_channel.is_none() {
         let guild_channels = Guild::get(&&ctx.http, msg.guild_id.unwrap())
             .await
@@ -260,44 +286,56 @@ async fn send_response_in_tag_channel(
             .await
             .unwrap();
 
-        tag_response_channel = guild_channels.get(&ChannelId::from(channel_id)).cloned();
+        tag_response_channel = guild_channels
+            .get(&ChannelId::from(channel_id))
+            .and_then(|c| Some(c.to_owned()));
     }
 
-    if let Some(tag_response_channel) = tag_response_channel {
-        match tag_response_channel
-            .send_message(&ctx.http, |m| {
-                let response_content = if msg.channel_id == tag_response_channel.id {
-                    message.to_owned()
-                } else {
-                    // Create this button only if the user is pinged
-                    m.components(|c| {
-                        c.create_action_row(|a| {
-                            a.create_button(|b| {
-                                b.label("Stop pinging me")
-                                    .style(ButtonStyle::Primary)
-                                    .custom_id(ButtonIds::BlacklistMeFromTags)
-                            })
-                        })
-                    });
+    let tag_response_channel = match tag_response_channel {
+        Some(it) => it,
+        _ => return,
+    };
 
-                    msg.author.mention().to_string() + " " + message
-                };
+    let mut tag_response = CreateMessage::new();
 
-                m.allowed_mentions(|m| m.parse(ParseValue::Users))
-                    .content(response_content)
-            })
-            .await
-        {
-            Ok(mut msg) => {
-                let http = ctx.http.clone();
-                task::spawn(async move {
-                    tokio::time::sleep(Duration::from_secs(10)).await;
-                    msg.edit(&http, |msg| msg.set_components(CreateComponents::default()))
-                        .await
-                        .unwrap();
-                });
-            }
-            Err(err) => eprintln!("{err}"),
-        };
-    }
+    let response_content = if msg.channel_id == tag_response_channel.id {
+        message.to_owned()
+    } else {
+        // Create this button only if the user is pinged
+        tag_response = tag_response.components(
+            CreateComponents::new().set_action_row(
+                CreateActionRow::new().add_button(
+                    CreateButton::new()
+                        .label("Stop pinging me")
+                        .style(ButtonStyle::Primary)
+                        .custom_id(ButtonIds::BlacklistMeFromTags.to_string()),
+                ),
+            ),
+        );
+
+        msg.author.mention().to_string() + " " + message
+    };
+
+    tag_response = tag_response
+        .allowed_mentions(CreateAllowedMentions::new().parse(ParseValue::Users))
+        .content(response_content);
+
+    match tag_response_channel
+        .send_message(&ctx.http, tag_response)
+        .await
+    {
+        Ok(mut msg) => {
+            let http = ctx.http.clone();
+            task::spawn(async move {
+                tokio::time::sleep(Duration::from_secs(10)).await;
+                msg.edit(
+                    &http,
+                    EditMessage::new().components(CreateComponents::default()),
+                )
+                .await
+                .unwrap();
+            });
+        }
+        Err(err) => eprintln!("{err}"),
+    };
 }

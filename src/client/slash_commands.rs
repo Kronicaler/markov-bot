@@ -2,16 +2,19 @@ use std::str::FromStr;
 
 use super::{
     helper_funcs::{get_full_command_name, ping_command, user_id_command},
-    markov::commands::{create_markov_commands, MarkovCommandBuilder},
+    markov::commands::create_markov_commands,
     tags::{
-        blacklist_user_from_tags_command, commands::TagCommandBuilder, create_tag, list,
+        blacklist_user_from_tags_command, commands::create_tag_commands, create_tag, list,
         remove_tag, set_tag_response_channel,
     },
-    voice::commands::VoiceCommandBuilder,
+    voice::commands::create_voice_commands,
 };
 use crate::{global_data, markov, voice, GuildId};
 use serenity::{
-    builder::{CreateApplicationCommand, CreateApplicationCommandOption},
+    builder::{
+        CreateApplicationCommand, CreateApplicationCommandOption, CreateInteractionResponse,
+        CreateInteractionResponseData,
+    },
     client::Context,
     model::application::command::CommandOptionType,
     model::prelude::{
@@ -95,17 +98,23 @@ pub async fn command_responses(
 
             UserCommand::tagresponsechannel => set_tag_response_channel(&ctx, command, pool).await,
             UserCommand::help => command
-                .create_interaction_response(ctx.http, |r| {
-                    r.interaction_response_data(|d| d.content(global_data::HELP_MESSAGE))
-                })
+                .create_interaction_response(
+                    ctx.http,
+                    CreateInteractionResponse::new().interaction_response_data(
+                        CreateInteractionResponseData::new().content(global_data::HELP_MESSAGE),
+                    ),
+                )
                 .await
                 .expect("Error creating interaction response"),
             UserCommand::version => command
-                .create_interaction_response(ctx.http, |r| {
-                    r.interaction_response_data(|d| {
-                        d.content("My current version is ".to_owned() + env!("CARGO_PKG_VERSION"))
-                    })
-                })
+                .create_interaction_response(
+                    ctx.http,
+                    CreateInteractionResponse::new().interaction_response_data(
+                        CreateInteractionResponseData::new().content(
+                            "My current version is ".to_owned() + env!("CARGO_PKG_VERSION"),
+                        ),
+                    ),
+                )
                 .await
                 .expect("Error creating interaction response"),
             UserCommand::continuesavingmymessages => {
@@ -135,7 +144,7 @@ pub async fn command_responses(
 
 /// Create the slash commands
 pub async fn create_global_commands(ctx: &Context) {
-    let commands = vec![
+    let mut commands = vec![
         CreateApplicationCommand::new(UserCommand::ping.to_string()).description("A ping command"),
         CreateApplicationCommand::new(UserCommand::id.to_string())
             .description("The user to lookup")
@@ -151,16 +160,14 @@ pub async fn create_global_commands(ctx: &Context) {
             .description("Information about my commands"),
         CreateApplicationCommand::new(UserCommand::version.to_string())
             .description("My current version"),
-    ]
-    .append(&mut create_markov_commands());
+    ];
+    commands.append(&mut create_markov_commands());
+    commands.append(&mut create_voice_commands());
+    commands.push(create_tag_commands());
 
-    Command::set_global_application_commands(&ctx.http, |commands| {
-        commands
-            .create_voice_commands()
-            .create_tag_commands()
-    })
-    .await
-    .expect("Couldn't create global slash commands");
+    Command::set_global_application_commands(&ctx.http, commands)
+        .await
+        .expect("Couldn't create global slash commands");
 }
 
 /// For testing purposes. Creates commands for a specific guild
@@ -170,8 +177,10 @@ pub async fn create_test_commands(ctx: &Context) {
         .parse()
         .expect("Couldn't parse the TESTING_GUILD_ID");
 
+    let test_commands: Vec<CreateApplicationCommand> = vec![];
+
     GuildId(testing_guild)
-        .set_application_commands(&ctx.http, |commands| commands)
+        .set_application_commands(&ctx.http, test_commands)
         .await
         .expect("Couldn't create guild test commands");
 }

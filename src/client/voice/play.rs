@@ -1,21 +1,25 @@
 use super::{
     helper_funcs::{get_voice_channel_of_user, is_bot_in_another_channel},
-    Handler,
+    Handler, MyAuxMetadata,
 };
+use reqwest::Client;
 use serenity::{
-    builder::CreateEmbed,
+    builder::{CreateEmbed, EditInteractionResponse},
     client::Context,
-    model::prelude::interaction::application_command::{
-        ApplicationCommandInteraction, CommandDataOptionValue,
+    model::prelude::{
+        interaction::application_command::{ApplicationCommandInteraction, CommandDataOptionValue},
+        Colour,
     },
-    utils::Colour,
 };
 use songbird::{
-    input::{Input, Metadata, Restartable},
+    input::{AuxMetadata, Input, YoutubeDl},
     tracks::TrackQueue,
     TrackEvent,
 };
-use std::time::Duration;
+use std::{
+    sync::{Arc, RwLock},
+    time::Duration,
+};
 
 ///play song from youtube
 pub async fn play(ctx: &Context, command: &ApplicationCommandInteraction) {
@@ -27,7 +31,8 @@ pub async fn play(ctx: &Context, command: &ApplicationCommandInteraction) {
     let guild = &ctx
         .cache
         .guild(guild_id)
-        .expect("unable to fetch guild from the cache");
+        .expect("unable to fetch guild from the cache")
+        .to_owned();
 
     let voice_channel_id =
         if let Some(voice_channel_id) = get_voice_channel_of_user(guild, command.user.id) {
@@ -63,15 +68,24 @@ pub async fn play(ctx: &Context, command: &ApplicationCommandInteraction) {
     add_track_end_event(&mut call, command, ctx);
 
     //get source from YouTube
-    let source = get_source(query.clone(), command, ctx)
-        .await
-        .expect("Couldn't get source");
+    let source = get_source(query.clone());
 
     //add to queue
-    let input: Input = source.into();
-    let track_handle = call.enqueue_source(input);
+    let mut input: Input = source.into();
 
-    return_response(track_handle.metadata(), call.queue(), command, ctx).await;
+    let metadata = input.aux_metadata().await.unwrap();
+
+    let track_handle = call.enqueue_input(input).await;
+
+    let my_metadata = MyAuxMetadata(metadata.clone());
+
+    track_handle
+        .typemap()
+        .write()
+        .await
+        .insert::<MyAuxMetadata>(Arc::new(RwLock::new(my_metadata)));
+
+    return_response(&metadata, call.queue(), command, ctx).await;
 }
 
 fn add_track_end_event(
@@ -92,7 +106,7 @@ fn add_track_end_event(
     }
 }
 
-fn get_query(command: &ApplicationCommandInteraction) -> &String {
+fn get_query(command: &ApplicationCommandInteraction) -> String {
     let query = command
         .data
         .options
@@ -100,7 +114,7 @@ fn get_query(command: &ApplicationCommandInteraction) -> &String {
         .find(|opt| opt.name == "query")
         .expect("expected input");
 
-    match query.resolved.as_ref().unwrap() {
+    match query.value.clone() {
         CommandDataOptionValue::String(s) => s,
         _ => panic!("expected a string"),
     }
@@ -108,64 +122,42 @@ fn get_query(command: &ApplicationCommandInteraction) -> &String {
 
 async fn voice_channel_not_found_response(command: &ApplicationCommandInteraction, ctx: &Context) {
     command
-        .edit_original_interaction_response(&ctx.http, |r| {
-            r.content("You must be in a voice channel to use this command!")
-        })
+        .edit_original_interaction_response(
+            &ctx.http,
+            EditInteractionResponse::new()
+                .content("You must be in a voice channel to use this command!"),
+        )
         .await
         .expect("Error creating interaction response");
 }
 
 async fn voice_channel_not_same_response(command: &ApplicationCommandInteraction, ctx: &Context) {
     command
-        .edit_original_interaction_response(&ctx.http, |r| {
-            r.content("You must be in the same voice channel to use this command!")
-        })
+        .edit_original_interaction_response(
+            &ctx.http,
+            EditInteractionResponse::new()
+                .content("You must be in the same voice channel to use this command!"),
+        )
         .await
         .expect("Error creating interaction response");
 }
 
-async fn get_source(
-    query: String,
-    command: &ApplicationCommandInteraction,
-    ctx: &Context,
-) -> Result<Restartable, Box<dyn std::error::Error>> {
+fn get_source(query: String) -> YoutubeDl {
     let link_regex =
     regex::Regex::new(r#"(?:(?:https?|ftp)://|\b(?:[a-z\d]+\.))(?:(?:[^\s()<>]+|\((?:[^\s()<>]+|(?:\([^\s()<>]+\)))?\))+(?:\((?:[^\s()<>]+|(?:\(?:[^\s()<>]+\)))?\)|[^\s`!()\[\]{};:'".,<>?«»“”‘’]))?"#)
     .expect("Invalid regular expression");
 
     if link_regex.is_match(&query) {
-        match Restartable::ytdl(query, true).await {
-            Ok(source) => return Ok(source),
-            Err(why) => {
-                println!("Err starting source: {:?}", why);
-                command
-                    .edit_original_interaction_response(&ctx.http, |r| {
-                        r.content("Couldn't find the video on Youtube")
-                    })
-                    .await
-                    .expect("Error creating interaction response");
-                return Err(Box::new(why));
-            }
-        }
+        return YoutubeDl::new(Client::new(), query);
     }
 
-    match Restartable::ytdl_search(query, true).await {
-        Ok(source) => Ok(source),
-        Err(why) => {
-            println!("Err starting source: {:?}", why);
-            command
-                .edit_original_interaction_response(&ctx.http, |r| {
-                    r.content("Couldn't find the video on Youtube")
-                })
-                .await
-                .expect("Error creating interaction response");
-            Err(Box::new(why))
-        }
-    }
+    let query = format!("ytsearch:{}", query);
+
+    return YoutubeDl::new(Client::new(), query);
 }
 
 async fn return_response(
-    metadata: &Metadata,
+    metadata: &AuxMetadata,
     queue: &TrackQueue,
     command: &ApplicationCommandInteraction,
     ctx: &Context,
@@ -176,7 +168,17 @@ async fn return_response(
     let time_before_song = queue
         .current_queue()
         .iter()
-        .map(|f| f.metadata().duration.unwrap())
+        .map(|f| {
+            f.typemap()
+                .blocking_read()
+                .get::<MyAuxMetadata>()
+                .unwrap()
+                .read()
+                .unwrap()
+                .0
+                .duration
+                .unwrap()
+        })
         .reduce(|a, f| a.checked_add(f).unwrap())
         .unwrap_or_default()
         - time;
@@ -189,17 +191,20 @@ async fn return_response(
     let content = if queue.len() == 1 {
         "Playing".to_owned()
     } else {
-        embed.field("Estimated time until playing: ", time_before_song, true);
+        embed = embed.field("Estimated time until playing: ", time_before_song, true);
         format!("Position in queue: {}", queue.len())
     };
 
     command
-        .edit_original_interaction_response(&ctx.http, |r| r.add_embed(embed).content(content))
+        .edit_original_interaction_response(
+            &ctx.http,
+            EditInteractionResponse::new().embed(embed).content(content),
+        )
         .await
         .expect("Error creating interaction response");
 }
 
-pub fn create_track_embed(metadata: &Metadata) -> CreateEmbed {
+pub fn create_track_embed(metadata: &AuxMetadata) -> CreateEmbed {
     let title = metadata.title.clone().unwrap_or_default();
     let channel = metadata.channel.clone().unwrap_or_default();
     let thumbnail = metadata.thumbnail.clone().unwrap_or_default();

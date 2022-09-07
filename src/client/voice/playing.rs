@@ -1,7 +1,10 @@
 use serenity::{
+    builder::{CreateEmbed, CreateInteractionResponse, CreateInteractionResponseData},
     client::Context,
-    model::prelude::interaction::application_command::ApplicationCommandInteraction, utils::Colour,
+    model::prelude::{interaction::application_command::ApplicationCommandInteraction, Colour},
 };
+
+use super::MyAuxMetadata;
 
 ///current song
 pub async fn playing(ctx: &Context, command: &ApplicationCommandInteraction) {
@@ -15,7 +18,7 @@ pub async fn playing(ctx: &Context, command: &ApplicationCommandInteraction) {
 
     let manager = songbird::get(ctx)
         .await
-        .expect("Songbird Voice client placed in at initialisation.")
+        .expect("Songbird Voice client placed in at initialization.")
         .clone();
 
     //get the queue
@@ -29,9 +32,12 @@ pub async fn playing(ctx: &Context, command: &ApplicationCommandInteraction) {
         }
 
         command
-            .create_interaction_response(&ctx.http, |m| {
-                m.interaction_response_data(|d| d.embed(|e| create_playing_embed(queue, e)))
-            })
+            .create_interaction_response(
+                &ctx.http,
+                CreateInteractionResponse::new().interaction_response_data(
+                    CreateInteractionResponseData::new().embed(create_playing_embed(queue)),
+                ),
+            )
             .await
             .expect("Error creating interaction response");
     } else {
@@ -41,35 +47,46 @@ pub async fn playing(ctx: &Context, command: &ApplicationCommandInteraction) {
 
 async fn nothing_playing_response(command: &ApplicationCommandInteraction, ctx: &Context) {
     command
-        .create_interaction_response(&ctx.http, |r| {
-            r.interaction_response_data(|d| d.content("Nothing is currently playing."))
-        })
+        .create_interaction_response(
+            &ctx.http,
+            CreateInteractionResponse::new().interaction_response_data(
+                CreateInteractionResponseData::new().content("Nothing is currently playing."),
+            ),
+        )
         .await
         .expect("Error creating interaction response");
 }
 
-fn create_playing_embed<'a>(
-    queue: &songbird::tracks::TrackQueue,
-    e: &'a mut serenity::builder::CreateEmbed,
-) -> &'a mut serenity::builder::CreateEmbed {
-    let song = &queue.current().unwrap().metadata().clone();
+fn create_playing_embed(queue: &songbird::tracks::TrackQueue) -> serenity::builder::CreateEmbed {
+    let song = queue
+        .current()
+        .unwrap()
+        .typemap()
+        .blocking_read()
+        .get::<MyAuxMetadata>()
+        .unwrap()
+        .read()
+        .unwrap()
+        .0
+        .clone();
     //create embed
     //title
-    let title = &song.title.as_ref().unwrap();
+    let title = &song.title.unwrap();
     //channel
-    let channel = &song.channel.as_ref().unwrap();
+    let channel = &song.channel.unwrap();
     //image
-    let thumbnail = &song.thumbnail.as_ref().unwrap();
+    let thumbnail = &song.thumbnail.unwrap();
     //embed
-    let url = &song.source_url.as_ref().unwrap();
+    let url = &song.source_url.unwrap();
     //duration
-    let time = &song.duration.as_ref().unwrap();
+    let time = &song.duration.unwrap();
     let minutes = time.as_secs() / 60;
     let seconds = time.as_secs() - minutes * 60;
     let duration = format!("{}:{:02}", minutes, seconds);
     //color
     let colour = Colour::from_rgb(149, 8, 2);
-    e.title(title)
+    CreateEmbed::new()
+        .title(title)
         .colour(colour)
         .description(channel)
         .field("duration: ", duration, false)

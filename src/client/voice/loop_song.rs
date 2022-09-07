@@ -1,4 +1,5 @@
 use serenity::{
+    builder::{CreateInteractionResponse, CreateInteractionResponseData},
     client::Context,
     model::prelude::interaction::application_command::ApplicationCommandInteraction,
 };
@@ -14,7 +15,7 @@ pub async fn loop_song(ctx: &Context, command: &ApplicationCommandInteraction) {
         .clone();
 
     // Get call
-    let call_lock = match manager.get(guild_id.0) {
+    let call_lock = match manager.get(guild_id) {
         Some(c) => c,
         None => {
             not_in_vc_response(command, ctx).await;
@@ -47,20 +48,25 @@ pub async fn loop_song(ctx: &Context, command: &ApplicationCommandInteraction) {
 
 async fn not_in_vc_response(command: &ApplicationCommandInteraction, ctx: &Context) {
     command
-        .create_interaction_response(&ctx.http, |r| {
-            r.interaction_response_data(|d| {
-                d.content("Must be in a voice channel to use that command!")
-            })
-        })
+        .create_interaction_response(
+            &ctx.http,
+            CreateInteractionResponse::new().interaction_response_data(
+                CreateInteractionResponseData::new()
+                    .content("Must be in a voice channel to use that command!"),
+            ),
+        )
         .await
         .expect("Error creating interaction response");
 }
 
 async fn nothing_playing_response(command: &ApplicationCommandInteraction, ctx: &Context) {
     command
-        .create_interaction_response(&ctx.http, |r| {
-            r.interaction_response_data(|d| d.content("Nothing is playing."))
-        })
+        .create_interaction_response(
+            &ctx.http,
+            CreateInteractionResponse::new().interaction_response_data(
+                CreateInteractionResponseData::new().content("Nothing is playing."),
+            ),
+        )
         .await
         .expect("Couldn't create response");
 }
@@ -72,9 +78,12 @@ async fn enable_looping(
 ) {
     track.enable_loop().unwrap();
     command
-        .create_interaction_response(&ctx.http, |m| {
-            m.interaction_response_data(|d| d.content("Looping the current song."))
-        })
+        .create_interaction_response(
+            &ctx.http,
+            CreateInteractionResponse::new().interaction_response_data(
+                CreateInteractionResponseData::new().content("Looping the current song."),
+            ),
+        )
         .await
         .expect("Error creating interaction response");
 }
@@ -86,9 +95,12 @@ async fn disable_looping(
 ) {
     track.disable_loop().unwrap();
     command
-        .create_interaction_response(&ctx.http, |m| {
-            m.interaction_response_data(|d| d.content("No longer looping the current song."))
-        })
+        .create_interaction_response(
+            &ctx.http,
+            CreateInteractionResponse::new().interaction_response_data(
+                CreateInteractionResponseData::new().content("No longer looping the current song."),
+            ),
+        )
         .await
         .expect("Error creating interaction response");
 }
