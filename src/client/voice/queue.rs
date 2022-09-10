@@ -2,8 +2,7 @@ use std::convert::TryInto;
 
 use serenity::{
     builder::{
-        CreateActionRow, CreateButton, CreateComponents, CreateEmbed, CreateInteractionResponse,
-        CreateInteractionResponseData, EditInteractionResponse,
+        CreateActionRow, CreateButton, CreateComponents, CreateEmbed, EditInteractionResponse,
     },
     client::Context,
     model::prelude::{
@@ -27,17 +26,17 @@ pub async fn queue(ctx: &Context, command: &ApplicationCommandInteraction) {
         .expect("Songbird Voice client placed in at initialization.")
         .clone();
 
+    command.defer(&ctx.http).await.unwrap();
+
     if let Some(handler_lock) = manager.get(command.guild_id.unwrap()) {
         let handler = handler_lock.lock().await;
         let queue = handler.queue();
 
         if queue.is_empty() {
             command
-                .create_interaction_response(
+                .edit_original_interaction_response(
                     &ctx.http,
-                    CreateInteractionResponse::new().interaction_response_data(
-                        CreateInteractionResponseData::new().content("The queue is empty!"),
-                    ),
+                    EditInteractionResponse::new().content("The queue is empty!"),
                 )
                 .await
                 .expect("Error creating interaction response");
@@ -49,25 +48,21 @@ pub async fn queue(ctx: &Context, command: &ApplicationCommandInteraction) {
         let duration = get_queue_duration(queue).await;
         //embed
         command
-            .create_interaction_response(
+            .edit_original_interaction_response(
                 &ctx.http,
-                CreateInteractionResponse::new().interaction_response_data(
-                    CreateInteractionResponseData::new()
-                        .content("0")
-                        .embed(create_queue_embed(queue, &duration, colour, 0usize, i).await)
-                        .components(create_queue_buttons(queue)),
-                ),
+                EditInteractionResponse::new()
+                    .content("0")
+                    .embed(create_queue_embed(queue, &duration, colour, 0usize, i).await)
+                    .components(create_queue_buttons(queue)),
             )
             .await
             .expect("Error creating interaction response");
     } else {
         command
-            .create_interaction_response(
+            .edit_original_interaction_response(
                 &ctx.http,
-                CreateInteractionResponse::new().interaction_response_data(
-                    CreateInteractionResponseData::new()
-                        .content("You must be in a voice channel to use that command!"),
-                ),
+                EditInteractionResponse::new()
+                    .content("You must be in a voice channel to use that command!"),
             )
             .await
             .expect("Error creating interaction response");
@@ -191,13 +186,7 @@ async fn change_page(
             &ctx.http,
             EditInteractionResponse::new()
                 .content(queue_start.to_string())
-                .embed(create_queue_embed(
-                    queue,
-                    &duration,
-                    colour,
-                    queue_start,
-                    queue_end,
-                ).await)
+                .embed(create_queue_embed(queue, &duration, colour, queue_start, queue_end).await)
                 .components(create_queue_buttons(queue)),
         )
         .await
@@ -226,7 +215,8 @@ async fn create_queue_embed(
             .get(i)
             .unwrap()
             .typemap()
-            .read().await
+            .read()
+            .await
             .get::<MyAuxMetadata>()
             .unwrap()
             .read()

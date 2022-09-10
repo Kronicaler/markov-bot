@@ -17,6 +17,8 @@ use songbird::{
     TrackEvent,
 };
 use std::{
+    collections::VecDeque,
+    process::Command,
     sync::{Arc, RwLock},
     time::Duration,
 };
@@ -70,22 +72,58 @@ pub async fn play(ctx: &Context, command: &ApplicationCommandInteraction) {
     //get source from YouTube
     let source = get_source(query.clone());
 
-    //add to queue
-    let mut input: Input = source.into();
+    match source {
+        SourceType::Video(source) => {
+            let mut input: Input = source.into();
 
-    let metadata = input.aux_metadata().await.unwrap();
+            let metadata = input.aux_metadata().await.unwrap();
 
-    let track_handle = call.enqueue_input(input).await;
+            let track_handle = call.enqueue_input(input).await;
 
-    let my_metadata = MyAuxMetadata(metadata.clone());
+            let my_metadata = MyAuxMetadata(metadata.clone());
 
-    track_handle
-        .typemap()
-        .write()
-        .await
-        .insert::<MyAuxMetadata>(Arc::new(RwLock::new(my_metadata)));
+            track_handle
+                .typemap()
+                .write()
+                .await
+                .insert::<MyAuxMetadata>(Arc::new(RwLock::new(my_metadata)));
 
-    return_response(&metadata, call.queue(), command, ctx).await;
+            return_response(&metadata, call.queue(), command, ctx).await;
+        }
+        SourceType::Playlist(mut sources) => {
+            let mut input: Input = sources.pop_front().unwrap().into();
+
+            let metadata = input.aux_metadata().await.unwrap_or_default();
+
+            let track_handle = call.enqueue_input(input).await;
+
+            let my_metadata = MyAuxMetadata(metadata.clone());
+
+            track_handle
+                .typemap()
+                .write()
+                .await
+                .insert::<MyAuxMetadata>(Arc::new(RwLock::new(my_metadata)));
+
+            return_response(&metadata, call.queue(), command, ctx).await;
+
+            for source in sources {
+                let mut input: Input = source.into();
+
+                let metadata = input.aux_metadata().await.unwrap();
+
+                let track_handle = call.enqueue_input(input).await;
+
+                let my_metadata = MyAuxMetadata(metadata.clone());
+
+                track_handle
+                    .typemap()
+                    .write()
+                    .await
+                    .insert::<MyAuxMetadata>(Arc::new(RwLock::new(my_metadata)));
+            }
+        }
+    }
 }
 
 fn add_track_end_event(
@@ -142,22 +180,80 @@ async fn voice_channel_not_same_response(command: &ApplicationCommandInteraction
         .expect("Error creating interaction response");
 }
 
-fn get_source(query: String) -> YoutubeDl {
+enum SourceType {
+    Video(YoutubeDl),
+    Playlist(VecDeque<YoutubeDl>),
+}
+
+fn get_source(query: String) -> SourceType {
     let link_regex =
     regex::Regex::new(r#"(?:(?:https?|ftp)://|\b(?:[a-z\d]+\.))(?:(?:[^\s()<>]+|\((?:[^\s()<>]+|(?:\([^\s()<>]+\)))?\))+(?:\((?:[^\s()<>]+|(?:\(?:[^\s()<>]+\)))?\)|[^\s`!()\[\]{};:'".,<>?«»“”‘’]))?"#)
     .expect("Invalid regular expression");
 
     let list_regex = regex::Regex::new(r#"(&list).*|(\?list).*"#).unwrap();
+    let playlist_regex = regex::Regex::new(r#"playlist\?list="#).unwrap();
 
     if link_regex.is_match(&query) {
+        if playlist_regex.is_match(&query) {
+            let mut songs_in_playlist = VecDeque::default();
+            let client = Client::new();
+
+            let ytdlp_command = Command::new("yt-dlp")
+                .args([&query, "-J", "--flat-playlist"])
+                .stdout(std::process::Stdio::piped())
+                .spawn()
+                .unwrap();
+
+            let playlist_end = std::str::from_utf8(
+                &Command::new("jq")
+                    .arg(".entries | length")
+                    .stdin(ytdlp_command.stdout.unwrap())
+                    .output()
+                    .unwrap()
+                    .stdout,
+            )
+            .unwrap()
+            .trim()
+            .to_string();
+
+            let playlist_end = playlist_end.parse().unwrap();
+
+            for i in 1..=playlist_end {
+                let video_id = std::str::from_utf8(
+                    &Command::new("yt-dlp")
+                        .args([
+                            "yt-dlp",
+                            "--get-id",
+                            "https://www.youtube.com/playlist?list=PL4D5CEDC7C3A0A193",
+                            "-I",
+                            &i.to_string(),
+                        ])
+                        .output()
+                        .unwrap()
+                        .stdout,
+                )
+                .unwrap()
+                .to_string();
+
+                let song_in_playlist = YoutubeDl::new(
+                    client.clone(),
+                    format!("https://www.youtube.com/watch?v={}", video_id),
+                );
+
+                songs_in_playlist.push_back(song_in_playlist);
+            }
+
+            return SourceType::Playlist(songs_in_playlist);
+        }
+
         // Remove breaking part of url
         let query = list_regex.replace(&query, "").to_string();
-        return YoutubeDl::new(Client::new(), query);
+        return SourceType::Video(YoutubeDl::new(Client::new(), query));
     }
 
     let query = format!("ytsearch:{}", query);
 
-    return YoutubeDl::new(Client::new(), query);
+    return SourceType::Video(YoutubeDl::new(Client::new(), query));
 }
 
 async fn return_response(
