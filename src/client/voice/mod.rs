@@ -97,7 +97,7 @@ impl Handler {
             .expect("Couldn't send message");
     }
 }
-
+#[derive(Clone)]
 pub struct MyAuxMetadata(AuxMetadata);
 
 impl TypeMapKey for MyAuxMetadata {

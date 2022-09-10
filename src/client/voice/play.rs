@@ -93,7 +93,8 @@ pub async fn play(ctx: &Context, command: &ApplicationCommandInteraction) {
             return_response(&metadata, call.queue(), command, ctx).await;
         }
         SourceType::Playlist(mut sources) => {
-            let mut input: Input = sources.pop_front().unwrap().into();
+            let source = sources.pop_front().unwrap();
+            let mut input: Input = source.into();
 
             let metadata = input.aux_metadata().await.unwrap_or_default();
 
@@ -113,28 +114,34 @@ pub async fn play(ctx: &Context, command: &ApplicationCommandInteraction) {
                 return_response(&metadata, call.queue(), command, ctx).await;
             }
 
-            use rayon::prelude::*;
-            let inputs: VecDeque<Input> = sources.into_par_iter().map(|s| s.into()).collect();
+            let inputs: VecDeque<Input> = sources.into_iter().map(|s| s.into()).collect();
             let mut threads = vec![];
 
             for mut input in inputs {
-                let call_lock = call_lock.clone();
                 threads.push(tokio::spawn(async move {
                     let metadata = input.aux_metadata().await.unwrap();
                     let my_metadata = MyAuxMetadata(metadata.clone());
 
-                    let track_handle = call_lock.lock().await.enqueue_input(input).await;
-
-                    track_handle
-                        .typemap()
-                        .write()
-                        .await
-                        .insert::<MyAuxMetadata>(Arc::new(RwLock::new(my_metadata)));
+                    (input, my_metadata)
                 }));
             }
 
+            let mut inputs = vec![];
+
             for thread in threads {
-                thread.await.unwrap();
+                inputs.push(thread.await.unwrap());
+            }
+
+            for input in inputs {
+                let my_metadata = input.1;
+
+                let track_handle = call_lock.lock().await.enqueue_input(input.0).await;
+
+                track_handle
+                    .typemap()
+                    .write()
+                    .await
+                    .insert::<MyAuxMetadata>(Arc::new(RwLock::new(my_metadata)));
             }
         }
     }
