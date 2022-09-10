@@ -18,7 +18,6 @@ use songbird::{
 };
 use std::{
     collections::VecDeque,
-    process::Command,
     sync::{Arc, RwLock},
     time::Duration,
 };
@@ -70,7 +69,7 @@ pub async fn play(ctx: &Context, command: &ApplicationCommandInteraction) {
     add_track_end_event(&mut call, command, ctx);
 
     //get source from YouTube
-    let source = get_source(query.clone());
+    let source = get_source(query.clone()).await;
 
     match source {
         SourceType::Video(source) => {
@@ -185,7 +184,7 @@ enum SourceType {
     Playlist(VecDeque<YoutubeDl>),
 }
 
-fn get_source(query: String) -> SourceType {
+async fn get_source(query: String) -> SourceType {
     let link_regex =
     regex::Regex::new(r#"(?:(?:https?|ftp)://|\b(?:[a-z\d]+\.))(?:(?:[^\s()<>]+|\((?:[^\s()<>]+|(?:\([^\s()<>]+\)))?\))+(?:\((?:[^\s()<>]+|(?:\(?:[^\s()<>]+\)))?\)|[^\s`!()\[\]{};:'".,<>?«»“”‘’]))?"#)
     .expect("Invalid regular expression");
@@ -195,17 +194,14 @@ fn get_source(query: String) -> SourceType {
 
     if link_regex.is_match(&query) {
         if playlist_regex.is_match(&query) {
-            let mut songs_in_playlist = VecDeque::default();
-            let client = Client::new();
-
-            let ytdlp_command = Command::new("yt-dlp")
+            let ytdlp_command = std::process::Command::new("yt-dlp")
                 .args([&query, "-J", "--flat-playlist"])
                 .stdout(std::process::Stdio::piped())
                 .spawn()
                 .unwrap();
 
             let playlist_end = std::str::from_utf8(
-                &Command::new("jq")
+                &std::process::Command::new("jq")
                     .arg(".entries | length")
                     .stdin(ytdlp_command.stdout.unwrap())
                     .output()
@@ -217,30 +213,45 @@ fn get_source(query: String) -> SourceType {
             .to_string();
 
             let playlist_end = playlist_end.parse().unwrap();
+            let mut songs_in_playlist = VecDeque::default();
+            let mut threads = vec![];
 
             for i in 1..=playlist_end {
-                let video_id = std::str::from_utf8(
-                    &Command::new("yt-dlp")
-                        .args([
-                            "yt-dlp",
-                            "--get-id",
-                            "https://www.youtube.com/playlist?list=PL4D5CEDC7C3A0A193",
-                            "-I",
-                            &i.to_string(),
-                        ])
-                        .output()
-                        .unwrap()
-                        .stdout,
-                )
-                .unwrap()
-                .to_string();
+                threads.push(tokio::spawn(async move {
+                    let client = Client::new();
 
-                let song_in_playlist = YoutubeDl::new(
-                    client.clone(),
-                    format!("https://www.youtube.com/watch?v={}", video_id),
-                );
+                    let video_id = std::str::from_utf8(
+                        &tokio::process::Command::new("yt-dlp")
+                            .args([
+                                "yt-dlp",
+                                "--get-id",
+                                "https://www.youtube.com/playlist?list=PL4D5CEDC7C3A0A193",
+                                "-I",
+                                &i.to_string(),
+                            ])
+                            .output()
+                            .await
+                            .unwrap()
+                            .stdout,
+                    )
+                    .unwrap()
+                    .to_string();
 
-                songs_in_playlist.push_back(song_in_playlist);
+                    println!("{video_id}");
+
+                    let song_in_playlist = YoutubeDl::new(
+                        client.clone(),
+                        format!("https://www.youtube.com/watch?v={}", video_id),
+                    );
+
+                    song_in_playlist
+                }));
+            }
+
+            for t in threads {
+                let song = t.await.unwrap();
+
+                songs_in_playlist.push_back(song);
             }
 
             return SourceType::Playlist(songs_in_playlist);
