@@ -147,7 +147,11 @@ fn get_source(query: String) -> YoutubeDl {
     regex::Regex::new(r#"(?:(?:https?|ftp)://|\b(?:[a-z\d]+\.))(?:(?:[^\s()<>]+|\((?:[^\s()<>]+|(?:\([^\s()<>]+\)))?\))+(?:\((?:[^\s()<>]+|(?:\(?:[^\s()<>]+\)))?\)|[^\s`!()\[\]{};:'".,<>?«»“”‘’]))?"#)
     .expect("Invalid regular expression");
 
+    let list_regex = regex::Regex::new(r#"(&list).*|(\?list).*"#).unwrap();
+
     if link_regex.is_match(&query) {
+        // Remove breaking part of url
+        let query = list_regex.replace(&query, "").to_string();
         return YoutubeDl::new(Client::new(), query);
     }
 
