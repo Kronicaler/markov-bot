@@ -64,10 +64,11 @@ pub async fn play(ctx: &Context, command: &ApplicationCommandInteraction) {
         voice_channel_not_found_response(command, ctx).await;
         return;
     }
-    let mut call = call_lock.lock().await;
+    {
+        let mut call = call_lock.lock().await;
 
-    add_track_end_event(&mut call, command, ctx);
-
+        add_track_end_event(&mut call, command, ctx);
+    }
     //get source from YouTube
     let source = get_source(query.clone()).await;
 
@@ -76,6 +77,8 @@ pub async fn play(ctx: &Context, command: &ApplicationCommandInteraction) {
             let mut input: Input = source.into();
 
             let metadata = input.aux_metadata().await.unwrap();
+
+            let mut call = call_lock.lock().await;
 
             let track_handle = call.enqueue_input(input).await;
 
@@ -94,22 +97,8 @@ pub async fn play(ctx: &Context, command: &ApplicationCommandInteraction) {
 
             let metadata = input.aux_metadata().await.unwrap_or_default();
 
-            let track_handle = call.enqueue_input(input).await;
-
-            let my_metadata = MyAuxMetadata(metadata.clone());
-
-            track_handle
-                .typemap()
-                .write()
-                .await
-                .insert::<MyAuxMetadata>(Arc::new(RwLock::new(my_metadata)));
-
-            return_response(&metadata, call.queue(), command, ctx).await;
-
-            for source in sources {
-                let mut input: Input = source.into();
-
-                let metadata = input.aux_metadata().await.unwrap();
+            {
+                let mut call = call_lock.lock().await;
 
                 let track_handle = call.enqueue_input(input).await;
 
@@ -120,6 +109,32 @@ pub async fn play(ctx: &Context, command: &ApplicationCommandInteraction) {
                     .write()
                     .await
                     .insert::<MyAuxMetadata>(Arc::new(RwLock::new(my_metadata)));
+
+                return_response(&metadata, call.queue(), command, ctx).await;
+            }
+
+            use rayon::prelude::*;
+            let inputs: VecDeque<Input> = sources.into_par_iter().map(|s| s.into()).collect();
+            let mut threads = vec![];
+
+            for mut input in inputs {
+                let call_lock = call_lock.clone();
+                threads.push(tokio::spawn(async move {
+                    let metadata = input.aux_metadata().await.unwrap();
+                    let my_metadata = MyAuxMetadata(metadata.clone());
+
+                    let track_handle = call_lock.lock().await.enqueue_input(input).await;
+
+                    track_handle
+                        .typemap()
+                        .write()
+                        .await
+                        .insert::<MyAuxMetadata>(Arc::new(RwLock::new(my_metadata)));
+                }));
+            }
+
+            for thread in threads {
+                thread.await.unwrap();
             }
         }
     }
@@ -223,13 +238,7 @@ async fn get_source(query: String) -> SourceType {
 
                     let video_id = std::str::from_utf8(
                         &tokio::process::Command::new("yt-dlp")
-                            .args([
-                                "yt-dlp",
-                                "--get-id",
-                                &query,
-                                "-I",
-                                &i.to_string(),
-                            ])
+                            .args(["yt-dlp", "--get-id", &query, "-I", &i.to_string()])
                             .output()
                             .await
                             .unwrap()
