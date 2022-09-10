@@ -217,6 +217,7 @@ async fn get_source(query: String) -> SourceType {
             let mut threads = vec![];
 
             for i in 1..=playlist_end {
+                let query = query.clone();
                 threads.push(tokio::spawn(async move {
                     let client = Client::new();
 
@@ -225,7 +226,7 @@ async fn get_source(query: String) -> SourceType {
                             .args([
                                 "yt-dlp",
                                 "--get-id",
-                                "https://www.youtube.com/playlist?list=PL4D5CEDC7C3A0A193",
+                                &query,
                                 "-I",
                                 &i.to_string(),
                             ])
@@ -236,8 +237,6 @@ async fn get_source(query: String) -> SourceType {
                     )
                     .unwrap()
                     .to_string();
-
-                    println!("{video_id}");
 
                     let song_in_playlist = YoutubeDl::new(
                         client.clone(),
