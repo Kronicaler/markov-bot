@@ -87,7 +87,7 @@ async fn invalid_tag_response(command: &ApplicationCommandInteraction, ctx: &Con
         .create_interaction_response(
             &ctx.http,
             CreateInteractionResponse::new().interaction_response_data(
-                CreateInteractionResponseData::new().content("can't add a mention"),
+                CreateInteractionResponseData::new().content("Tags can't contain mentions or non alphanumeric characters"),
             ),
         )
         .await
@@ -135,11 +135,13 @@ fn get_listener_and_response(command: &ApplicationCommandInteraction) -> (String
 fn is_tag_valid(response: &str, listener: &str) -> bool {
     let user_regex = Regex::new(r"<@!?(\d+)>").expect("Invalid regular expression");
     let role_regex = Regex::new(r"<@&(\d+)>").expect("Invalid regular expression");
+    let alphanumeric_regex = Regex::new(r"[^A-Za-z0-9 ]").expect("Invalid regular expression");
 
     !(user_regex.is_match(response)
         || user_regex.is_match(listener)
         || role_regex.is_match(response)
         || role_regex.is_match(listener)
         || response.contains("@everyone")
-        || response.contains("@here"))
+        || response.contains("@here")
+        || alphanumeric_regex.is_match(listener))
 }
