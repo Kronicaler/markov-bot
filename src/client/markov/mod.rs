@@ -18,7 +18,7 @@ use self::{
     markov_chain::filter_message_for_markov_file,
     model::{get_markov_chain_lock, MARKOV_EXPORT_PATH},
 };
-use markov_strings::Markov;
+use markov_strings::{ImportExport, Markov};
 use serenity::{
     builder::{CreateInteractionResponse, CreateInteractionResponseData},
     client::Context,
@@ -71,7 +71,7 @@ pub async fn add_message_to_chain(
 
                 let mut markov_chain = markov_chain_lock.blocking_write();
 
-                *markov_chain = Markov::from_export(corpus);
+                *markov_chain = create_default_chain_from_export(corpus);
             });
         }
 
@@ -102,7 +102,7 @@ pub async fn generate_sentence(ctx: &Context) -> String {
         .to_owned(),
     }
 }
-/// Initializes the Markov chain from [`MARKOV_EXPORT_PATH`][global_data::MARKOV_EXPORT_PATH]
+/// Initializes the Markov chain from [`MARKOV_EXPORT_PATH`][model::MARKOV_EXPORT_PATH]
 pub fn init() -> Result<Markov, Box<dyn Error>> {
     let mut markov_chain = create_default_chain();
 
@@ -113,22 +113,34 @@ pub fn init() -> Result<Markov, Box<dyn Error>> {
         export_corpus_to_file(&markov_chain.export())?;
     }
 
-    markov_chain = Markov::from_export(import_corpus_from_file()?);
+    markov_chain = create_default_chain_from_export(import_corpus_from_file()?);
 
     Ok(markov_chain)
 }
 
+pub const MARKOV_STATE_SIZE: usize = 3;
+pub const MARKOV_MAX_TRIES: u16 = 5000;
+
 fn create_default_chain() -> Markov {
     let mut markov_chain = Markov::new();
-    markov_chain.set_state_size(3).expect("Will never fail");
-    markov_chain.set_max_tries(1000);
-    markov_chain.set_filter(|r| {
-        if r.refs.len() >= 2 && r.score > 20 {
-            return true;
-        }
-        false
-    });
+    markov_chain.set_state_size(MARKOV_STATE_SIZE).expect("Will never fail");
+    markov_chain.set_max_tries(MARKOV_MAX_TRIES);
+    markov_chain.set_filter(|r| markov_filter(r));
     markov_chain
+}
+
+fn create_default_chain_from_export(export: ImportExport) -> Markov {
+    let mut markov_chain = Markov::from_export(export);
+    markov_chain.set_max_tries(MARKOV_MAX_TRIES);
+    markov_chain.set_filter(|r| markov_filter(r));
+    markov_chain
+}
+
+fn markov_filter(r: &markov_strings::MarkovResult) -> bool {
+    if r.score >= 20 && r.refs.len() >= 3 {
+        return true;
+    }
+    return false;
 }
 
 pub async fn add_user_to_blacklist(
