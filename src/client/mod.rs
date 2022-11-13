@@ -17,16 +17,13 @@ use self::{
 use super::tags::check_for_tag_listeners;
 use serenity::{
     async_trait,
-    builder::{CreateMessage, CreateInteractionResponse, CreateInteractionResponseData},
+    builder::{CreateInteractionResponse, CreateInteractionResponseData, CreateMessage},
     client::{Context, EventHandler},
     model::{
         channel::Message,
         gateway::Ready,
         id::UserId,
-        prelude::{
-            interaction::{Interaction},
-            Guild, MessageFlags,
-        },
+        prelude::{interaction::Interaction, Guild, MessageFlags},
         voice::VoiceState,
     },
     prelude::GatewayIntents,
@@ -70,7 +67,12 @@ impl EventHandler for Handler {
     // if is_new is true then the bot just joined a new guild
     async fn guild_create(&self, ctx: Context, guild: Guild, is_new: bool) {
         if is_new {
-            let owner = guild.member(&ctx.http, guild.owner_id).await.unwrap().user.clone();
+            let owner = guild
+                .member(&ctx.http, guild.owner_id)
+                .await
+                .unwrap()
+                .user
+                .clone();
 
             println!("Joined guild {} owned by {}", guild.name, owner.tag());
 

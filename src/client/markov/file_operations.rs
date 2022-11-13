@@ -1,7 +1,7 @@
 use super::{
     create_default_chain,
-    model::{MARKOV_DATA_SET_PATH, MARKOV_EXPORT_PATH},
     markov_chain::filter_string_for_markov_file,
+    model::{MARKOV_DATA_SET_PATH, MARKOV_EXPORT_PATH},
 };
 use crate::client::file_operations::create_file_if_missing;
 use anyhow::Result;

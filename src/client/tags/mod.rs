@@ -107,7 +107,10 @@ pub async fn check_for_tag_listeners(
     pool: &Pool<MySql>,
 ) -> Option<String> {
     let alphanumeric_regex = Regex::new(r"[^A-Za-z0-9 ]").expect("Invalid regular expression");
-    let words_in_message:Vec<String>=words_in_message.into_iter().map(|w| alphanumeric_regex.replace_all(w, "").to_string()).collect();
+    let words_in_message: Vec<String> = words_in_message
+        .into_iter()
+        .map(|w| alphanumeric_regex.replace_all(w, "").to_string())
+        .collect();
 
     let tags = data_access::get_tags_by_server_id(server_id, pool).await;
     let is_user_blacklisted = get_tag_blacklisted_user(user_id.get(), pool)

@@ -87,7 +87,8 @@ async fn invalid_tag_response(command: &ApplicationCommandInteraction, ctx: &Con
         .create_interaction_response(
             &ctx.http,
             CreateInteractionResponse::new().interaction_response_data(
-                CreateInteractionResponseData::new().content("Tags can't contain mentions or non alphanumeric characters"),
+                CreateInteractionResponseData::new()
+                    .content("Tags can't contain mentions or non alphanumeric characters"),
             ),
         )
         .await

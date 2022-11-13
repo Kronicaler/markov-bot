@@ -123,7 +123,9 @@ pub const MARKOV_MAX_TRIES: u16 = 5000;
 
 fn create_default_chain() -> Markov {
     let mut markov_chain = Markov::new();
-    markov_chain.set_state_size(MARKOV_STATE_SIZE).expect("Will never fail");
+    markov_chain
+        .set_state_size(MARKOV_STATE_SIZE)
+        .expect("Will never fail");
     markov_chain.set_max_tries(MARKOV_MAX_TRIES);
     markov_chain.set_filter(|r| markov_filter(r));
     markov_chain

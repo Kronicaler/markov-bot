@@ -81,7 +81,7 @@ fn get_listener(command: &ApplicationCommandInteraction) -> String {
         command.data.options.get(0).unwrap().value.clone()
     {
         sub_command.get(0).unwrap().value.clone()
-    }else{
+    } else {
         panic!("Expected the first option to be a subcommand");
     };
 
