@@ -1,5 +1,5 @@
 use serenity::{
-    builder::{CreateEmbed, CreateInteractionResponse, CreateInteractionResponseData},
+    builder::{CreateEmbed, EditInteractionResponse},
     client::Context,
     model::prelude::{interaction::application_command::ApplicationCommandInteraction, Colour},
 };
@@ -15,6 +15,8 @@ pub async fn playing(ctx: &Context, command: &ApplicationCommandInteraction) {
             return;
         }
     };
+
+    command.defer(&ctx.http).await.unwrap();
 
     let manager = songbird::get(ctx)
         .await
@@ -32,11 +34,9 @@ pub async fn playing(ctx: &Context, command: &ApplicationCommandInteraction) {
         }
 
         command
-            .create_interaction_response(
+            .edit_original_interaction_response(
                 &ctx.http,
-                CreateInteractionResponse::new().interaction_response_data(
-                    CreateInteractionResponseData::new().embed(create_playing_embed(queue).await),
-                ),
+                EditInteractionResponse::new().embed(create_playing_embed(queue).await),
             )
             .await
             .expect("Error creating interaction response");
@@ -47,11 +47,9 @@ pub async fn playing(ctx: &Context, command: &ApplicationCommandInteraction) {
 
 async fn nothing_playing_response(command: &ApplicationCommandInteraction, ctx: &Context) {
     command
-        .create_interaction_response(
+        .edit_original_interaction_response(
             &ctx.http,
-            CreateInteractionResponse::new().interaction_response_data(
-                CreateInteractionResponseData::new().content("Nothing is currently playing."),
-            ),
+            EditInteractionResponse::new().content("Nothing is currently playing."),
         )
         .await
         .expect("Error creating interaction response");

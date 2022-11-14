@@ -1,7 +1,5 @@
-use std::ops::ControlFlow;
-
 use serenity::{
-    builder::{CreateEmbed, CreateInteractionResponse, CreateInteractionResponseData},
+    builder::{CreateEmbed, EditInteractionResponse},
     client::Context,
     model::prelude::{
         interaction::application_command::{ApplicationCommandInteraction, CommandDataOptionValue},
@@ -9,13 +7,22 @@ use serenity::{
     },
 };
 
-use super::helper_funcs::{get_call_lock, is_bot_in_another_channel};
+use super::helper_funcs::{
+    get_call_lock, is_bot_in_another_voice_channel, voice_channel_not_same_response,
+};
 
 /// Skip the track
 pub async fn skip(ctx: &Context, command: &ApplicationCommandInteraction) {
     let guild_id = command.guild_id.expect("Couldn't get guild ID");
 
-    if let ControlFlow::Break(_) = respond_if_not_same_vc(guild_id, ctx, command).await {
+    command.defer(&ctx.http).await.unwrap();
+
+    if is_bot_in_another_voice_channel(
+        &ctx,
+        &guild_id.to_guild_cached(&ctx.cache).unwrap().clone(),
+        command.user.id,
+    ) {
+        voice_channel_not_same_response(&command, &ctx).await;
         return;
     }
 
@@ -27,11 +34,9 @@ pub async fn skip(ctx: &Context, command: &ApplicationCommandInteraction) {
 
     if call.queue().is_empty() {
         command
-            .create_interaction_response(
+            .edit_original_interaction_response(
                 &ctx.http,
-                CreateInteractionResponse::new().interaction_response_data(
-                    CreateInteractionResponseData::new().content("The queue is empty."),
-                ),
+                EditInteractionResponse::new().content("The queue is empty."),
             )
             .await
             .expect("Couldn't create response");
@@ -49,12 +54,10 @@ pub async fn skip(ctx: &Context, command: &ApplicationCommandInteraction) {
 
         if !success {
             command
-                .create_interaction_response(
+                .edit_original_interaction_response(
                     &ctx.http,
-                    CreateInteractionResponse::new().interaction_response_data(
-                        CreateInteractionResponseData::new()
-                            .embed(CreateEmbed::new().title("Couldn't skip song")),
-                    ),
+                    EditInteractionResponse::new()
+                        .embed(CreateEmbed::new().title("Couldn't skip song")),
                 )
                 .await
                 .expect("Error creating interaction response");
@@ -69,42 +72,12 @@ pub async fn skip(ctx: &Context, command: &ApplicationCommandInteraction) {
     let colour = Colour::from_rgb(149, 8, 2);
 
     command
-        .create_interaction_response(
+        .edit_original_interaction_response(
             &ctx.http,
-            CreateInteractionResponse::new().interaction_response_data(
-                CreateInteractionResponseData::new()
-                    .embed(CreateEmbed::new().title(title).colour(colour)),
-            ),
+            EditInteractionResponse::new().embed(CreateEmbed::new().title(title).colour(colour)),
         )
         .await
         .expect("Error creating interaction response");
-}
-
-async fn respond_if_not_same_vc(
-    guild_id: serenity::model::id::GuildId,
-    ctx: &Context,
-    command: &ApplicationCommandInteraction,
-) -> ControlFlow<()> {
-    let guild = guild_id
-        .to_guild_cached(&ctx.cache)
-        .and_then(|g| Some(g.to_owned()));
-
-    if let Some(guild) = guild {
-        if is_bot_in_another_channel(ctx, &guild, command.user.id) {
-            command
-                .create_interaction_response(
-                    &ctx.http,
-                    CreateInteractionResponse::new().interaction_response_data(
-                        CreateInteractionResponseData::new()
-                            .content("Must be in the same voice channel to use that command!"),
-                    ),
-                )
-                .await
-                .expect("Error creating interaction response");
-            return ControlFlow::Break(());
-        }
-    }
-    ControlFlow::Continue(())
 }
 
 fn get_track_number(command: &ApplicationCommandInteraction) -> Option<usize> {

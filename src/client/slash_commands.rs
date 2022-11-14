@@ -31,33 +31,33 @@ pub enum UserCommand {
     ping,
     id,
     #[strum(serialize = "stop-saving-my-messages")]
-    stopsavingmymessages,
+    stop_saving_my_messages,
     #[strum(serialize = "continue-saving-my-messages")]
-    continuesavingmymessages,
+    continue_saving_my_messages,
     #[strum(serialize = "stop-saving-messages-channel")]
-    stopsavingmessageschannel,
+    stop_saving_messages_channel,
     #[strum(serialize = "stop-saving-messages-server")]
-    stopsavingmessagesserver,
+    stop_saving_messages_server,
     help,
     version,
 
     // =====TAGS=====
     #[strum(props(SubCommand = "create"), serialize = "tag create")]
-    createtag,
+    create_tag,
     #[strum(props(SubCommand = "remove"), serialize = "tag remove")]
-    removetag,
+    remove_tag,
     #[strum(props(SubCommand = "list"), serialize = "tag list")]
-    taglist,
+    tag_list,
     #[strum(
         props(SubCommand = "stop-pinging-me"),
         serialize = "tag stop-pinging-me"
     )]
-    blacklistmefromtags,
+    blacklist_me_from_tags,
     #[strum(
         props(SubCommand = "response-channel"),
         serialize = "tag response-channel"
     )]
-    tagresponsechannel,
+    tag_response_channel,
 
     // =====VOICE=====
     play,
@@ -86,17 +86,19 @@ pub async fn command_responses(
         Ok(user_command) => match user_command {
             UserCommand::ping => ping_command(ctx, command).await,
             UserCommand::id => user_id_command(ctx, command).await,
-            UserCommand::stopsavingmymessages => {
+            UserCommand::stop_saving_my_messages => {
                 markov::add_user_to_blacklist(user, &ctx, command, pool).await;
             }
-            UserCommand::createtag => create_tag(&ctx, command, pool).await,
-            UserCommand::removetag => remove_tag(&ctx, command, pool).await,
-            UserCommand::taglist => list(&ctx, command, pool).await,
-            UserCommand::blacklistmefromtags => {
+            UserCommand::create_tag => create_tag(&ctx, command, pool).await,
+            UserCommand::remove_tag => remove_tag(&ctx, command, pool).await,
+            UserCommand::tag_list => list(&ctx, command, pool).await,
+            UserCommand::blacklist_me_from_tags => {
                 blacklist_user_from_tags_command(&ctx, user, command, pool).await;
             }
 
-            UserCommand::tagresponsechannel => set_tag_response_channel(&ctx, command, pool).await,
+            UserCommand::tag_response_channel => {
+                set_tag_response_channel(&ctx, command, pool).await
+            }
             UserCommand::help => command
                 .create_interaction_response(
                     ctx.http,
@@ -117,13 +119,13 @@ pub async fn command_responses(
                 )
                 .await
                 .expect("Error creating interaction response"),
-            UserCommand::continuesavingmymessages => {
+            UserCommand::continue_saving_my_messages => {
                 markov::remove_user_from_blacklist(user, &ctx, command, pool).await;
             }
-            UserCommand::stopsavingmessageschannel => {
+            UserCommand::stop_saving_messages_channel => {
                 markov::stop_saving_messages_channel(&ctx, command, pool).await;
             }
-            UserCommand::stopsavingmessagesserver => {
+            UserCommand::stop_saving_messages_server => {
                 markov::stop_saving_messages_server(&ctx, command, pool).await;
             }
 

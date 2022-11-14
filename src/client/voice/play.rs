@@ -1,5 +1,7 @@
 use super::{
-    helper_funcs::{get_voice_channel_of_user, is_bot_in_another_channel},
+    helper_funcs::{
+        get_voice_channel_of_user, is_bot_in_another_voice_channel, voice_channel_not_same_response,
+    },
     Handler, MyAuxMetadata,
 };
 use reqwest::Client;
@@ -50,7 +52,7 @@ pub async fn play(ctx: &Context, command: &ApplicationCommandInteraction) {
         None => None,
     };
 
-    if is_bot_in_another_channel(ctx, guild, command.user.id)
+    if is_bot_in_another_voice_channel(ctx, guild, command.user.id)
         && queue.is_some()
         && !queue.expect("Should never fail").is_empty()
     {
@@ -185,17 +187,6 @@ async fn voice_channel_not_found_response(command: &ApplicationCommandInteractio
             &ctx.http,
             EditInteractionResponse::new()
                 .content("You must be in a voice channel to use this command!"),
-        )
-        .await
-        .expect("Error creating interaction response");
-}
-
-async fn voice_channel_not_same_response(command: &ApplicationCommandInteraction, ctx: &Context) {
-    command
-        .edit_original_interaction_response(
-            &ctx.http,
-            EditInteractionResponse::new()
-                .content("You must be in the same voice channel to use this command!"),
         )
         .await
         .expect("Error creating interaction response");

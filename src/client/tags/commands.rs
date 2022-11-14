@@ -16,19 +16,19 @@ pub fn create_tag_commands() -> CreateApplicationCommand {
         .add_option(create_tag_removal_option())
         .add_option(CreateApplicationCommandOption::new(
             CommandOptionType::SubCommand,
-            UserCommand::taglist.get_str("SubCommand").unwrap(),
+            UserCommand::tag_list.get_str("SubCommand").unwrap(),
             "List all of the tags",
         ))
         .add_option(CreateApplicationCommandOption::new(
             CommandOptionType::SubCommand,
-            UserCommand::blacklistmefromtags
+            UserCommand::blacklist_me_from_tags
                 .get_str("SubCommand")
                 .unwrap(),
             "The bot won't respond to your messages if you trip off a tag",
         ))
         .add_option(CreateApplicationCommandOption::new(
             CommandOptionType::SubCommand,
-            UserCommand::tagresponsechannel
+            UserCommand::tag_response_channel
                 .get_str("SubCommand")
                 .unwrap(),
             "Set this channel as the channel where i will reply to tags",
@@ -38,7 +38,7 @@ pub fn create_tag_commands() -> CreateApplicationCommand {
 fn create_tag_creation_option() -> CreateApplicationCommandOption {
     CreateApplicationCommandOption::new(
         CommandOptionType::SubCommand,
-        UserCommand::createtag.get_str("SubCommand").unwrap(),
+        UserCommand::create_tag.get_str("SubCommand").unwrap(),
         "Create a tag for a word or list of words and a response whenever someone says that word",
     )
     .add_sub_option(
@@ -62,7 +62,7 @@ fn create_tag_creation_option() -> CreateApplicationCommandOption {
 fn create_tag_removal_option() -> CreateApplicationCommandOption {
     CreateApplicationCommandOption::new(
         CommandOptionType::SubCommand,
-        UserCommand::removetag.get_str("SubCommand").unwrap(),
+        UserCommand::remove_tag.get_str("SubCommand").unwrap(),
         "Remove a tag",
     )
     .add_sub_option(

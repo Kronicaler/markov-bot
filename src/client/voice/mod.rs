@@ -31,8 +31,9 @@ pub use stop::stop;
 pub use swap::swap;
 
 use crate::client::voice::play::create_track_embed;
+
 /*
- * voice.rs, LsangnaBoi 2022
+ * voice.rs, LasagnaBoi 2022
  * voice channel functionality
  */
 

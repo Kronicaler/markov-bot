@@ -1,5 +1,5 @@
 use serenity::{
-    builder::{CreateInteractionResponse, CreateInteractionResponseData},
+    builder::EditInteractionResponse,
     client::Context,
     model::{
         guild::Guild,
@@ -24,7 +24,7 @@ pub fn get_voice_channel_of_bot(ctx: &Context, guild: &Guild) -> Option<ChannelI
         .and_then(|voice_state| voice_state.channel_id)
 }
 
-pub fn is_bot_in_another_channel(ctx: &Context, guild: &Guild, user_id: UserId) -> bool {
+pub fn is_bot_in_another_voice_channel(ctx: &Context, guild: &Guild, user_id: UserId) -> bool {
     let user_voice_channel = get_voice_channel_of_user(guild, user_id);
 
     let user_voice_channel = match user_voice_channel {
@@ -46,6 +46,20 @@ pub fn is_bot_in_another_channel(ctx: &Context, guild: &Guild, user_id: UserId) 
     false
 }
 
+pub async fn voice_channel_not_same_response(
+    command: &ApplicationCommandInteraction,
+    ctx: &Context,
+) {
+    command
+        .edit_original_interaction_response(
+            &ctx.http,
+            EditInteractionResponse::new()
+                .content("You must be in the same voice channel to use this command!"),
+        )
+        .await
+        .expect("Error creating interaction response");
+}
+
 pub async fn get_call_lock(
     ctx: &Context,
     guild_id: serenity::model::id::GuildId,
@@ -53,19 +67,17 @@ pub async fn get_call_lock(
 ) -> Option<std::sync::Arc<serenity::prelude::Mutex<songbird::Call>>> {
     let manager = songbird::get(ctx)
         .await
-        .expect("Songbird Voice client placed in at initialisation.")
+        .expect("Songbird Voice client placed in at initialization.")
         .clone();
 
     let call_lock = match manager.get(guild_id) {
         Some(c) => c,
         None => {
             command
-                .create_interaction_response(
+                .edit_original_interaction_response(
                     &ctx.http,
-                    CreateInteractionResponse::new().interaction_response_data(
-                        CreateInteractionResponseData::new()
-                            .content("Must be in a voice channel to use that command!"),
-                    ),
+                    EditInteractionResponse::new()
+                        .content("Must be in a voice channel to use that command!"),
                 )
                 .await
                 .expect("Error creating interaction response");

@@ -1,5 +1,5 @@
 use serenity::{
-    builder::{CreateInteractionResponse, CreateInteractionResponseData},
+    builder::EditInteractionResponse,
     client::Context,
     model::prelude::interaction::application_command::{
         ApplicationCommandInteraction, CommandDataOptionValue,
@@ -8,7 +8,9 @@ use serenity::{
 use songbird::tracks::TrackQueue;
 use thiserror::Error;
 
-use super::helper_funcs::{get_call_lock, is_bot_in_another_channel};
+use super::helper_funcs::{
+    get_call_lock, is_bot_in_another_voice_channel, voice_channel_not_same_response,
+};
 
 pub trait Swapable {
     fn swap(&self, first_track_idx: usize, second_track_idx: usize) -> Result<(), SwapableError>;
@@ -61,6 +63,18 @@ impl Swapable for TrackQueue {
 
 pub async fn swap(ctx: &Context, command: &ApplicationCommandInteraction) {
     let guild_id = command.guild_id.expect("Couldn't get guild ID");
+    let guild = guild_id
+        .to_guild_cached(&ctx.cache)
+        .and_then(|g| Some(g.to_owned()));
+
+    command.defer(&ctx.http).await.unwrap();
+
+    if let Some(guild) = guild {
+        if is_bot_in_another_voice_channel(ctx, &guild, command.user.id) {
+            voice_channel_not_same_response(&command, &ctx).await;
+            return;
+        }
+    }
 
     let call_lock = match get_call_lock(ctx, guild_id, command).await {
         Some(value) => value,
@@ -68,17 +82,6 @@ pub async fn swap(ctx: &Context, command: &ApplicationCommandInteraction) {
     };
 
     let call = call_lock.lock().await;
-
-    let guild = guild_id
-        .to_guild_cached(&ctx.cache)
-        .and_then(|g| Some(g.to_owned()));
-
-    if let Some(guild) = guild {
-        if is_bot_in_another_channel(ctx, &guild, command.user.id) {
-            user_not_in_vc_response(command, ctx).await;
-            return;
-        }
-    }
 
     let queue = call.queue();
 
@@ -101,14 +104,12 @@ pub async fn swap(ctx: &Context, command: &ApplicationCommandInteraction) {
     match queue.swap(first_track_idx, second_track_idx) {
         Ok(_) => {
             command
-                .create_interaction_response(
+                .edit_original_interaction_response(
                     &ctx.http,
-                    CreateInteractionResponse::new().interaction_response_data(
-                        CreateInteractionResponseData::new().content(format!(
-                            "Swapped track {} and {}.",
-                            first_track_idx, second_track_idx
-                        )),
-                    ),
+                    EditInteractionResponse::new().content(format!(
+                        "Swapped track {} and {}.",
+                        first_track_idx, second_track_idx
+                    )),
                 )
                 .await
                 .expect("Error creating interaction response");
@@ -119,11 +120,9 @@ pub async fn swap(ctx: &Context, command: &ApplicationCommandInteraction) {
 
 async fn invalid_number_response(command: &ApplicationCommandInteraction, ctx: &Context) {
     command
-        .create_interaction_response(
+        .edit_original_interaction_response(
             &ctx.http,
-            CreateInteractionResponse::new().interaction_response_data(
-                CreateInteractionResponseData::new().content("Invalid number!"),
-            ),
+            EditInteractionResponse::new().content("Invalid number!"),
         )
         .await
         .expect("Error creating interaction response");
@@ -139,19 +138,6 @@ fn parse_track_numbers(
     Ok((first_track_idx, second_track_idx))
 }
 
-async fn user_not_in_vc_response(command: &ApplicationCommandInteraction, ctx: &Context) {
-    command
-        .create_interaction_response(
-            &ctx.http,
-            CreateInteractionResponse::new().interaction_response_data(
-                CreateInteractionResponseData::new()
-                    .content("Must be in the same voice channel to use that command!"),
-            ),
-        )
-        .await
-        .expect("Error creating interaction response");
-}
-
 async fn swapping_error_response(
     e: SwapableError,
     command: &ApplicationCommandInteraction,
@@ -160,46 +146,37 @@ async fn swapping_error_response(
     match e {
         SwapableError::IndexOutOfBounds => {
             command
-                .create_interaction_response(
+                .edit_original_interaction_response(
                     &ctx.http,
-                    CreateInteractionResponse::new().interaction_response_data(
-                        CreateInteractionResponseData::new()
-                            .content("That track isn't in the queue!"),
-                    ),
+                    EditInteractionResponse::new().content("That track isn't in the queue!"),
                 )
                 .await
                 .expect("Error creating interaction response");
         }
         SwapableError::NothingIsPlaying => {
             command
-                .create_interaction_response(
+                .edit_original_interaction_response(
                     &ctx.http,
-                    CreateInteractionResponse::new().interaction_response_data(
-                        CreateInteractionResponseData::new().content("Nothing is playing!"),
-                    ),
+                    EditInteractionResponse::new().content("Nothing is playing!"),
                 )
                 .await
                 .expect("Error creating interaction response");
         }
         SwapableError::CannotSwapCurrentSong => {
             command
-                .create_interaction_response(
+                .edit_original_interaction_response(
                     &ctx.http,
-                    CreateInteractionResponse::new().interaction_response_data(
-                        CreateInteractionResponseData::new()
-                            .content("Can't swap the song that's currently playing!"),
-                    ),
+                    EditInteractionResponse::new()
+                        .content("Can't swap the song that's currently playing!"),
                 )
                 .await
                 .expect("Error creating interaction response");
         }
         SwapableError::CannotSwapSameSong => {
             command
-                .create_interaction_response(
+                .edit_original_interaction_response(
                     &ctx.http,
-                    CreateInteractionResponse::new().interaction_response_data(
-                        CreateInteractionResponseData::new().content("Can't swap the same song!"),
-                    ),
+                    EditInteractionResponse::new().content("Can't swap the same song!"),
                 )
                 .await
                 .expect("Error creating interaction response");

@@ -1,10 +1,10 @@
 use serenity::{
-    builder::{CreateEmbed, CreateInteractionResponse, CreateInteractionResponseData},
+    builder::{CreateEmbed, EditInteractionResponse},
     client::Context,
     model::prelude::{interaction::application_command::ApplicationCommandInteraction, Colour},
 };
 
-use super::helper_funcs::is_bot_in_another_channel;
+use super::helper_funcs::{is_bot_in_another_voice_channel, voice_channel_not_same_response};
 
 ///stop playing
 pub async fn stop(ctx: &Context, command: &ApplicationCommandInteraction) {
@@ -13,18 +13,11 @@ pub async fn stop(ctx: &Context, command: &ApplicationCommandInteraction) {
         .to_guild_cached(&ctx.cache)
         .and_then(|g| Some(g.to_owned()));
 
+    command.defer(&ctx.http).await.unwrap();
+
     if let Some(guild) = guild {
-        if is_bot_in_another_channel(ctx, &guild, command.user.id) {
-            command
-                .create_interaction_response(
-                    &ctx.http,
-                    CreateInteractionResponse::new().interaction_response_data(
-                        CreateInteractionResponseData::new()
-                            .content("Must be in the same voice channel to use that command!"),
-                    ),
-                )
-                .await
-                .expect("Error creating interaction response");
+        if is_bot_in_another_voice_channel(ctx, &guild, command.user.id) {
+            voice_channel_not_same_response(&command, &ctx).await;
             return;
         }
     }
@@ -40,12 +33,10 @@ pub async fn stop(ctx: &Context, command: &ApplicationCommandInteraction) {
         queue.stop();
     } else {
         command
-            .create_interaction_response(
+            .edit_original_interaction_response(
                 &ctx.http,
-                CreateInteractionResponse::new().interaction_response_data(
-                    CreateInteractionResponseData::new()
-                        .content("Must be in a voice channel to use that command!"),
-                ),
+                EditInteractionResponse::new()
+                    .content("Must be in a voice channel to use that command!"),
             )
             .await
             .expect("Error creating interaction response");
@@ -55,14 +46,12 @@ pub async fn stop(ctx: &Context, command: &ApplicationCommandInteraction) {
     let colour = Colour::from_rgb(149, 8, 2);
     //embed
     command
-        .create_interaction_response(
+        .edit_original_interaction_response(
             &ctx.http,
-            CreateInteractionResponse::new().interaction_response_data(
-                CreateInteractionResponseData::new().embed(
-                    CreateEmbed::new()
-                        .title(String::from("Stopped playing, the queue has been cleared."))
-                        .colour(colour),
-                ),
+            EditInteractionResponse::new().embed(
+                CreateEmbed::new()
+                    .title(String::from("Stopped playing, the queue has been cleared."))
+                    .colour(colour),
             ),
         )
         .await
