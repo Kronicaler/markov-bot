@@ -8,12 +8,19 @@ use serenity::{
 use songbird::tracks::TrackQueue;
 use thiserror::Error;
 
-use super::helper_funcs::{
-    get_call_lock, is_bot_in_another_voice_channel, voice_channel_not_same_response,
+use super::{
+    helper_funcs::{
+        get_call_lock, is_bot_in_another_voice_channel, voice_channel_not_same_response,
+    },
+    MyAuxMetadata,
 };
 
 pub trait Swapable {
-    fn swap(&self, first_track_idx: usize, second_track_idx: usize) -> Result<(), SwapableError>;
+    fn swap(
+        &self,
+        first_track_idx: usize,
+        second_track_idx: usize,
+    ) -> Result<(MyAuxMetadata, MyAuxMetadata), SwapableError>;
 }
 
 #[derive(Debug, Error)]
@@ -29,7 +36,11 @@ pub enum SwapableError {
 }
 
 impl Swapable for TrackQueue {
-    fn swap(&self, first_track_idx: usize, second_track_idx: usize) -> Result<(), SwapableError> {
+    fn swap(
+        &self,
+        first_track_idx: usize,
+        second_track_idx: usize,
+    ) -> Result<(MyAuxMetadata, MyAuxMetadata), SwapableError> {
         self.modify_queue(|q| {
             if q.len() < first_track_idx
                 || q.len() < second_track_idx
@@ -54,9 +65,31 @@ impl Swapable for TrackQueue {
             let first_track_idx = first_track_idx - 1;
             let second_track_idx = second_track_idx - 1;
 
+            let first_track = q
+                .get(first_track_idx)
+                .unwrap()
+                .typemap()
+                .blocking_read()
+                .get::<MyAuxMetadata>()
+                .unwrap()
+                .read()
+                .unwrap()
+                .clone();
+
+            let second_track = q
+                .get(second_track_idx)
+                .unwrap()
+                .typemap()
+                .blocking_read()
+                .get::<MyAuxMetadata>()
+                .unwrap()
+                .read()
+                .unwrap()
+                .clone();
+
             q.swap(first_track_idx, second_track_idx);
 
-            Ok(())
+            Ok((first_track, second_track))
         })
     }
 }
@@ -102,13 +135,14 @@ pub async fn swap(ctx: &Context, command: &ApplicationCommandInteraction) {
         };
 
     match queue.swap(first_track_idx, second_track_idx) {
-        Ok(_) => {
+        Ok((first_track, second_track)) => {
             command
                 .edit_original_interaction_response(
                     &ctx.http,
                     EditInteractionResponse::new().content(format!(
                         "Swapped track {} and {}.",
-                        first_track_idx, second_track_idx
+                        first_track.0.title.unwrap_or("No Title".to_string()),
+                        second_track.0.title.unwrap_or("No Title".to_string())
                     )),
                 )
                 .await
