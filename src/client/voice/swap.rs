@@ -136,10 +136,12 @@ pub async fn swap(ctx: &Context, command: &ApplicationCommandInteraction) {
                 .edit_original_interaction_response(
                     &ctx.http,
                     EditInteractionResponse::new().content(format!(
-                        "Swapped tracks \n
-                        {}. {}\n
-                        and\n
-                        {}. {}",
+                        "
+Swapped tracks \n
+{}. {}\n
+and\n
+{}. {}
+",
                         first_track_idx,
                         first_track.0.title.unwrap_or("NO TITLE".to_string()),
                         second_track_idx,

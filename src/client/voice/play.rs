@@ -12,6 +12,7 @@ use serenity::{
         interaction::application_command::{ApplicationCommandInteraction, CommandDataOptionValue},
         Colour,
     },
+    prelude::Mutex,
 };
 use songbird::{
     input::{AuxMetadata, Input, YoutubeDl},
@@ -66,6 +67,7 @@ pub async fn play(ctx: &Context, command: &ApplicationCommandInteraction) {
         voice_channel_not_found_response(command, ctx).await;
         return;
     }
+
     {
         let mut call = call_lock.lock().await;
 
@@ -196,6 +198,7 @@ fn add_track_end_event(
             Handler {
                 voice_text_channel: command.channel_id,
                 guild_id: command.guild_id.unwrap(),
+                last_now_playing_msg: Arc::new(Mutex::new(None)),
                 ctx: ctx.clone(),
             },
         );
