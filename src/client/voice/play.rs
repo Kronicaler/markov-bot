@@ -6,7 +6,7 @@ use super::{
 };
 use reqwest::Client;
 use serenity::{
-    builder::{CreateEmbed, EditInteractionResponse},
+    builder::{CreateEmbed, CreateMessage, EditInteractionResponse, EditMessage},
     client::Context,
     model::prelude::{
         interaction::application_command::{ApplicationCommandInteraction, CommandDataOptionValue},
@@ -78,7 +78,13 @@ pub async fn play(ctx: &Context, command: &ApplicationCommandInteraction) {
         SourceType::Video(source) => {
             let mut input: Input = source.into();
 
-            let metadata = input.aux_metadata().await.unwrap();
+            let metadata = match input.aux_metadata().await {
+                Ok(e) => e,
+                Err(_) => {
+                    invalid_link_response(command, ctx).await;
+                    return;
+                }
+            };
 
             let mut call = call_lock.lock().await;
 
@@ -95,6 +101,11 @@ pub async fn play(ctx: &Context, command: &ApplicationCommandInteraction) {
             return_response(&metadata, call.queue(), command, ctx).await;
         }
         SourceType::Playlist(mut sources) => {
+            if sources.is_empty() {
+                invalid_link_response(command, ctx).await;
+                return;
+            }
+
             let source = sources.pop_front().unwrap();
             let mut input: Input = source.into();
 
@@ -116,28 +127,32 @@ pub async fn play(ctx: &Context, command: &ApplicationCommandInteraction) {
                 return_response(&metadata, call.queue(), command, ctx).await;
             }
 
+            let filling_queue_message = if sources.len() > 10 {
+                Some(command
+                .channel_id
+                .send_message(
+                    &ctx.http,
+                    CreateMessage::new().content(
+                        "Filling up the Queue. This can take some time with larger playlists.",
+                    ),
+                )
+                .await
+                .expect("Error sending message"))
+            } else {
+                None
+            };
+
             let inputs: VecDeque<Input> = sources.into_iter().map(|s| s.into()).collect();
-            let mut threads = vec![];
 
             for mut input in inputs {
-                threads.push(tokio::spawn(async move {
-                    let metadata = input.aux_metadata().await.unwrap();
-                    let my_metadata = MyAuxMetadata(metadata.clone());
+                let metadata = match input.aux_metadata().await {
+                    Ok(e) => e,
+                    Err(_) => continue,
+                };
 
-                    (input, my_metadata)
-                }));
-            }
+                let my_metadata = MyAuxMetadata(metadata.clone());
 
-            let mut inputs = vec![];
-
-            for thread in threads {
-                inputs.push(thread.await.unwrap());
-            }
-
-            for input in inputs {
-                let my_metadata = input.1;
-
-                let track_handle = call_lock.lock().await.enqueue_input(input.0).await;
+                let track_handle = call_lock.lock().await.enqueue_input(input).await;
 
                 track_handle
                     .typemap()
@@ -145,8 +160,28 @@ pub async fn play(ctx: &Context, command: &ApplicationCommandInteraction) {
                     .await
                     .insert::<MyAuxMetadata>(Arc::new(RwLock::new(my_metadata)));
             }
+
+            if let Some(mut filling_queue_message) = filling_queue_message {
+                filling_queue_message
+                    .edit(
+                        &ctx.http,
+                        EditMessage::new().content("Filled up the queue."),
+                    )
+                    .await
+                    .unwrap();
+            }
         }
     }
+}
+
+async fn invalid_link_response(command: &ApplicationCommandInteraction, ctx: &Context) {
+    command
+        .edit_original_interaction_response(
+            &ctx.http,
+            EditInteractionResponse::new().content("Invalid link"),
+        )
+        .await
+        .expect("Error creating interaction response");
 }
 
 fn add_track_end_event(
@@ -207,58 +242,29 @@ async fn get_source(query: String) -> SourceType {
 
     if link_regex.is_match(&query) {
         if playlist_regex.is_match(&query) {
-            let ytdlp_command = std::process::Command::new("yt-dlp")
-                .args([&query, "-J", "--flat-playlist"])
-                .stdout(std::process::Stdio::piped())
-                .spawn()
-                .unwrap();
+            let mut songs_in_playlist = VecDeque::default();
+            let client = Client::new();
 
-            let playlist_end = std::str::from_utf8(
-                &std::process::Command::new("jq")
-                    .arg(".entries | length")
-                    .stdin(ytdlp_command.stdout.unwrap())
+            std::str::from_utf8(
+                &tokio::process::Command::new("yt-dlp")
+                    .args(["yt-dlp", "--flat-playlist", "--get-id", &query])
                     .output()
+                    .await
                     .unwrap()
                     .stdout,
             )
             .unwrap()
-            .trim()
-            .to_string();
+            .to_string()
+            .split("\n")
+            .filter(|f| !f.is_empty())
+            .for_each(|id| {
+                let song_in_playlist = YoutubeDl::new(
+                    client.clone(),
+                    format!("https://www.youtube.com/watch?v={}", id),
+                );
 
-            let playlist_end = playlist_end.parse().unwrap();
-            let mut songs_in_playlist = VecDeque::default();
-            let mut threads = vec![];
-
-            for i in 1..=playlist_end {
-                let query = query.clone();
-                threads.push(tokio::spawn(async move {
-                    let client = Client::new();
-
-                    let video_id = std::str::from_utf8(
-                        &tokio::process::Command::new("yt-dlp")
-                            .args(["yt-dlp", "--get-id", &query, "-I", &i.to_string()])
-                            .output()
-                            .await
-                            .unwrap()
-                            .stdout,
-                    )
-                    .unwrap()
-                    .to_string();
-
-                    let song_in_playlist = YoutubeDl::new(
-                        client.clone(),
-                        format!("https://www.youtube.com/watch?v={}", video_id),
-                    );
-
-                    song_in_playlist
-                }));
-            }
-
-            for t in threads {
-                let song = t.await.unwrap();
-
-                songs_in_playlist.push_back(song);
-            }
+                songs_in_playlist.push_back(song_in_playlist);
+            });
 
             return SourceType::Playlist(songs_in_playlist);
         }
