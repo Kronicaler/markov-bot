@@ -59,9 +59,7 @@ pub async fn get_guild_channel(
     ctx: &Context,
     channel_id: ChannelId,
 ) -> anyhow::Result<GuildChannel> {
-    let guild = guild_id
-        .to_guild_cached(&ctx.cache)
-        .and_then(|g| Some(g.to_owned()));
+    let guild = guild_id.to_guild_cached(&ctx.cache).map(|g| g.to_owned());
 
     Ok(match guild {
         Some(guild) => get_guild_channel_from_cache(&guild, channel_id)?,

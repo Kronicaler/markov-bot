@@ -108,7 +108,7 @@ pub async fn check_for_tag_listeners(
 ) -> Option<String> {
     let alphanumeric_regex = Regex::new(r"[^A-Za-z0-9 ]").expect("Invalid regular expression");
     let words_in_message: Vec<String> = words_in_message
-        .into_iter()
+        .iter()
         .map(|w| alphanumeric_regex.replace_all(w, "").to_string())
         .collect();
 
@@ -134,7 +134,7 @@ pub async fn check_for_tag_listeners(
 
         if listener_words.len() > 1 {
             let mut count = 0;
-            for message_word in words_in_message.iter() {
+            for message_word in &words_in_message {
                 if message_word == listener_iterator.next()? {
                     count += 1;
                 } else {
@@ -234,26 +234,7 @@ pub async fn respond_to_tag(ctx: &Context, msg: &Message, message: &str, pool: &
             .map(|(_, channel)| channel.clone())
             .collect();
         for channel in channels {
-            match channel
-                .id()
-                .send_message(
-                    &ctx.http,
-                    CreateMessage::new()
-                        .components(
-                            CreateComponents::new().set_action_row(
-                                CreateActionRow::new().add_button(
-                                    CreateButton::new()
-                                        .label("Stop pinging me")
-                                        .style(ButtonStyle::Primary)
-                                        .custom_id(ButtonIds::BlacklistMeFromTags.to_string()),
-                                ),
-                            ),
-                        )
-                        .allowed_mentions(CreateAllowedMentions::new().parse(ParseValue::Users))
-                        .content(msg.author.mention().to_string() + " " + message),
-                )
-                .await
-            {
+            match tag_response(channel, ctx, msg, message).await {
                 Ok(mut msg) => {
                     let http = ctx.http.clone();
                     task::spawn(async move {
@@ -274,16 +255,40 @@ pub async fn respond_to_tag(ctx: &Context, msg: &Message, message: &str, pool: &
     }
 }
 
+async fn tag_response(
+    channel: Channel,
+    ctx: &Context,
+    msg: &Message,
+    message: &str,
+) -> Result<Message, serenity::Error> {
+    channel
+        .id()
+        .send_message(
+            &ctx.http,
+            CreateMessage::new()
+                .components(
+                    CreateComponents::new().set_action_row(
+                        CreateActionRow::new().add_button(
+                            CreateButton::new()
+                                .label("Stop pinging me")
+                                .style(ButtonStyle::Primary)
+                                .custom_id(ButtonIds::BlacklistMeFromTags.to_string()),
+                        ),
+                    ),
+                )
+                .allowed_mentions(CreateAllowedMentions::new().parse(ParseValue::Users))
+                .content(msg.author.mention().to_string() + " " + message),
+        )
+        .await
+}
+
 async fn send_response_in_tag_channel(
     ctx: &Context,
     channel_id: u64,
     msg: &Message,
     message: &str,
 ) {
-    let mut tag_response_channel = ctx
-        .cache
-        .guild_channel(channel_id)
-        .and_then(|c| Some(c.to_owned()));
+    let mut tag_response_channel = ctx.cache.guild_channel(channel_id).map(|c| c.to_owned());
 
     if tag_response_channel.is_none() {
         let guild_channels = Guild::get(&&ctx.http, msg.guild_id.unwrap())
@@ -295,7 +300,7 @@ async fn send_response_in_tag_channel(
 
         tag_response_channel = guild_channels
             .get(&ChannelId::from(channel_id))
-            .and_then(|c| Some(c.to_owned()));
+            .map(std::clone::Clone::clone);
     }
 
     let tag_response_channel = match tag_response_channel {
@@ -309,16 +314,7 @@ async fn send_response_in_tag_channel(
         message.to_owned()
     } else {
         // Create this button only if the user is pinged
-        tag_response = tag_response.components(
-            CreateComponents::new().set_action_row(
-                CreateActionRow::new().add_button(
-                    CreateButton::new()
-                        .label("Stop pinging me")
-                        .style(ButtonStyle::Primary)
-                        .custom_id(ButtonIds::BlacklistMeFromTags.to_string()),
-                ),
-            ),
-        );
+        tag_response = stop_pinging_me_button(tag_response);
 
         msg.author.mention().to_string() + " " + message
     };
@@ -345,4 +341,17 @@ async fn send_response_in_tag_channel(
         }
         Err(err) => eprintln!("{err}"),
     };
+}
+
+fn stop_pinging_me_button(tag_response: CreateMessage) -> CreateMessage {
+    tag_response.components(
+        CreateComponents::new().set_action_row(
+            CreateActionRow::new().add_button(
+                CreateButton::new()
+                    .label("Stop pinging me")
+                    .style(ButtonStyle::Primary)
+                    .custom_id(ButtonIds::BlacklistMeFromTags.to_string()),
+            ),
+        ),
+    )
 }

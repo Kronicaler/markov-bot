@@ -127,14 +127,14 @@ fn create_default_chain() -> Markov {
         .set_state_size(MARKOV_STATE_SIZE)
         .expect("Will never fail");
     markov_chain.set_max_tries(MARKOV_MAX_TRIES);
-    markov_chain.set_filter(|r| markov_filter(r));
+    markov_chain.set_filter(markov_filter);
     markov_chain
 }
 
 fn create_default_chain_from_export(export: ImportExport) -> Markov {
     let mut markov_chain = Markov::from_export(export);
     markov_chain.set_max_tries(MARKOV_MAX_TRIES);
-    markov_chain.set_filter(|r| markov_filter(r));
+    markov_chain.set_filter(markov_filter);
     markov_chain
 }
 
@@ -142,7 +142,7 @@ fn markov_filter(r: &markov_strings::MarkovResult) -> bool {
     if r.score >= 20 && r.refs.len() >= 3 {
         return true;
     }
-    return false;
+    false
 }
 
 pub async fn add_user_to_blacklist(
@@ -231,37 +231,34 @@ pub async fn stop_saving_messages_channel(
     let markov_blacklisted_channel =
         get_markov_blacklisted_channel(command.channel_id.get(), pool).await;
 
-    match markov_blacklisted_channel {
-        Some(c) => {
-            delete_markov_blacklisted_channel(c.channel_id, pool)
-                .await
-                .unwrap();
-            command
-                .create_interaction_response(
-                    &ctx.http,
-                    CreateInteractionResponse::new().interaction_response_data(
-                        CreateInteractionResponseData::new()
-                            .content("Continuing message saving in this channel"),
-                    ),
-                )
-                .await
-                .unwrap();
-        }
-        None => {
-            create_markov_blacklisted_channel(command.channel_id.get(), pool)
-                .await
-                .unwrap();
-            command
-                .create_interaction_response(
-                    &ctx.http,
-                    CreateInteractionResponse::new().interaction_response_data(
-                        CreateInteractionResponseData::new()
-                            .content("Stopping message saving in this channel"),
-                    ),
-                )
-                .await
-                .unwrap();
-        }
+    if let Some(c) = markov_blacklisted_channel {
+        delete_markov_blacklisted_channel(c.channel_id, pool)
+            .await
+            .unwrap();
+        command
+            .create_interaction_response(
+                &ctx.http,
+                CreateInteractionResponse::new().interaction_response_data(
+                    CreateInteractionResponseData::new()
+                        .content("Continuing message saving in this channel"),
+                ),
+            )
+            .await
+            .unwrap();
+    } else {
+        create_markov_blacklisted_channel(command.channel_id.get(), pool)
+            .await
+            .unwrap();
+        command
+            .create_interaction_response(
+                &ctx.http,
+                CreateInteractionResponse::new().interaction_response_data(
+                    CreateInteractionResponseData::new()
+                        .content("Stopping message saving in this channel"),
+                ),
+            )
+            .await
+            .unwrap();
     }
 }
 
@@ -270,56 +267,52 @@ pub async fn stop_saving_messages_server(
     command: &ApplicationCommandInteraction,
     pool: &Pool<MySql>,
 ) {
-    let guild_id = match command.guild_id {
-        Some(g) => g,
-        None => {
-            command
-                .create_interaction_response(
-                    &ctx.http,
-                    CreateInteractionResponse::new().interaction_response_data(
-                        CreateInteractionResponseData::new()
-                            .content("This command can only be used in a server"),
-                    ),
-                )
-                .await
-                .unwrap();
-            return;
-        }
+    let guild_id = if let Some(g) = command.guild_id {
+        g
+    } else {
+        command
+            .create_interaction_response(
+                &ctx.http,
+                CreateInteractionResponse::new().interaction_response_data(
+                    CreateInteractionResponseData::new()
+                        .content("This command can only be used in a server"),
+                ),
+            )
+            .await
+            .unwrap();
+        return;
     };
 
     let markov_blacklisted_server = get_markov_blacklisted_server(guild_id.into(), pool).await;
 
-    match markov_blacklisted_server {
-        Some(s) => {
-            delete_markov_blacklisted_server(s.server_id, pool)
-                .await
-                .unwrap();
-            command
-                .create_interaction_response(
-                    &ctx.http,
-                    CreateInteractionResponse::new().interaction_response_data(
-                        CreateInteractionResponseData::new()
-                            .content("Continuing message saving in this server"),
-                    ),
-                )
-                .await
-                .unwrap();
-        }
-        None => {
-            create_markov_blacklisted_server(guild_id.into(), pool)
-                .await
-                .unwrap();
-            command
-                .create_interaction_response(
-                    &ctx.http,
-                    CreateInteractionResponse::new().interaction_response_data(
-                        CreateInteractionResponseData::new()
-                            .content("Stopping message saving in this server"),
-                    ),
-                )
-                .await
-                .unwrap();
-        }
+    if let Some(s) = markov_blacklisted_server {
+        delete_markov_blacklisted_server(s.server_id, pool)
+            .await
+            .unwrap();
+        command
+            .create_interaction_response(
+                &ctx.http,
+                CreateInteractionResponse::new().interaction_response_data(
+                    CreateInteractionResponseData::new()
+                        .content("Continuing message saving in this server"),
+                ),
+            )
+            .await
+            .unwrap();
+    } else {
+        create_markov_blacklisted_server(guild_id.into(), pool)
+            .await
+            .unwrap();
+        command
+            .create_interaction_response(
+                &ctx.http,
+                CreateInteractionResponse::new().interaction_response_data(
+                    CreateInteractionResponseData::new()
+                        .content("Stopping message saving in this server"),
+                ),
+            )
+            .await
+            .unwrap();
     }
 }
 

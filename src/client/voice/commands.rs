@@ -6,7 +6,7 @@ use serenity::{
 use crate::client::slash_commands::UserCommand;
 
 pub fn create_voice_commands() -> Vec<CreateApplicationCommand> {
-    return vec![
+    vec![
         create_play_command(),
         create_skip_command(),
         create_swap_command(),
@@ -18,7 +18,7 @@ pub fn create_voice_commands() -> Vec<CreateApplicationCommand> {
             .description("get the current queue"),
         CreateApplicationCommand::new(UserCommand::loop_song.to_string())
             .description("loop the current "),
-    ];
+    ]
 }
 
 fn create_play_command() -> CreateApplicationCommand {

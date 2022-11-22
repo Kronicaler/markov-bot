@@ -8,12 +8,11 @@ use super::MyAuxMetadata;
 
 ///current song
 pub async fn playing(ctx: &Context, command: &ApplicationCommandInteraction) {
-    let guild_id = match command.guild_id {
-        Some(e) => e,
-        None => {
-            nothing_playing_response(command, ctx).await;
-            return;
-        }
+    let guild_id = if let Some(e) = command.guild_id {
+        e
+    } else {
+        nothing_playing_response(command, ctx).await;
+        return;
     };
 
     command.defer(&ctx.http).await.unwrap();

@@ -96,32 +96,29 @@ impl Handler {
 
         let mut last_now_playing_msg_ = self.last_now_playing_msg.lock().await;
 
-        match last_now_playing_msg_.clone() {
-            Some(mut e) => {
-                let msgs_after_now_playing_msg = self
-                    .voice_text_channel
-                    .messages(&self.ctx.http, GetMessages::new().after(e.id))
-                    .await
-                    .unwrap();
+        if let Some(mut e) = last_now_playing_msg_.clone() {
+            let msgs_after_now_playing_msg = self
+                .voice_text_channel
+                .messages(&self.ctx.http, GetMessages::new().after(e.id))
+                .await
+                .unwrap();
 
-                if !msgs_after_now_playing_msg.is_empty() {
-                    let now_playing_msg = self.send_now_playing_message(embed).await;
-
-                    *last_now_playing_msg_ = Some(now_playing_msg);
-                    return;
-                }
-
-                e.edit(&self.ctx.http, EditMessage::new().embed(embed))
-                    .await
-                    .unwrap();
-
-                *last_now_playing_msg_ = Some(e);
-            }
-            None => {
+            if !msgs_after_now_playing_msg.is_empty() {
                 let now_playing_msg = self.send_now_playing_message(embed).await;
 
                 *last_now_playing_msg_ = Some(now_playing_msg);
+                return;
             }
+
+            e.edit(&self.ctx.http, EditMessage::new().embed(embed))
+                .await
+                .unwrap();
+
+            *last_now_playing_msg_ = Some(e);
+        } else {
+            let now_playing_msg = self.send_now_playing_message(embed).await;
+
+            *last_now_playing_msg_ = Some(now_playing_msg);
         }
     }
 

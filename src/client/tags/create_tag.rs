@@ -13,12 +13,11 @@ pub async fn create_tag(
     command: &ApplicationCommandInteraction,
     pool: &Pool<MySql>,
 ) {
-    let guild_id = match command.guild_id {
-        Some(g) => g,
-        None => {
-            tag_outside_server_response(command, ctx).await;
-            return;
-        }
+    let guild_id = if let Some(g) = command.guild_id {
+        g
+    } else {
+        tag_outside_server_response(command, ctx).await;
+        return;
     };
 
     let (listener, response) = get_listener_and_response(command);

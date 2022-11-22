@@ -70,19 +70,18 @@ pub async fn get_call_lock(
         .expect("Songbird Voice client placed in at initialization.")
         .clone();
 
-    let call_lock = match manager.get(guild_id) {
-        Some(c) => c,
-        None => {
-            command
-                .edit_original_interaction_response(
-                    &ctx.http,
-                    EditInteractionResponse::new()
-                        .content("Must be in a voice channel to use that command!"),
-                )
-                .await
-                .expect("Error creating interaction response");
-            return None;
-        }
+    let call_lock = if let Some(c) = manager.get(guild_id) {
+        c
+    } else {
+        command
+            .edit_original_interaction_response(
+                &ctx.http,
+                EditInteractionResponse::new()
+                    .content("Must be in a voice channel to use that command!"),
+            )
+            .await
+            .expect("Error creating interaction response");
+        return None;
     };
 
     Some(call_lock)

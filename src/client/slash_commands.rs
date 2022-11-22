@@ -97,7 +97,7 @@ pub async fn command_responses(
             }
 
             UserCommand::tag_response_channel => {
-                set_tag_response_channel(&ctx, command, pool).await
+                set_tag_response_channel(&ctx, command, pool).await;
             }
             UserCommand::help => command
                 .create_interaction_response(

@@ -10,7 +10,7 @@ use serenity::{
     client::Context,
     model::prelude::{
         interaction::application_command::{ApplicationCommandInteraction, CommandDataOptionValue},
-        Colour,
+        Colour, Message,
     },
     prelude::Mutex,
 };
@@ -21,6 +21,7 @@ use songbird::{
 };
 use std::{
     collections::VecDeque,
+    ops::ControlFlow,
     sync::{Arc, RwLock},
     time::Duration,
 };
@@ -78,102 +79,124 @@ pub async fn play(ctx: &Context, command: &ApplicationCommandInteraction) {
 
     match source {
         SourceType::Video(source) => {
-            let mut input: Input = source.into();
-
-            let metadata = match input.aux_metadata().await {
-                Ok(e) => e,
-                Err(_) => {
-                    invalid_link_response(command, ctx).await;
-                    return;
-                }
-            };
-
-            let mut call = call_lock.lock().await;
-
-            let track_handle = call.enqueue_input(input).await;
-
-            let my_metadata = MyAuxMetadata(metadata.clone());
-
-            track_handle
-                .typemap()
-                .write()
-                .await
-                .insert::<MyAuxMetadata>(Arc::new(RwLock::new(my_metadata)));
-
-            return_response(&metadata, call.queue(), command, ctx).await;
+            handle_video(source, command, ctx, &call_lock).await;
         }
-        SourceType::Playlist(mut sources) => {
-            if sources.is_empty() {
-                invalid_link_response(command, ctx).await;
-                return;
-            }
-
-            let source = sources.pop_front().unwrap();
-            let mut input: Input = source.into();
-
-            let metadata = input.aux_metadata().await.unwrap_or_default();
-
-            {
-                let mut call = call_lock.lock().await;
-
-                let track_handle = call.enqueue_input(input).await;
-
-                let my_metadata = MyAuxMetadata(metadata.clone());
-
-                track_handle
-                    .typemap()
-                    .write()
-                    .await
-                    .insert::<MyAuxMetadata>(Arc::new(RwLock::new(my_metadata)));
-
-                return_response(&metadata, call.queue(), command, ctx).await;
-            }
-
-            let filling_queue_message = if sources.len() > 10 {
-                Some(command
-                .channel_id
-                .send_message(
-                    &ctx.http,
-                    CreateMessage::new().content(
-                        "Filling up the Queue. This can take some time with larger playlists.",
-                    ),
-                )
-                .await
-                .expect("Error sending message"))
-            } else {
-                None
-            };
-
-            let inputs: VecDeque<Input> = sources.into_iter().map(|s| s.into()).collect();
-
-            for mut input in inputs {
-                let metadata = match input.aux_metadata().await {
-                    Ok(e) => e,
-                    Err(_) => continue,
-                };
-
-                let my_metadata = MyAuxMetadata(metadata.clone());
-
-                let track_handle = call_lock.lock().await.enqueue_input(input).await;
-
-                track_handle
-                    .typemap()
-                    .write()
-                    .await
-                    .insert::<MyAuxMetadata>(Arc::new(RwLock::new(my_metadata)));
-            }
-
-            if let Some(mut filling_queue_message) = filling_queue_message {
-                filling_queue_message
-                    .edit(
-                        &ctx.http,
-                        EditMessage::new().content("Filled up the queue."),
-                    )
-                    .await
-                    .unwrap();
-            }
+        SourceType::Playlist(sources) => {
+            handle_playlist(sources, command, ctx, call_lock).await;
         }
     }
+}
+
+async fn handle_video(
+    source: YoutubeDl,
+    command: &ApplicationCommandInteraction,
+    ctx: &Context,
+    call_lock: &Arc<Mutex<songbird::Call>>,
+) -> ControlFlow<()> {
+    let mut input: Input = source.into();
+    let metadata = if let Ok(e) = input.aux_metadata().await {
+        e
+    } else {
+        invalid_link_response(command, ctx).await;
+        return ControlFlow::Break(());
+    };
+    let mut call = call_lock.lock().await;
+    let track_handle = call.enqueue_input(input).await;
+    let my_metadata = MyAuxMetadata(metadata.clone());
+    track_handle
+        .typemap()
+        .write()
+        .await
+        .insert::<MyAuxMetadata>(Arc::new(RwLock::new(my_metadata)));
+    return_response(&metadata, call.queue(), command, ctx).await;
+    ControlFlow::Continue(())
+}
+
+async fn handle_playlist(
+    mut sources: VecDeque<YoutubeDl>,
+    command: &ApplicationCommandInteraction,
+    ctx: &Context,
+    call_lock: Arc<Mutex<songbird::Call>>,
+) {
+    if sources.is_empty() {
+        invalid_link_response(command, ctx).await;
+        return;
+    }
+    {
+        let source = sources.pop_front().unwrap();
+        let mut input: Input = source.into();
+        let metadata = input.aux_metadata().await.unwrap_or_default();
+        let mut call = call_lock.lock().await;
+        let track_handle = call.enqueue_input(input).await;
+
+        let my_metadata = MyAuxMetadata(metadata.clone());
+
+        track_handle
+            .typemap()
+            .write()
+            .await
+            .insert::<MyAuxMetadata>(Arc::new(RwLock::new(my_metadata)));
+
+        return_response(&metadata, call.queue(), command, ctx).await;
+    }
+    let filling_queue_message = if sources.len() > 10 {
+        Some(filling_up_queue_response(command, ctx).await)
+    } else {
+        None
+    };
+    fill_queue(sources, call_lock).await;
+    if let Some(filling_queue_message) = filling_queue_message {
+        filled_up_queue_response(filling_queue_message, ctx).await;
+    }
+}
+
+async fn filling_up_queue_response(
+    command: &ApplicationCommandInteraction,
+    ctx: &Context,
+) -> Message {
+    command
+        .channel_id
+        .send_message(
+            &ctx.http,
+            CreateMessage::new()
+                .content("Filling up the Queue. This can take some time with larger playlists."),
+        )
+        .await
+        .expect("Error sending message")
+}
+
+async fn fill_queue(sources: VecDeque<YoutubeDl>, call_lock: Arc<Mutex<songbird::Call>>) {
+    let inputs: VecDeque<Input> = sources.into_iter().map(Into::into).collect();
+
+    for mut input in inputs {
+        let metadata = match input.aux_metadata().await {
+            Ok(e) => e,
+            Err(_) => continue,
+        };
+
+        let my_metadata = MyAuxMetadata(metadata.clone());
+
+        let track_handle = call_lock.lock().await.enqueue_input(input).await;
+
+        track_handle
+            .typemap()
+            .write()
+            .await
+            .insert::<MyAuxMetadata>(Arc::new(RwLock::new(my_metadata)));
+    }
+}
+
+async fn filled_up_queue_response(
+    mut filling_queue_message: serenity::model::prelude::Message,
+    ctx: &Context,
+) {
+    filling_queue_message
+        .edit(
+            &ctx.http,
+            EditMessage::new().content("Filled up the queue."),
+        )
+        .await
+        .unwrap();
 }
 
 async fn invalid_link_response(command: &ApplicationCommandInteraction, ctx: &Context) {
@@ -258,15 +281,15 @@ async fn get_source(query: String) -> SourceType {
             )
             .unwrap()
             .to_string()
-            .split("\n")
+            .split('\n')
             .filter(|f| !f.is_empty())
             .for_each(|id| {
-                let song_in_playlist = YoutubeDl::new(
+                let song = YoutubeDl::new(
                     client.clone(),
                     format!("https://www.youtube.com/watch?v={}", id),
                 );
 
-                songs_in_playlist.push_back(song_in_playlist);
+                songs_in_playlist.push_back(song);
             });
 
             return SourceType::Playlist(songs_in_playlist);
@@ -279,7 +302,7 @@ async fn get_source(query: String) -> SourceType {
 
     let query = format!("ytsearch:{}", query);
 
-    return SourceType::Video(YoutubeDl::new(Client::new(), query));
+    SourceType::Video(YoutubeDl::new(Client::new(), query))
 }
 
 async fn return_response(
@@ -307,13 +330,12 @@ async fn return_response(
                 .0
                 .duration
                 .unwrap(),
-        )
+        );
     }
 
     let time_before_song = durations
         .into_iter()
         .reduce(|a, f| a.checked_add(f).unwrap())
-        .and_then(|d| Some(d))
         .unwrap_or_default()
         - time;
 
@@ -350,14 +372,11 @@ pub fn create_track_embed(metadata: &AuxMetadata) -> CreateEmbed {
     let duration = format!("{}:{:02}", minutes, seconds);
     let colour = Colour::from_rgb(149, 8, 2);
 
-    let embed = CreateEmbed::default()
+    CreateEmbed::default()
         .title(title)
         .colour(colour)
         .description(channel)
         .field("Duration: ", duration, true)
         .thumbnail(thumbnail)
         .url(url)
-        .clone();
-
-    embed
 }

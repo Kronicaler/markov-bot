@@ -66,15 +66,13 @@ impl Swapable for TrackQueue {
 
 pub async fn swap(ctx: &Context, command: &ApplicationCommandInteraction) {
     let guild_id = command.guild_id.expect("Couldn't get guild ID");
-    let guild = guild_id
-        .to_guild_cached(&ctx.cache)
-        .and_then(|g| Some(g.to_owned()));
+    let guild = guild_id.to_guild_cached(&ctx.cache).map(|g| g.to_owned());
 
     command.defer(&ctx.http).await.unwrap();
 
     if let Some(guild) = guild {
         if is_bot_in_another_voice_channel(ctx, &guild, command.user.id) {
-            voice_channel_not_same_response(&command, &ctx).await;
+            voice_channel_not_same_response(command, ctx).await;
             return;
         }
     }
@@ -88,12 +86,11 @@ pub async fn swap(ctx: &Context, command: &ApplicationCommandInteraction) {
 
     let queue = call.queue();
 
-    let (first_track_idx, second_track_idx) = match get_track_numbers(command) {
-        Some(v) => v,
-        None => {
-            invalid_number_response(command, ctx).await;
-            return;
-        }
+    let (first_track_idx, second_track_idx) = if let Some(v) = get_track_numbers(command) {
+        v
+    } else {
+        invalid_number_response(command, ctx).await;
+        return;
     };
 
     let (first_track_idx, second_track_idx) =
@@ -104,55 +101,59 @@ pub async fn swap(ctx: &Context, command: &ApplicationCommandInteraction) {
             return;
         };
 
-    let first_track = queue
-        .current_queue()
-        .get(first_track_idx - 1)
-        .unwrap()
-        .typemap()
-        .read()
-        .await
-        .get::<MyAuxMetadata>()
-        .unwrap()
-        .read()
-        .unwrap()
-        .clone();
+    let first_track = get_track_from_queue(queue, first_track_idx).await;
 
-    let second_track = queue
-        .current_queue()
-        .get(second_track_idx - 1)
-        .unwrap()
-        .typemap()
-        .read()
-        .await
-        .get::<MyAuxMetadata>()
-        .unwrap()
-        .read()
-        .unwrap()
-        .clone();
+    let second_track = get_track_from_queue(queue, second_track_idx).await;
 
     match queue.swap(first_track_idx, second_track_idx) {
         Ok(_) => {
-            command
-                .edit_original_interaction_response(
-                    &ctx.http,
-                    EditInteractionResponse::new().content(format!(
-                        "
+            swapping_success_response(command, ctx, first_track_idx, first_track, second_track_idx, second_track).await;
+        }
+        Err(e) => swapping_error_response(e, command, ctx).await,
+    }
+}
+
+async fn swapping_success_response(command: &ApplicationCommandInteraction, ctx: &Context, first_track_idx: usize, first_track: MyAuxMetadata, second_track_idx: usize, second_track: MyAuxMetadata) {
+    command
+        .edit_original_interaction_response(
+            &ctx.http,
+            EditInteractionResponse::new().content(format!(
+                "
 Swapped tracks \n
 {}. {}\n
 and\n
 {}. {}
 ",
-                        first_track_idx,
-                        first_track.0.title.unwrap_or("NO TITLE".to_string()),
-                        second_track_idx,
-                        second_track.0.title.unwrap_or("NO TITLE".to_string())
-                    )),
-                )
-                .await
-                .expect("Error creating interaction response");
-        }
-        Err(e) => swapping_error_response(e, command, ctx).await,
-    }
+                first_track_idx,
+                first_track
+                    .0
+                    .title
+                    .unwrap_or_else(|| "NO TITLE".to_string()),
+                second_track_idx,
+                second_track
+                    .0
+                    .title
+                    .unwrap_or_else(|| "NO TITLE".to_string())
+            )),
+        )
+        .await
+        .expect("Error creating interaction response");
+}
+
+async fn get_track_from_queue(queue: &TrackQueue, track_number: usize) -> MyAuxMetadata {
+    let second_track = queue
+        .current_queue()
+        .get(track_number - 1)
+        .unwrap()
+        .typemap()
+        .read()
+        .await
+        .get::<MyAuxMetadata>()
+        .unwrap()
+        .read()
+        .unwrap()
+        .clone();
+    second_track
 }
 
 async fn invalid_number_response(command: &ApplicationCommandInteraction, ctx: &Context) {

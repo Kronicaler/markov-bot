@@ -17,7 +17,7 @@ pub async fn loop_song(ctx: &Context, command: &ApplicationCommandInteraction) {
         &guild_id.to_guild_cached(&ctx.cache).unwrap(),
         command.user.id,
     ) {
-        voice_channel_not_same_response(&command, &ctx).await;
+        voice_channel_not_same_response(command, ctx).await;
         return;
     }
 
@@ -27,21 +27,19 @@ pub async fn loop_song(ctx: &Context, command: &ApplicationCommandInteraction) {
         .clone();
 
     // Get call
-    let call_lock = match manager.get(guild_id) {
-        Some(c) => c,
-        None => {
-            not_in_vc_response(command, ctx).await;
-            return;
-        }
+    let call_lock = if let Some(c) = manager.get(guild_id) {
+        c
+    } else {
+        not_in_vc_response(command, ctx).await;
+        return;
     };
     let call = call_lock.lock().await;
 
-    let track = match call.queue().current() {
-        Some(c) => c,
-        None => {
-            nothing_playing_response(command, ctx).await;
-            return;
-        }
+    let track = if let Some(c) = call.queue().current() {
+        c
+    } else {
+        nothing_playing_response(command, ctx).await;
+        return;
     };
 
     match track.get_info().await.unwrap().loops {

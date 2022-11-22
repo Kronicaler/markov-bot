@@ -9,15 +9,13 @@ use super::helper_funcs::{is_bot_in_another_voice_channel, voice_channel_not_sam
 ///stop playing
 pub async fn stop(ctx: &Context, command: &ApplicationCommandInteraction) {
     let guild_id = command.guild_id.expect("Couldn't get guild ID");
-    let guild = guild_id
-        .to_guild_cached(&ctx.cache)
-        .and_then(|g| Some(g.to_owned()));
+    let guild = guild_id.to_guild_cached(&ctx.cache).map(|g| g.to_owned());
 
     command.defer(&ctx.http).await.unwrap();
 
     if let Some(guild) = guild {
         if is_bot_in_another_voice_channel(ctx, &guild, command.user.id) {
-            voice_channel_not_same_response(&command, &ctx).await;
+            voice_channel_not_same_response(command, ctx).await;
             return;
         }
     }

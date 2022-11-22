@@ -85,7 +85,7 @@ async fn get_queue_duration(queue: &songbird::tracks::TrackQueue) -> String {
                 .0
                 .duration
                 .unwrap(),
-        )
+        );
     }
 
     let total_queue_time = durations
@@ -99,7 +99,7 @@ async fn get_queue_duration(queue: &songbird::tracks::TrackQueue) -> String {
     duration
 }
 
-fn create_queue_buttons<'a>(
+fn create_queue_buttons(
     queue: &songbird::tracks::TrackQueue,
 ) -> serenity::builder::CreateComponents {
     if queue.len() > 10 {

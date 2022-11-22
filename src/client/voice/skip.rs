@@ -18,11 +18,11 @@ pub async fn skip(ctx: &Context, command: &ApplicationCommandInteraction) {
     command.defer(&ctx.http).await.unwrap();
 
     if is_bot_in_another_voice_channel(
-        &ctx,
+        ctx,
         &guild_id.to_guild_cached(&ctx.cache).unwrap().clone(),
         command.user.id,
     ) {
-        voice_channel_not_same_response(&command, &ctx).await;
+        voice_channel_not_same_response(command, ctx).await;
         return;
     }
 
@@ -33,13 +33,7 @@ pub async fn skip(ctx: &Context, command: &ApplicationCommandInteraction) {
     let call = call_lock.lock().await;
 
     if call.queue().is_empty() {
-        command
-            .edit_original_interaction_response(
-                &ctx.http,
-                EditInteractionResponse::new().content("The queue is empty."),
-            )
-            .await
-            .expect("Couldn't create response");
+        empty_queue_response(command, ctx).await;
         return;
     }
 
@@ -67,10 +61,16 @@ pub async fn skip(ctx: &Context, command: &ApplicationCommandInteraction) {
         call.queue().skip().expect("Couldn't skip song");
     }
 
-    // Embed
+    skip_embed_response(&call, command, ctx).await;
+}
+
+async fn skip_embed_response(
+    call: &songbird::Call,
+    command: &ApplicationCommandInteraction,
+    ctx: &Context,
+) {
     let title = format!("Song skipped, {} left in queue.", call.queue().len() - 1);
     let colour = Colour::from_rgb(149, 8, 2);
-
     command
         .edit_original_interaction_response(
             &ctx.http,
@@ -78,6 +78,16 @@ pub async fn skip(ctx: &Context, command: &ApplicationCommandInteraction) {
         )
         .await
         .expect("Error creating interaction response");
+}
+
+async fn empty_queue_response(command: &ApplicationCommandInteraction, ctx: &Context) {
+    command
+        .edit_original_interaction_response(
+            &ctx.http,
+            EditInteractionResponse::new().content("The queue is empty."),
+        )
+        .await
+        .expect("Couldn't create response");
 }
 
 fn get_track_number(command: &ApplicationCommandInteraction) -> Option<usize> {

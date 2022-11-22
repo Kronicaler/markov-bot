@@ -3,7 +3,7 @@ use serenity::{builder::CreateApplicationCommand, model::Permissions};
 use crate::client::slash_commands::UserCommand;
 
 pub fn create_markov_commands() -> Vec<CreateApplicationCommand> {
-    return vec![
+    vec![
 		CreateApplicationCommand::new(UserCommand::stop_saving_my_messages.to_string())
 		.description("Blacklist yourself if you don't want me to save and learn from your messages"),
 		CreateApplicationCommand::new(UserCommand::stop_saving_messages_server.to_string())
@@ -17,5 +17,5 @@ pub fn create_markov_commands() -> Vec<CreateApplicationCommand> {
 		CreateApplicationCommand::new(UserCommand::continue_saving_my_messages.to_string()).description(
 			"Remove yourself from the blacklist if you want me to save and learn from your messages",
 		)
-	];
+	]
 }
