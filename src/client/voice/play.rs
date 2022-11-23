@@ -176,16 +176,16 @@ async fn fill_queue(sources: VecDeque<YoutubeDl>, call_lock: Arc<Mutex<songbird:
             Err(_) => continue,
         };
 
-        if call_lock.lock().await.current_channel().is_none()
-            || call_lock.lock().await.queue().len() == 0
-        {
+        let mut call = call_lock.lock().await;
+
+        if call.current_channel().is_none() || call.queue().len() == 0 {
             return;
         }
 
         let my_metadata = MyAuxMetadata(metadata.clone());
 
-        let track_handle = call_lock.lock().await.enqueue_input(input).await;
-        
+        let track_handle = call.enqueue_input(input).await;
+
         track_handle
             .typemap()
             .write()
