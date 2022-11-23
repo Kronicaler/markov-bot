@@ -36,12 +36,20 @@ fn create_play_command() -> CreateApplicationCommand {
 
 fn create_skip_command() -> CreateApplicationCommand {
     CreateApplicationCommand::new(UserCommand::skip.to_string())
-        .description("skip the current song")
+        .description("skip one or multiple songs")
         .add_option(
             CreateApplicationCommandOption::new(
                 CommandOptionType::Integer,
                 "number",
-                "Number in queue",
+                "skip the requested song in the queue",
+            )
+            .required(false),
+        )
+        .add_option(
+            CreateApplicationCommandOption::new(
+                CommandOptionType::Integer,
+                "until",
+                "skip all the songs before the requested song",
             )
             .required(false),
         )

@@ -107,13 +107,28 @@ pub async fn swap(ctx: &Context, command: &ApplicationCommandInteraction) {
 
     match queue.swap(first_track_idx, second_track_idx) {
         Ok(_) => {
-            swapping_success_response(command, ctx, first_track_idx, first_track, second_track_idx, second_track).await;
+            swapping_success_response(
+                command,
+                ctx,
+                first_track_idx,
+                first_track,
+                second_track_idx,
+                second_track,
+            )
+            .await;
         }
         Err(e) => swapping_error_response(e, command, ctx).await,
     }
 }
 
-async fn swapping_success_response(command: &ApplicationCommandInteraction, ctx: &Context, first_track_idx: usize, first_track: MyAuxMetadata, second_track_idx: usize, second_track: MyAuxMetadata) {
+async fn swapping_success_response(
+    command: &ApplicationCommandInteraction,
+    ctx: &Context,
+    first_track_idx: usize,
+    first_track: MyAuxMetadata,
+    second_track_idx: usize,
+    second_track: MyAuxMetadata,
+) {
     command
         .edit_original_interaction_response(
             &ctx.http,

@@ -178,7 +178,7 @@ async fn fill_queue(sources: VecDeque<YoutubeDl>, call_lock: Arc<Mutex<songbird:
 
         let mut call = call_lock.lock().await;
 
-        if call.current_channel().is_none() || call.queue().len() == 0 {
+        if call.current_channel().is_none() || call.queue().is_empty() {
             return;
         }
 
