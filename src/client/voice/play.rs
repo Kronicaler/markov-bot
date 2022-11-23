@@ -139,11 +139,13 @@ async fn handle_playlist(
 
         return_response(&metadata, call.queue(), command, ctx).await;
     }
+
     let filling_queue_message = if sources.len() > 10 {
         Some(filling_up_queue_response(command, ctx).await)
     } else {
         None
     };
+
     fill_queue(sources, call_lock).await;
     if let Some(filling_queue_message) = filling_queue_message {
         filled_up_queue_response(filling_queue_message, ctx).await;
@@ -174,10 +176,16 @@ async fn fill_queue(sources: VecDeque<YoutubeDl>, call_lock: Arc<Mutex<songbird:
             Err(_) => continue,
         };
 
+        if call_lock.lock().await.current_channel().is_none()
+            || call_lock.lock().await.queue().len() == 0
+        {
+            return;
+        }
+
         let my_metadata = MyAuxMetadata(metadata.clone());
 
         let track_handle = call_lock.lock().await.enqueue_input(input).await;
-
+        
         track_handle
             .typemap()
             .write()
