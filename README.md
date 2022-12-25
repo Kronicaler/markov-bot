@@ -17,7 +17,6 @@ The bot _will_ work without these dependencies but it's music functionality won'
 
 * yt-dlp
 * Opus
-* FFmpeg
 
 ### Linux instructions for installing the dependencies:
 
@@ -27,13 +26,11 @@ sudo curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o
 sudo chmod a+rx /usr/local/bin/yt-dlp
 ```
 * Opus - ``apt install libopus-dev`` on Ubuntu or ``pacman -S opus`` on Arch Linux
-* FFmpeg - ``apt install ffmpeg`` on Ubuntu or ``pacman -S ffmpeg`` on Arch Linux
 
 ### Windows instructions for installing the dependencies:
 
 * yt-dlp - Download from [here](https://github.com/yt-dlp/yt-dlp#release-files) and add it to your PATH system environment variable
 * Opus - A prebuilt DLL is provided for you, you do not have to do anything.
-* FFmpeg - Download from [here](https://ffmpeg.org/download.html) and follow [these instructions](https://www.wikihow.com/Install-FFmpeg-on-Windows). You can test if it works by opening up the cmd and typing in ``ffmpeg``.
 
 ##
 

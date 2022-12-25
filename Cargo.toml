@@ -47,7 +47,7 @@ features = [
 git = "https://github.com/serenity-rs/serenity"
 branch = "next"
 
-# requires yt-dlp, opus and ffmpeg in order for voice commands to work
+# requires yt-dlp and opus in order for voice commands to work
 [dependencies.songbird]
 git = "https://github.com/serenity-rs/songbird"
 branch = "next"
