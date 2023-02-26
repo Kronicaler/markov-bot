@@ -53,20 +53,6 @@ impl EventHandler for Handler {
     /// Is called when the bot connects to discord
     async fn ready(&self, ctx: Context, ready: Ready) {
         println!("{} is connected!", ready.user.name);
-        println!(
-            "Guilds:\n{}",
-            &ready
-                .guilds
-                .iter()
-                .map(|g| g.id.to_string()
-                    + ":"
-                    + &g.id
-                        .to_guild_cached(&ctx.cache)
-                        .and_then(|g| Some(g.name.clone()))
-                        .unwrap_or("NAME UNAVAILABLE".to_string()))
-                .collect::<Vec<String>>()
-                .join("\n")
-        );
 
         let t1 = create_global_commands(&ctx);
 
@@ -80,14 +66,14 @@ impl EventHandler for Handler {
     // Is called when the bot gets data for a guild
     // if is_new is true then the bot just joined a new guild
     async fn guild_create(&self, ctx: Context, guild: Guild, is_new: bool) {
+        let owner = guild
+            .member(&ctx.http, guild.owner_id)
+            .await
+            .unwrap()
+            .user
+            .clone();
+        
         if is_new {
-            let owner = guild
-                .member(&ctx.http, guild.owner_id)
-                .await
-                .unwrap()
-                .user
-                .clone();
-
             println!("Joined guild {} owned by {}", guild.name, owner.tag());
 
             owner.direct_message(&ctx.http, CreateMessage::new().content("
@@ -96,6 +82,8 @@ Due to my chatting functionality I save every message that gets said in the serv
 The admins of the server can prevent the saving of messages in certain channels (/stop-saving-messages-channel) or in the whole server (/stop-saving-messages-server)
 and the users can choose themselves if they don't want their messages saved (/stop-saving-my-messages)")
             ).await.unwrap();
+        } else {
+            println!("Got data for guild {} owned by {}", guild.name, owner.tag());
         }
     }
 
