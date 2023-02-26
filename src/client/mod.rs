@@ -53,6 +53,19 @@ impl EventHandler for Handler {
     /// Is called when the bot connects to discord
     async fn ready(&self, ctx: Context, ready: Ready) {
         println!("{} is connected!", ready.user.name);
+        println!(
+            "Guilds:\n{}",
+            &ready
+                .guilds
+                .iter()
+                .map(|g| g.id.to_string()
+                    + ":"
+                    + &g.id
+                        .name(&ctx.cache)
+                        .unwrap_or("NAME UNAVAILABLE".to_string()))
+                .collect::<Vec<String>>()
+                .join(", ")
+        );
 
         let t1 = create_global_commands(&ctx);
 
