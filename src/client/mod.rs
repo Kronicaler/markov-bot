@@ -61,10 +61,11 @@ impl EventHandler for Handler {
                 .map(|g| g.id.to_string()
                     + ":"
                     + &g.id
-                        .name(&ctx.cache)
+                        .to_guild_cached(&ctx.cache)
+                        .and_then(|g| Some(g.name.clone()))
                         .unwrap_or("NAME UNAVAILABLE".to_string()))
                 .collect::<Vec<String>>()
-                .join(", ")
+                .join("\n")
         );
 
         let t1 = create_global_commands(&ctx);
