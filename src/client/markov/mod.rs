@@ -51,10 +51,7 @@ pub async fn add_message_to_chain(
     if markov_blacklisted_server.is_some()
         || markov_blacklisted_channel.is_some()
         || markov_blacklisted_user.is_some()
-        || msg
-            .mentions_me(&ctx.http)
-            .await
-            .expect("Couldn't fetch mention from cache")
+        || msg.mentions_me(&ctx.http).await.unwrap_or(false)
     {
         return Ok(false);
     }
