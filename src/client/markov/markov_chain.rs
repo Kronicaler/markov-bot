@@ -37,13 +37,14 @@ pub fn filter_message_for_markov_file(msg: &Message) -> Option<String> {
                         }
                     }
                     let user_id = user_id.parse::<u64>().expect("Couldn't parse user id");
-                    let user = &msg
+                    let user = msg
                         .mentions
                         .iter()
                         .find(|&user| user.id.get() == user_id)
-                        .expect("Couldn't find user mention in message")
-                        .name;
-                    " ".to_owned() + user + " "
+                        .and_then(|u| Some(u.name.clone()))
+                        .unwrap_or("".to_string());
+
+                    format!(" {} ", user)
                 })
                 .into_owned();
         }
