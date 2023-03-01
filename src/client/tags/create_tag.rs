@@ -58,7 +58,7 @@ async fn tag_exists_response(
             &ctx.http,
             CreateInteractionResponse::new().interaction_response_data(
                 CreateInteractionResponseData::new()
-                    .content(format!("The tag \"{}\" already exists", listener)),
+                    .content(format!("The tag \"{listener}\" already exists")),
             ),
         )
         .await
@@ -74,7 +74,7 @@ async fn tag_created_response(
         .create_interaction_response(
             &ctx.http,
             CreateInteractionResponse::new().interaction_response_data(
-                CreateInteractionResponseData::new().content(format!("Created tag {}", listener)),
+                CreateInteractionResponseData::new().content(format!("Created tag {listener}")),
             ),
         )
         .await

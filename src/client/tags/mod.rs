@@ -230,9 +230,10 @@ pub async fn respond_to_tag(ctx: &Context, msg: &Message, message: &str, pool: &
             .guild(&ctx.cache)
             .expect("Couldn't retrieve guild from cache")
             .channels
-            .iter()
-            .map(|(_, channel)| channel.clone())
+            .values()
+            .cloned()
             .collect();
+
         for channel in channels {
             match tag_response(channel, ctx, msg, message).await {
                 Ok(mut msg) => {

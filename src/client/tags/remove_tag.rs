@@ -52,7 +52,7 @@ async fn tag_not_found_response(
             &ctx.http,
             CreateInteractionResponse::new().interaction_response_data(
                 CreateInteractionResponseData::new()
-                    .content(format!("Couldn't find the tag {}", listener)),
+                    .content(format!("Couldn't find the tag {listener}")),
             ),
         )
         .await
@@ -69,7 +69,7 @@ async fn tag_removed_response(
             &ctx.http,
             CreateInteractionResponse::new().interaction_response_data(
                 CreateInteractionResponseData::new()
-                    .content(format!("Removed the tag {}", listener)),
+                    .content(format!("Removed the tag {listener}")),
             ),
         )
         .await

@@ -19,7 +19,7 @@ pub fn append_to_markov_file(str: &str) -> Result<(), std::io::Error> {
         .append(true)
         .open(MARKOV_DATA_SET_PATH)?;
 
-    Ok(writeln!(file, "{}\n", str)?)
+    Ok(writeln!(file, "{str}\n")?)
 }
 
 /// If the way that messages are filtered before being added to the data set is changed then

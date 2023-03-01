@@ -294,7 +294,7 @@ async fn get_source(query: String) -> SourceType {
             .for_each(|id| {
                 let song = YoutubeDl::new(
                     client.clone(),
-                    format!("https://www.youtube.com/watch?v={}", id),
+                    format!("https://www.youtube.com/watch?v={id}"),
                 );
 
                 songs_in_playlist.push_back(song);
@@ -308,7 +308,7 @@ async fn get_source(query: String) -> SourceType {
         return SourceType::Video(YoutubeDl::new(Client::new(), query));
     }
 
-    let query = format!("ytsearch:{}", query);
+    let query = format!("ytsearch:{query}");
 
     SourceType::Video(YoutubeDl::new(Client::new(), query))
 }
@@ -377,7 +377,7 @@ pub fn create_track_embed(metadata: &AuxMetadata) -> CreateEmbed {
     let time = metadata.duration.unwrap_or_else(|| Duration::new(0, 0));
     let minutes = time.as_secs() / 60;
     let seconds = time.as_secs() - minutes * 60;
-    let duration = format!("{}:{:02}", minutes, seconds);
+    let duration = format!("{minutes}:{seconds:02}");
     let colour = Colour::from_rgb(149, 8, 2);
 
     CreateEmbed::default()

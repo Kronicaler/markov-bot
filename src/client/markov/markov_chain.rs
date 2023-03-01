@@ -40,11 +40,10 @@ pub fn filter_message_for_markov_file(msg: &Message) -> Option<String> {
                     let user = msg
                         .mentions
                         .iter()
-                        .find(|&user| user.id.get() == user_id)
-                        .and_then(|u| Some(u.name.clone()))
-                        .unwrap_or("".to_string());
+                        .find(|&user| user.id.get() == user_id).map(|u| u.name.clone())
+                        .unwrap_or_default();
 
-                    format!(" {} ", user)
+                    format!(" {user} ")
                 })
                 .into_owned();
         }

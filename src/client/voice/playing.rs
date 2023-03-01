@@ -82,7 +82,7 @@ async fn create_playing_embed(
     let time = &song.duration.unwrap();
     let minutes = time.as_secs() / 60;
     let seconds = time.as_secs() - minutes * 60;
-    let duration = format!("{}:{:02}", minutes, seconds);
+    let duration = format!("{minutes}:{seconds:02}");
     //color
     let colour = Colour::from_rgb(149, 8, 2);
     CreateEmbed::new()

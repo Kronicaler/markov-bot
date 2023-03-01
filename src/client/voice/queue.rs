@@ -94,7 +94,7 @@ async fn get_queue_duration(queue: &songbird::tracks::TrackQueue) -> String {
         .unwrap_or_default();
     let minutes = total_queue_time.as_secs() / 60;
     let seconds = total_queue_time.as_secs() - minutes * 60;
-    let duration = format!("{}:{:02}", minutes, seconds);
+    let duration = format!("{minutes}:{seconds:02}");
 
     duration
 }
@@ -230,8 +230,8 @@ async fn create_queue_embed(
         let time = &song.duration.as_ref().unwrap();
         let minutes = time.as_secs() / 60;
         let seconds = time.as_secs() - minutes * 60;
-        let duration = format!("{}:{:02}", minutes, seconds);
-        let arg1 = format!("{}. {} | {}", i + 1, title, channel);
+        let duration = format!("{minutes}:{seconds:02}");
+        let arg1 = format!("{}. {title} | {channel}", i + 1);
         e = e.field(arg1, duration, false);
     }
     e
