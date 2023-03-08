@@ -80,7 +80,7 @@ async fn create_playing_embed(
     let url = &song.source_url.unwrap();
     //color
     let colour = Colour::from_rgb(149, 8, 2);
-    
+
     let time = &song.duration.unwrap();
     let minutes = time.as_secs() / 60;
     let seconds = time.as_secs() % 60;
@@ -93,7 +93,7 @@ async fn create_playing_embed(
         .title(title)
         .colour(colour)
         .description(channel)
-        .field("duration: ", position_to_duration, false)
+        .field("Duration: ", position_to_duration, false)
         .thumbnail(thumbnail)
         .url(url)
 }
