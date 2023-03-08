@@ -78,22 +78,22 @@ async fn create_playing_embed(
     let thumbnail = &song.thumbnail.unwrap();
     //embed
     let url = &song.source_url.unwrap();
-    //duration
+    //color
+    let colour = Colour::from_rgb(149, 8, 2);
+    
     let time = &song.duration.unwrap();
     let minutes = time.as_secs() / 60;
     let seconds = time.as_secs() % 60;
     let duration = format!("{minutes}:{seconds:02}");
-    //color
-    let colour = Colour::from_rgb(149, 8, 2);
     let position = track_handle.get_info().await.unwrap().position;
     let position = format!("{}:{:02}", position.as_secs() / 60, position.as_secs() % 60);
+    let position_to_duration = format!("{position} / {duration}");
 
     CreateEmbed::new()
         .title(title)
         .colour(colour)
         .description(channel)
-        .field("duration: ", duration, false)
-        .field("position: ", position, false)
+        .field("duration: ", position_to_duration, false)
         .thumbnail(thumbnail)
         .url(url)
 }
