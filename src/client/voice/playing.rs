@@ -57,9 +57,9 @@ async fn nothing_playing_response(command: &ApplicationCommandInteraction, ctx: 
 async fn create_playing_embed(
     queue: &songbird::tracks::TrackQueue,
 ) -> serenity::builder::CreateEmbed {
-    let song = queue
-        .current()
-        .unwrap()
+    let track_handle = queue.current().unwrap();
+
+    let song = track_handle
         .typemap()
         .read()
         .await
@@ -81,15 +81,19 @@ async fn create_playing_embed(
     //duration
     let time = &song.duration.unwrap();
     let minutes = time.as_secs() / 60;
-    let seconds = time.as_secs() - minutes * 60;
+    let seconds = time.as_secs() % 60;
     let duration = format!("{minutes}:{seconds:02}");
     //color
     let colour = Colour::from_rgb(149, 8, 2);
+    let position = track_handle.get_info().await.unwrap().position;
+    let position = format!("{}:{:02}", position.as_secs() / 60, position.as_secs() % 60);
+
     CreateEmbed::new()
         .title(title)
         .colour(colour)
         .description(channel)
         .field("duration: ", duration, false)
+        .field("position: ", position, false)
         .thumbnail(thumbnail)
         .url(url)
 }
