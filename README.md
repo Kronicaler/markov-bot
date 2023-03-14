@@ -13,7 +13,7 @@ APPLICATION_ID=973467367436746574
 
 ## Optional dependencies
 
-The bot _will_ work without these dependencies but it's music functionality won't work.
+The bot _will_ work without these dependencies but its music functionality won't work.
 
 * yt-dlp
 * Opus
