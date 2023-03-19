@@ -1,8 +1,10 @@
+use crate::client::voice::model::get_voice_messages_lock;
+
 use super::{
     helper_funcs::{
         get_voice_channel_of_user, is_bot_in_another_voice_channel, voice_channel_not_same_response,
     },
-    Handler, MyAuxMetadata,
+    MyAuxMetadata, TrackEndHandler,
 };
 use reqwest::Client;
 use serenity::{
@@ -12,19 +14,14 @@ use serenity::{
         interaction::application_command::{ApplicationCommandInteraction, CommandDataOptionValue},
         Colour, Message,
     },
-    prelude::Mutex,
+    prelude::{Mutex, RwLock},
 };
 use songbird::{
     input::{AuxMetadata, Input, YoutubeDl},
     tracks::TrackQueue,
     TrackEvent,
 };
-use std::{
-    collections::VecDeque,
-    ops::ControlFlow,
-    sync::{Arc, RwLock},
-    time::Duration,
-};
+use std::{collections::VecDeque, ops::ControlFlow, sync::Arc, time::Duration};
 
 ///play song from youtube
 pub async fn play(ctx: &Context, command: &ApplicationCommandInteraction) {
@@ -226,10 +223,9 @@ fn add_track_end_event(
         call.remove_all_global_events();
         call.add_global_event(
             songbird::Event::Track(TrackEvent::End),
-            Handler {
+            TrackEndHandler {
                 voice_text_channel: command.channel_id,
                 guild_id: command.guild_id.unwrap(),
-                last_now_playing_msg: Arc::new(Mutex::new(None)),
                 ctx: ctx.clone(),
             },
         );
@@ -334,7 +330,7 @@ async fn return_response(
                 .get::<MyAuxMetadata>()
                 .unwrap()
                 .read()
-                .unwrap()
+                .await
                 .0
                 .duration
                 .unwrap(),
@@ -360,13 +356,26 @@ async fn return_response(
         format!("Position in queue: {}", queue.len())
     };
 
-    command
+    let message = command
         .edit_original_interaction_response(
             &ctx.http,
             EditInteractionResponse::new().embed(embed).content(content),
         )
         .await
         .expect("Error creating interaction response");
+
+    let voice_messages_lock = get_voice_messages_lock(&ctx.data).await;
+    let mut voice_messages = voice_messages_lock.write().await;
+
+    if message.content.contains("Playing") {
+        voice_messages
+            .last_now_playing
+            .insert(command.guild_id.unwrap(), message);
+    } else if message.content.contains("Position in queue") {
+        voice_messages
+            .last_position_in_queue
+            .insert(command.guild_id.unwrap(), message);
+    }
 }
 
 pub fn create_track_embed(metadata: &AuxMetadata) -> CreateEmbed {

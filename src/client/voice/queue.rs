@@ -81,7 +81,7 @@ async fn get_queue_duration(queue: &songbird::tracks::TrackQueue) -> String {
                 .get::<MyAuxMetadata>()
                 .unwrap()
                 .read()
-                .unwrap()
+                .await
                 .0
                 .duration
                 .unwrap(),
@@ -220,7 +220,7 @@ async fn create_queue_embed(
             .get::<MyAuxMetadata>()
             .unwrap()
             .read()
-            .unwrap()
+            .await
             .0
             .clone();
 

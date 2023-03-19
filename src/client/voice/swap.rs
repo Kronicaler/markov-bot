@@ -166,7 +166,7 @@ async fn get_track_from_queue(queue: &TrackQueue, track_number: usize) -> MyAuxM
         .get::<MyAuxMetadata>()
         .unwrap()
         .read()
-        .unwrap()
+        .await
         .clone();
     second_track
 }

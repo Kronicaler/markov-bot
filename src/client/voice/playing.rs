@@ -66,7 +66,7 @@ async fn create_playing_embed(
         .get::<MyAuxMetadata>()
         .unwrap()
         .read()
-        .unwrap()
+        .await
         .0
         .clone();
     //create embed

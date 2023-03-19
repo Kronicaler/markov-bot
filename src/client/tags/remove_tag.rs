@@ -68,8 +68,7 @@ async fn tag_removed_response(
         .create_interaction_response(
             &ctx.http,
             CreateInteractionResponse::new().interaction_response_data(
-                CreateInteractionResponseData::new()
-                    .content(format!("Removed the tag {listener}")),
+                CreateInteractionResponseData::new().content(format!("Removed the tag {listener}")),
             ),
         )
         .await

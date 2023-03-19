@@ -72,7 +72,7 @@ impl EventHandler for Handler {
             .unwrap()
             .user
             .clone();
-        
+
         if is_new {
             println!("Joined guild {} owned by {}", guild.name, owner.tag());
 

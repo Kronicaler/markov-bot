@@ -1,4 +1,4 @@
-use super::markov::init_markov_data;
+use super::{markov::init_markov_data, voice::model::init_voice_data};
 use serenity::Client;
 use std::error::Error;
 
@@ -34,6 +34,7 @@ pub async fn init_global_data_for_client(client: &Client) -> Result<(), Box<dyn 
     };
 
     init_markov_data(&mut data)?;
+    init_voice_data(&mut data);
 
     Ok(())
 }
