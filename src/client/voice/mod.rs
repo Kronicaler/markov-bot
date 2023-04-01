@@ -87,34 +87,31 @@ impl EventHandler for TrackEndHandler {
                     .insert(self.guild_id, message);
             }
             model::LastMessageType::PositionInQueue(mut message) => {
-                match track_metadata.source_url.as_ref().unwrap()
+                if track_metadata.source_url.as_ref().unwrap()
                     == message.embeds[0].url.as_ref().unwrap()
                 {
-                    true => {
-                        message
-                            .edit(
-                                &self.ctx.http,
-                                EditMessage::new().embed(embed).content("Now playing"),
-                            )
-                            .await
-                            .unwrap();
+                    message
+                        .edit(
+                            &self.ctx.http,
+                            EditMessage::new().embed(embed).content("Now playing"),
+                        )
+                        .await
+                        .unwrap();
 
-                        voice_messages
-                            .last_position_in_queue
-                            .remove(&self.guild_id)
-                            .unwrap();
+                    voice_messages
+                        .last_position_in_queue
+                        .remove(&self.guild_id)
+                        .unwrap();
 
-                        voice_messages
-                            .last_now_playing
-                            .insert(self.guild_id, message);
-                    }
-                    false => {
-                        let now_playing_msg = self.send_now_playing_message(embed).await;
+                    voice_messages
+                        .last_now_playing
+                        .insert(self.guild_id, message);
+                } else {
+                    let now_playing_msg = self.send_now_playing_message(embed).await;
 
-                        voice_messages
-                            .last_now_playing
-                            .insert(self.guild_id, now_playing_msg);
-                    }
+                    voice_messages
+                        .last_now_playing
+                        .insert(self.guild_id, now_playing_msg);
                 }
             }
             model::LastMessageType::None => {
