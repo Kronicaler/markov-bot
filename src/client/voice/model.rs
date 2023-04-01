@@ -1,8 +1,9 @@
 use std::{collections::HashMap, sync::Arc};
 
 use serenity::{
+    builder::GetMessages,
     model::prelude::{Channel, GuildId, Message},
-    prelude::{Context, RwLock, TypeMap, TypeMapKey}, builder::GetMessages,
+    prelude::{Context, RwLock, TypeMap, TypeMapKey},
 };
 use songbird::input::AuxMetadata;
 
@@ -57,7 +58,11 @@ pub async fn is_last_message_in_channel(message: &Message, ctx: &Context) -> boo
         return false;
     };
 
-    return channel.messages(&ctx.http, GetMessages::new().after(message.id).limit(1)).await.unwrap().is_empty();
+    return channel
+        .messages(&ctx.http, GetMessages::new().after(message.id).limit(1))
+        .await
+        .unwrap()
+        .is_empty();
 }
 
 pub enum LastMessageType {
