@@ -86,24 +86,18 @@ pub async fn swap(ctx: &Context, command: &ApplicationCommandInteraction) {
 
     let queue = call.queue();
 
-    let (first_track_idx, second_track_idx) = if let Some(v) = get_track_numbers(command) {
-        v
-    } else {
+    let Some((first_track_idx, second_track_idx)) = get_track_numbers(command) else {
         invalid_number_response(command, ctx).await;
         return;
     };
 
-    let (first_track_idx, second_track_idx) =
-        if let Ok(value) = parse_track_numbers(first_track_idx, second_track_idx) {
-            value
-        } else {
-            invalid_number_response(command, ctx).await;
-            return;
-        };
-
     let first_track = get_track_from_queue(queue, first_track_idx).await;
-
     let second_track = get_track_from_queue(queue, second_track_idx).await;
+
+    let (Some(first_track),Some(second_track)) = (first_track,second_track) else{
+        track_not_in_queue_response(command, ctx).await;
+        return;
+    };
 
     match queue.swap(first_track_idx, second_track_idx) {
         Ok(_) => {
@@ -155,20 +149,19 @@ and\n
         .expect("Error creating interaction response");
 }
 
-async fn get_track_from_queue(queue: &TrackQueue, track_number: usize) -> MyAuxMetadata {
+async fn get_track_from_queue(queue: &TrackQueue, track_number: usize) -> Option<MyAuxMetadata> {
     let second_track = queue
         .current_queue()
-        .get(track_number - 1)
-        .unwrap()
+        .get(track_number - 1)?
         .typemap()
         .read()
         .await
-        .get::<MyAuxMetadata>()
-        .unwrap()
+        .get::<MyAuxMetadata>()?
         .read()
         .await
         .clone();
-    second_track
+
+    Some(second_track)
 }
 
 async fn invalid_number_response(command: &ApplicationCommandInteraction, ctx: &Context) {
@@ -181,16 +174,6 @@ async fn invalid_number_response(command: &ApplicationCommandInteraction, ctx: &
         .expect("Error creating interaction response");
 }
 
-fn parse_track_numbers(
-    first_track_idx: i64,
-    second_track_idx: i64,
-) -> anyhow::Result<(usize, usize)> {
-    let first_track_idx = first_track_idx.try_into()?;
-    let second_track_idx = second_track_idx.try_into()?;
-
-    Ok((first_track_idx, second_track_idx))
-}
-
 async fn swapping_error_response(
     e: SwapableError,
     command: &ApplicationCommandInteraction,
@@ -198,13 +181,7 @@ async fn swapping_error_response(
 ) {
     match e {
         SwapableError::IndexOutOfBounds => {
-            command
-                .edit_original_interaction_response(
-                    &ctx.http,
-                    EditInteractionResponse::new().content("That track isn't in the queue!"),
-                )
-                .await
-                .expect("Error creating interaction response");
+            track_not_in_queue_response(command, ctx).await;
         }
         SwapableError::NothingIsPlaying => {
             command
@@ -237,7 +214,17 @@ async fn swapping_error_response(
     }
 }
 
-fn get_track_numbers(command: &ApplicationCommandInteraction) -> Option<(i64, i64)> {
+async fn track_not_in_queue_response(command: &ApplicationCommandInteraction, ctx: &Context) {
+    command
+        .edit_original_interaction_response(
+            &ctx.http,
+            EditInteractionResponse::new().content("That track isn't in the queue!"),
+        )
+        .await
+        .expect("Error creating interaction response");
+}
+
+fn get_track_numbers(command: &ApplicationCommandInteraction) -> Option<(usize, usize)> {
     let first_track_idx = match command.data.options.get(0).unwrap().value {
         CommandDataOptionValue::Integer(i) => i,
         _ => return None,
@@ -248,5 +235,8 @@ fn get_track_numbers(command: &ApplicationCommandInteraction) -> Option<(i64, i6
         _ => return None,
     };
 
-    Some((first_track_idx, second_track_idx))
+    Some((
+        first_track_idx.try_into().ok()?,
+        second_track_idx.try_into().ok()?,
+    ))
 }
