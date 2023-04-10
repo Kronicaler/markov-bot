@@ -49,7 +49,7 @@ branch = "next"
 
 # requires yt-dlp and opus in order for voice commands to work
 [dependencies.songbird]
-git = "https://github.com/serenity-rs/songbird"
+git = "https://github.com/TheKroni/songbird"
 branch = "next"
 features = ["builtin-queue", "serenity"]
 
