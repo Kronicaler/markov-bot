@@ -179,7 +179,7 @@ async fn fill_queue(sources: VecDeque<YoutubeDl>, call_lock: Arc<Mutex<songbird:
             return;
         }
 
-        let my_metadata = MyAuxMetadata(metadata.clone());
+        let my_metadata = MyAuxMetadata(metadata);
 
         let track_handle = call.enqueue_input(input).await;
 
