@@ -59,11 +59,11 @@ pub async fn add_message_to_chain(
 
         let data = ctx.data.clone();
 
-        // if rand::random::<f32>() < 0.005 {
+        if rand::random::<f32>() < 0.001 {
         tokio::spawn(async move {
             replace_markov_chain_lock(&data).await;
         });
-        // }
+        }
 
         Ok(true)
     } else {
