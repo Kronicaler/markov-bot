@@ -11,12 +11,9 @@ use self::{
         delete_markov_blacklisted_server, delete_markov_blacklisted_user,
         get_markov_blacklisted_channel, get_markov_blacklisted_server, get_markov_blacklisted_user,
     },
-    file_operations::{
-        export_corpus_to_file, generate_new_corpus_from_msg_file, import_corpus_from_file,
-        import_messages_from_file,
-    },
+    file_operations::{export_corpus_to_file, import_corpus_from_file, import_messages_from_file},
     markov_chain::filter_message_for_markov_file,
-    model::{get_markov_chain_lock, MARKOV_EXPORT_PATH},
+    model::{get_markov_chain_lock, replace_markov_chain_lock, MARKOV_EXPORT_PATH},
 };
 use markov_strings::{ImportExport, Markov};
 use serenity::{
@@ -60,17 +57,13 @@ pub async fn add_message_to_chain(
     if let Some(filtered_message) = filtered_message {
         file_operations::append_to_markov_file(&filtered_message)?;
 
-        let markov_chain_lock = get_markov_chain_lock(&ctx.data).await;
+        let data = ctx.data.clone();
 
-        if rand::random::<f32>() < 0.005 {
-            std::thread::spawn(move || {
-                let corpus = generate_new_corpus_from_msg_file().unwrap();
-
-                let mut markov_chain = markov_chain_lock.blocking_write();
-
-                *markov_chain = create_default_chain_from_export(corpus);
-            });
-        }
+        // if rand::random::<f32>() < 0.005 {
+        tokio::spawn(async move {
+            replace_markov_chain_lock(&data).await;
+        });
+        // }
 
         Ok(true)
     } else {
