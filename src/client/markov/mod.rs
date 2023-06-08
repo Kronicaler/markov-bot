@@ -108,7 +108,7 @@ pub fn init() -> Result<Markov, Box<dyn Error>> {
     Ok(markov_chain)
 }
 
-pub const MARKOV_STATE_SIZE: usize = 3;
+pub const MARKOV_STATE_SIZE: usize = 4;
 pub const MARKOV_MAX_TRIES: u16 = 5000;
 
 fn create_default_chain() -> Markov {
@@ -129,7 +129,7 @@ fn create_default_chain_from_export(export: ImportExport) -> Markov {
 }
 
 fn markov_filter(r: &markov_strings::MarkovResult) -> bool {
-    if r.score >= 20 && r.refs.len() >= 3 {
+    if r.score >= 10 {
         return true;
     }
     false
