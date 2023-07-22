@@ -333,7 +333,7 @@ async fn return_response(
                 .await
                 .0
                 .duration
-                .unwrap(),
+                .unwrap_or_else(|| Duration::from_secs(0)),
         );
     }
 
