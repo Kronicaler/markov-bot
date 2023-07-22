@@ -4,6 +4,7 @@ use super::{
     helper_funcs::{
         get_voice_channel_of_user, is_bot_in_another_voice_channel, voice_channel_not_same_response,
     },
+    model::get_queue_data_lock,
     MyAuxMetadata, TrackEndHandler,
 };
 use reqwest::Client;
@@ -12,7 +13,7 @@ use serenity::{
     client::Context,
     model::prelude::{
         interaction::application_command::{ApplicationCommandInteraction, CommandDataOptionValue},
-        Colour, Message,
+        Colour, GuildId, Message,
     },
     prelude::{Mutex, RwLock},
 };
@@ -143,7 +144,7 @@ async fn handle_playlist(
         None
     };
 
-    fill_queue(sources, call_lock).await;
+    fill_queue(sources, call_lock, ctx, command.guild_id.unwrap()).await;
     if let Some(filling_queue_message) = filling_queue_message {
         filled_up_queue_response(filling_queue_message, ctx).await;
     }
@@ -164,18 +165,35 @@ async fn filling_up_queue_response(
         .expect("Error sending message")
 }
 
-async fn fill_queue(sources: VecDeque<YoutubeDl>, call_lock: Arc<Mutex<songbird::Call>>) {
+async fn fill_queue(
+    sources: VecDeque<YoutubeDl>,
+    call_lock: Arc<Mutex<songbird::Call>>,
+    ctx: &Context,
+    guild_id: GuildId,
+) {
     let inputs: VecDeque<Input> = sources.into_iter().map(Into::into).collect();
+
+    let queue_data_lock = get_queue_data_lock(&ctx.data).await;
+    {
+        let mut queue_data = queue_data_lock.write().await;
+        queue_data.filling_queue.insert(guild_id, true);
+    }
 
     for mut input in inputs {
         let metadata = match input.aux_metadata().await {
             Ok(e) => e,
             Err(_) => continue,
         };
-
         let mut call = call_lock.lock().await;
 
-        if call.current_channel().is_none() || call.queue().is_empty() {
+        let queue_filling_stopped = !*queue_data_lock
+            .read()
+            .await
+            .filling_queue
+            .get(&guild_id)
+            .unwrap();
+
+        if call.current_channel().is_none() || queue_filling_stopped {
             return;
         }
 

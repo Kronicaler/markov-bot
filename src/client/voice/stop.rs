@@ -4,7 +4,10 @@ use serenity::{
     model::prelude::{interaction::application_command::ApplicationCommandInteraction, Colour},
 };
 
-use super::helper_funcs::{is_bot_in_another_voice_channel, voice_channel_not_same_response};
+use super::{
+    helper_funcs::{is_bot_in_another_voice_channel, voice_channel_not_same_response},
+    model::get_queue_data_lock,
+};
 
 ///stop playing
 pub async fn stop(ctx: &Context, command: &ApplicationCommandInteraction) {
@@ -29,6 +32,12 @@ pub async fn stop(ctx: &Context, command: &ApplicationCommandInteraction) {
         let handler = handler_lock.lock().await;
         let queue = handler.queue();
         queue.stop();
+        let queue_lock = get_queue_data_lock(&ctx.data).await;
+        let mut queue = queue_lock.write().await;
+        queue
+            .filling_queue
+            .entry(command.guild_id.unwrap())
+            .and_modify(|f| *f = false);
     } else {
         command
             .edit_original_interaction_response(

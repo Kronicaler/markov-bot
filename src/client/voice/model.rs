@@ -9,6 +9,7 @@ use songbird::input::AuxMetadata;
 
 pub fn init_voice_data(data: &mut tokio::sync::RwLockWriteGuard<serenity::prelude::TypeMap>) {
     data.insert::<VoiceMessages>(Arc::new(RwLock::new(VoiceMessages::default())));
+    data.insert::<QueueData>(Arc::new(RwLock::new(QueueData::default())));
 }
 
 #[derive(Clone)]
@@ -26,6 +27,15 @@ pub struct VoiceMessages {
 
 impl TypeMapKey for VoiceMessages {
     type Value = Arc<RwLock<VoiceMessages>>;
+}
+
+#[derive(Clone, Default)]
+pub struct QueueData {
+    pub filling_queue: HashMap<GuildId, bool>,
+}
+
+impl TypeMapKey for QueueData {
+    type Value = Arc<RwLock<QueueData>>;
 }
 
 impl VoiceMessages {
@@ -75,6 +85,14 @@ pub async fn get_voice_messages_lock(data: &Arc<RwLock<TypeMap>>) -> Arc<RwLock<
     data.read()
         .await
         .get::<VoiceMessages>()
-        .expect("expected PositionInQueueMessages in TypeMap")
+        .expect("expected VoiceMessages in TypeMap")
+        .clone()
+}
+
+pub async fn get_queue_data_lock(data: &Arc<RwLock<TypeMap>>) -> Arc<RwLock<QueueData>> {
+    data.read()
+        .await
+        .get::<QueueData>()
+        .expect("expected QueueData in TypeMap")
         .clone()
 }
