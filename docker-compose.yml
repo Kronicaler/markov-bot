@@ -24,3 +24,7 @@ services:
       context: ./
       dockerfile: dockerfile
     restart: unless-stopped
+    volumes:
+      - markovbot:/app/data
+volumes:
+  markovbot:
