@@ -1,0 +1,26 @@
+version: '0.1'
+
+services:
+
+  mariadb:
+    image: mariadb
+    restart: unless-stopped
+    environment:
+      MARIADB_ROOT_PASSWORD: ${DB_PASS}
+      MARIADB_DATABASE: markov_bot
+    deploy:
+      resources:
+        limits:
+          memory: 500M
+
+  markov_bot:
+    image: kronicaler/markov_bot
+    container_name: markov_bot
+    environment:
+      - DISCORD_TOKEN
+      - APPLICATION_ID
+      - DATABASE_URL=mysql://root:${DB_PASS}@mariadb/markov_bot
+    build:
+      context: ./
+      dockerfile: dockerfile
+    restart: unless-stopped
