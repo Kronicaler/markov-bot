@@ -15,7 +15,7 @@ A discord chat and music bot written in Rust
 
 Download the docker-compose.yml.
 
-In the same folder as the docker-compose.yml create a .env file with the environment variables `DB_PASS`, `DISCORD_TOKEN` and `APPLICATION_ID`.
+In the same folder as the docker-compose.yml create a `.env` file with the environment variables `DB_PASS`, `DISCORD_TOKEN` and `APPLICATION_ID`.
 
 Example:
 
