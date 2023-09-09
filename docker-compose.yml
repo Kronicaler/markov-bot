@@ -13,7 +13,7 @@ services:
         limits:
           memory: 500M
     ports:
-      - 3306:3306
+      - 3306
 
   markov_bot:
     image: kronicaler/markov_bot
