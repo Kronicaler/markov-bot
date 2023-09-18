@@ -25,6 +25,7 @@ use songbird::{
 use std::{collections::VecDeque, ops::ControlFlow, sync::Arc, time::Duration};
 
 ///play song from youtube
+#[tracing::instrument(skip(ctx), level = "info")]
 pub async fn play(ctx: &Context, command: &ApplicationCommandInteraction) {
     let guild_id = command.guild_id.expect("Couldn't get guild ID");
     let query = get_query(command);

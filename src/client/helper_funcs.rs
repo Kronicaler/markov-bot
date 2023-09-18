@@ -14,6 +14,7 @@ use serenity::{
     },
 };
 
+#[tracing::instrument(skip(ctx), level = "info")]
 pub async fn user_id_command(ctx: Context, command: &ApplicationCommandInteraction) {
     let options = &command
         .data
@@ -42,6 +43,7 @@ pub async fn user_id_command(ctx: Context, command: &ApplicationCommandInteracti
         .expect("Couldn't create interaction response");
 }
 
+#[tracing::instrument(skip(ctx), level = "info")]
 pub async fn ping_command(ctx: Context, command: &ApplicationCommandInteraction) {
     command
         .create_interaction_response(

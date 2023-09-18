@@ -7,6 +7,7 @@ use songbird::tracks::LoopState;
 use super::helper_funcs::{is_bot_in_another_voice_channel, voice_channel_not_same_response};
 
 /// Loop the current track
+#[tracing::instrument(skip(ctx), level = "info")]
 pub async fn loop_song(ctx: &Context, command: &ApplicationCommandInteraction) {
     let guild_id = command.guild_id.expect("Couldn't get guild ID");
 

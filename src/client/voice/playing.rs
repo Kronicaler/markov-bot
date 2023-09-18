@@ -7,6 +7,7 @@ use serenity::{
 use super::MyAuxMetadata;
 
 ///current song
+#[tracing::instrument(skip(ctx), level = "info")]
 pub async fn playing(ctx: &Context, command: &ApplicationCommandInteraction) {
     let guild_id = if let Some(e) = command.guild_id {
         e

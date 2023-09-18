@@ -8,6 +8,7 @@ use serenity::{
 };
 use sqlx::{MySql, Pool};
 
+#[tracing::instrument(skip(ctx), level = "info")]
 pub async fn create_tag(
     ctx: &Context,
     command: &ApplicationCommandInteraction,

@@ -20,6 +20,7 @@ use crate::client::ButtonIds;
 use super::MyAuxMetadata;
 
 ///get the queue
+#[tracing::instrument(skip(ctx), level = "info")]
 pub async fn queue(ctx: &Context, command: &ApplicationCommandInteraction) {
     let manager = songbird::get(ctx)
         .await

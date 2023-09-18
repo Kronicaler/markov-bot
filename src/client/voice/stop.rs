@@ -10,6 +10,7 @@ use super::{
 };
 
 ///stop playing
+#[tracing::instrument(skip(ctx), level = "info")]
 pub async fn stop(ctx: &Context, command: &ApplicationCommandInteraction) {
     let guild_id = command.guild_id.expect("Couldn't get guild ID");
     let guild = guild_id.to_guild_cached(&ctx.cache).map(|g| g.to_owned());

@@ -64,6 +64,7 @@ impl Swapable for TrackQueue {
     }
 }
 
+#[tracing::instrument(skip(ctx), level = "info")]
 pub async fn swap(ctx: &Context, command: &ApplicationCommandInteraction) {
     let guild_id = command.guild_id.expect("Couldn't get guild ID");
     let guild = guild_id.to_guild_cached(&ctx.cache).map(|g| g.to_owned());

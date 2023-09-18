@@ -13,6 +13,7 @@ use super::helper_funcs::{
 };
 
 /// Skip the track
+#[tracing::instrument(skip(ctx), level = "info")]
 pub async fn skip(ctx: &ClientContext, command: &ApplicationCommandInteraction) {
     let guild_id = command.guild_id.expect("Couldn't get guild ID");
 

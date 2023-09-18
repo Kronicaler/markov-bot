@@ -4,7 +4,7 @@ use super::{
     helper_funcs::{get_full_command_name, ping_command, user_id_command},
     markov::commands::create_markov_commands,
     tags::{
-        blacklist_user_from_tags_command, commands::create_tag_commands, create_tag, list,
+        blacklist_user_from_tags_command, commands::create_tag_commands, create_tag, list_tags,
         remove_tag, set_tag_response_channel,
     },
     voice::commands::create_voice_commands,
@@ -23,6 +23,7 @@ use serenity::{
 };
 use sqlx::{MySql, Pool};
 use strum_macros::{Display, EnumProperty, EnumString};
+use tracing::{info, error};
 
 /// All the slash commands the bot has implemented
 #[allow(non_camel_case_types)]
@@ -73,6 +74,7 @@ pub enum UserCommand {
 
 /// Check which slash command was triggered, call the appropriate function and return a response to the user
 #[allow(clippy::too_many_lines)]
+#[tracing::instrument(name = "Command", skip(ctx, pool), level = "info")]
 pub async fn command_responses(
     command: &ApplicationCommandInteraction,
     ctx: Context,
@@ -81,6 +83,11 @@ pub async fn command_responses(
     let user = &command.user;
 
     let full_command_name = get_full_command_name(command);
+
+    info!(
+        "user '{}' called command '{}'",
+        command.user.name, full_command_name
+    );
 
     match UserCommand::from_str(&full_command_name) {
         Ok(user_command) => match user_command {
@@ -91,7 +98,7 @@ pub async fn command_responses(
             }
             UserCommand::create_tag => create_tag(&ctx, command, pool).await,
             UserCommand::remove_tag => remove_tag(&ctx, command, pool).await,
-            UserCommand::tag_list => list(&ctx, command, pool).await,
+            UserCommand::tag_list => list_tags(&ctx, command, pool).await,
             UserCommand::blacklist_me_from_tags => {
                 blacklist_user_from_tags_command(&ctx, user, command, pool).await;
             }
@@ -139,7 +146,7 @@ pub async fn command_responses(
             UserCommand::swap_songs => voice::swap(&ctx, command).await,
         },
         Err(why) => {
-            eprintln!("Cannot respond to slash command {why}");
+            error!("Cannot respond to slash command {why}");
         }
     };
 }

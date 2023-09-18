@@ -1,6 +1,11 @@
 version: '1.2.0'
 
 services:
+  jaeger:
+    image: jaegertracing/all-in-one:1.49
+    restart: unless-stopped
+    ports:
+      - 16686:16686
 
   mariadb:
     image: mariadb
@@ -28,5 +33,6 @@ services:
     restart: unless-stopped
     volumes:
       - markovbot:/app/data
+
 volumes:
   markovbot:

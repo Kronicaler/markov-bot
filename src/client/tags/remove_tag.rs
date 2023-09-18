@@ -9,6 +9,7 @@ use sqlx::{MySql, Pool};
 
 use super::data_access;
 
+#[tracing::instrument(skip(ctx), level = "info")]
 pub async fn remove_tag(
     ctx: &Context,
     command: &ApplicationCommandInteraction,

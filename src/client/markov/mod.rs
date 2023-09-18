@@ -135,6 +135,7 @@ fn markov_filter(r: &markov_strings::MarkovResult) -> bool {
     false
 }
 
+#[tracing::instrument(skip(ctx), level = "info")]
 pub async fn add_user_to_blacklist(
     user: &User,
     ctx: &Context,
@@ -182,6 +183,7 @@ pub async fn add_user_to_blacklist(
         .expect("Error creating interaction response");
 }
 
+#[tracing::instrument(skip(ctx), level = "info")]
 pub async fn remove_user_from_blacklist(
     user: &User,
     ctx: &Context,
@@ -213,6 +215,7 @@ pub async fn remove_user_from_blacklist(
         .expect("Error creating interaction response");
 }
 
+#[tracing::instrument(skip(ctx), level = "info")]
 pub async fn stop_saving_messages_channel(
     ctx: &Context,
     command: &ApplicationCommandInteraction,
@@ -252,6 +255,7 @@ pub async fn stop_saving_messages_channel(
     }
 }
 
+#[tracing::instrument(skip(ctx), level = "info")]
 pub async fn stop_saving_messages_server(
     ctx: &Context,
     command: &ApplicationCommandInteraction,
