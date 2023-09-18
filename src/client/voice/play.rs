@@ -23,7 +23,7 @@ use songbird::{
     TrackEvent,
 };
 use std::{collections::VecDeque, ops::ControlFlow, sync::Arc, time::Duration};
-use tracing::{error, info_span, Instrument};
+use tracing::{error, info, info_span, Instrument};
 
 ///play song from youtube
 #[tracing::instrument(skip(ctx), level = "info")]
@@ -199,12 +199,20 @@ async fn fill_queue(
         let queue_data_lock = queue_data_lock.clone();
         let mut call = call_lock.lock().await;
 
-        let voice_channel =
-            get_guild_channel(guild_id, ctx, call.current_channel().unwrap().0.into())
-                .await
-                .unwrap();
+        let current_channel = match call.current_channel() {
+            Some(c) => c,
+            None => {
+                info!("returning early due to not being connected to any channel");
+                return;
+            }
+        };
+
+        let voice_channel = get_guild_channel(guild_id, ctx, current_channel.0.into())
+            .await
+            .unwrap();
 
         if voice_channel.members(&ctx.cache).unwrap().len() == 0 {
+            info!("returning early due to empty channel");
             return;
         }
 
