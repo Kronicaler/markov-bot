@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "\n\t\tDELETE FROM markov_blacklisted_servers \n\t\tWHERE server_id = ?\n\t\t",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "d6c454c92e52eecd27fcf45d489705dd970032b8d2c9786153475ce0317417b6"
+}

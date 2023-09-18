@@ -19,19 +19,24 @@ markov_strings = "0.1.5"
 dotenvy = "0.15.6"
 crossbeam = "0.8.2"
 rayon = "1.6.0"
-strum = "0.24.1"
-strum_macros = "0.24.3"
+strum = "0.25"
+strum_macros = "0.25.2"
 rand = "0.8.5"
 dashmap = { version = "5.4.0", features = ["serde"] }
 serde = "1.0.147"
 anyhow = "1.0.66"
 thiserror = "1.0.37"
-sqlx = { version = "0.6.2", features = [
-	"runtime-tokio-native-tls",
-	"mysql",
-	"offline",
+sqlx = { version = "0.7.1", features = ["runtime-tokio-native-tls", "mysql"] }
+reqwest = "0.11.13"
+opentelemetry = "0.20"
+opentelemetry_sdk = { version = "0.20", features = ["rt-tokio"] }
+tracing = "0.1"
+tracing-opentelemetry = { version = "0.21" }
+tracing-subscriber = { version = "0.3", features = [
+	"tracing-log",
+	"env-filter",
 ] }
-reqwest="0.11.13"
+opentelemetry-otlp = "0.13"
 
 [dependencies.serenity]
 default-features = false

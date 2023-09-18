@@ -1,0 +1,25 @@
+{
+  "db_name": "MySQL",
+  "query": "\n\t\tSELECT * FROM markov_blacklisted_servers where server_id = ?\n\t\t",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "server_id",
+        "type_info": {
+          "type": "LongLong",
+          "flags": "NOT_NULL | PRIMARY_KEY | UNSIGNED | NO_DEFAULT_VALUE",
+          "char_set": 63,
+          "max_size": 20
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "a9567bc9708f27feee797c0eec92e3fe0a506d4e1d3a8bd13e9aa58c2c4d94eb"
+}

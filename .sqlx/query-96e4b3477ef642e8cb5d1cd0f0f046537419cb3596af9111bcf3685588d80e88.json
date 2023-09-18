@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "\n\t\tDELETE FROM markov_blacklisted_channels\n\t\tWHERE channel_id = ?\n\t\t",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "96e4b3477ef642e8cb5d1cd0f0f046537419cb3596af9111bcf3685588d80e88"
+}

@@ -1,0 +1,25 @@
+{
+  "db_name": "MySQL",
+  "query": "\n\t\tSELECT * FROM markov_blacklisted_channels where channel_id = ?\n\t\t",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "channel_id",
+        "type_info": {
+          "type": "LongLong",
+          "flags": "NOT_NULL | PRIMARY_KEY | UNSIGNED | NO_DEFAULT_VALUE",
+          "char_set": 63,
+          "max_size": 20
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "32454f2c99d66d93655dd1e8679e54d52a083d935a92e5136a30ea2d2e42ed0b"
+}

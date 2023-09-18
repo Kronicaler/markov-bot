@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "\n\t\tINSERT INTO markov_blacklisted_users (user_id)\n\t\tVALUES (?)\n\t\t",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "59171ba0df619d9f340f24f7f06c3c6ec126f388922b78e31986235abe4b304a"
+}

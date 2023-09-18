@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "\n\t\tINSERT INTO tag_blacklisted_users ( user_id )\n\t\tVALUES ( ? )\n\t\t",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "ca52a152cd0eca3fef9f1a7ce1587da75c27ed36d0917f4e68e125014204fe6d"
+}

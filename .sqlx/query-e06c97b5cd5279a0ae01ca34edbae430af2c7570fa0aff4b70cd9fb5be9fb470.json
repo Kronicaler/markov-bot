@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "\n        DELETE FROM tag_blacklisted_users\n        WHERE user_id= ?\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "e06c97b5cd5279a0ae01ca34edbae430af2c7570fa0aff4b70cd9fb5be9fb470"
+}

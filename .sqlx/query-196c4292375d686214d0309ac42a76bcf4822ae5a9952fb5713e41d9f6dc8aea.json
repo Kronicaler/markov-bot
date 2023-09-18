@@ -1,0 +1,80 @@
+{
+  "db_name": "MySQL",
+  "query": "\n        SELECT * FROM tags\n        WHERE listener = ? AND server_id = ?\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": {
+          "type": "LongLong",
+          "flags": "NOT_NULL | PRIMARY_KEY | UNSIGNED | AUTO_INCREMENT",
+          "char_set": 63,
+          "max_size": 20
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "listener",
+        "type_info": {
+          "type": "Blob",
+          "flags": "NOT_NULL | MULTIPLE_KEY | BLOB | NO_DEFAULT_VALUE",
+          "char_set": 224,
+          "max_size": 262140
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "response",
+        "type_info": {
+          "type": "Blob",
+          "flags": "NOT_NULL | BLOB | NO_DEFAULT_VALUE",
+          "char_set": 224,
+          "max_size": 262140
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "creator_name",
+        "type_info": {
+          "type": "Blob",
+          "flags": "NOT_NULL | BLOB | NO_DEFAULT_VALUE",
+          "char_set": 224,
+          "max_size": 262140
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "creator_id",
+        "type_info": {
+          "type": "LongLong",
+          "flags": "NOT_NULL | UNSIGNED | NO_DEFAULT_VALUE",
+          "char_set": 63,
+          "max_size": 20
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "server_id",
+        "type_info": {
+          "type": "LongLong",
+          "flags": "NOT_NULL | UNSIGNED | NO_DEFAULT_VALUE",
+          "char_set": 63,
+          "max_size": 20
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "196c4292375d686214d0309ac42a76bcf4822ae5a9952fb5713e41d9f6dc8aea"
+}

@@ -1,0 +1,25 @@
+{
+  "db_name": "MySQL",
+  "query": "\n\t\tSELECT * FROM markov_blacklisted_users where user_id = ?\n\t\t",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "user_id",
+        "type_info": {
+          "type": "LongLong",
+          "flags": "NOT_NULL | PRIMARY_KEY | UNSIGNED | NO_DEFAULT_VALUE",
+          "char_set": 63,
+          "max_size": 20
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "f98cea59c5173d7e4d4bee016b2a572bb7566988a1362eb66e2de21b383e4b2d"
+}
