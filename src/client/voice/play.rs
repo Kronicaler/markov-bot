@@ -23,6 +23,7 @@ use songbird::{
     TrackEvent,
 };
 use std::{collections::VecDeque, ops::ControlFlow, sync::Arc, time::Duration};
+use tracing::{info_span, Instrument};
 
 ///play song from youtube
 #[tracing::instrument(skip(ctx), level = "info")]
@@ -62,7 +63,11 @@ pub async fn play(ctx: &Context, command: &ApplicationCommandInteraction) {
     }
 
     //join voice channel
-    let (call_lock, success) = manager.join(guild_id, voice_channel_id).await;
+    let (call_lock, success) = manager
+        .join(guild_id, voice_channel_id)
+        .instrument(info_span!("Joining channel"))
+        .await;
+
     if success.is_err() {
         voice_channel_not_found_response(command, ctx).await;
         return;
@@ -86,6 +91,7 @@ pub async fn play(ctx: &Context, command: &ApplicationCommandInteraction) {
     }
 }
 
+#[tracing::instrument(skip_all)]
 async fn handle_video(
     source: YoutubeDl,
     command: &ApplicationCommandInteraction,
@@ -111,6 +117,7 @@ async fn handle_video(
     ControlFlow::Continue(())
 }
 
+#[tracing::instrument(skip_all)]
 async fn handle_playlist(
     mut sources: VecDeque<YoutubeDl>,
     command: &ApplicationCommandInteraction,
@@ -122,21 +129,25 @@ async fn handle_playlist(
         return;
     }
     {
-        let source = sources.pop_front().unwrap();
-        let mut input: Input = source.into();
-        let metadata = input.aux_metadata().await.unwrap_or_default();
-        let mut call = call_lock.lock().await;
-        let track_handle = call.enqueue_input(input).await;
+        async {
+            let source = sources.pop_front().unwrap();
+            let mut input: Input = source.into();
+            let metadata = input.aux_metadata().await.unwrap_or_default();
+            let mut call = call_lock.lock().await;
+            let track_handle = call.enqueue_input(input).await;
 
-        let my_metadata = MyAuxMetadata(metadata.clone());
+            let my_metadata = MyAuxMetadata(metadata.clone());
 
-        track_handle
-            .typemap()
-            .write()
-            .await
-            .insert::<MyAuxMetadata>(Arc::new(RwLock::new(my_metadata)));
+            track_handle
+                .typemap()
+                .write()
+                .await
+                .insert::<MyAuxMetadata>(Arc::new(RwLock::new(my_metadata)));
 
-        return_response(&metadata, call.queue(), command, ctx).await;
+            return_response(&metadata, call.queue(), command, ctx).await;
+        }
+        .instrument(info_span!("Play first song"))
+        .await;
     }
 
     let filling_queue_message = if sources.len() > 10 {
@@ -166,6 +177,7 @@ async fn filling_up_queue_response(
         .expect("Error sending message")
 }
 
+#[tracing::instrument(skip_all)]
 async fn fill_queue(
     sources: VecDeque<YoutubeDl>,
     call_lock: Arc<Mutex<songbird::Call>>,
@@ -180,33 +192,46 @@ async fn fill_queue(
         queue_data.filling_queue.insert(guild_id, true);
     }
 
-    for mut input in inputs {
-        let metadata = match input.aux_metadata().await {
-            Ok(e) => e,
-            Err(_) => continue,
-        };
-        let mut call = call_lock.lock().await;
+    let length = inputs.len();
 
-        let queue_filling_stopped = !*queue_data_lock
-            .read()
-            .await
-            .filling_queue
-            .get(&guild_id)
-            .unwrap();
+    for (i, mut input) in inputs.into_iter().enumerate() {
+        let call_lock = call_lock.clone();
+        let queue_data_lock = queue_data_lock.clone();
 
-        if call.current_channel().is_none() || queue_filling_stopped {
-            return;
+        async move {
+            let metadata = match input.aux_metadata().await {
+                Ok(e) => e,
+                Err(_) => return,
+            };
+            let mut call = call_lock.lock().await;
+
+            let queue_filling_stopped = !*queue_data_lock
+                .read()
+                .await
+                .filling_queue
+                .get(&guild_id)
+                .unwrap();
+
+            if call.current_channel().is_none() || queue_filling_stopped {
+                return;
+            }
+
+            let my_metadata = MyAuxMetadata(metadata);
+
+            let track_handle = call.enqueue_input(input).await;
+
+            track_handle
+                .typemap()
+                .write()
+                .await
+                .insert::<MyAuxMetadata>(Arc::new(RwLock::new(my_metadata)));
         }
-
-        let my_metadata = MyAuxMetadata(metadata);
-
-        let track_handle = call.enqueue_input(input).await;
-
-        track_handle
-            .typemap()
-            .write()
-            .await
-            .insert::<MyAuxMetadata>(Arc::new(RwLock::new(my_metadata)));
+        .instrument(info_span!(
+            "Add song to queue",
+            playlist.position = i,
+            playlist.length = length
+        ))
+        .await;
     }
 }
 
@@ -281,6 +306,7 @@ enum SourceType {
     Playlist(VecDeque<YoutubeDl>),
 }
 
+#[tracing::instrument]
 async fn get_source(query: String) -> SourceType {
     let link_regex =
     regex::Regex::new(r#"(?:(?:https?|ftp)://|\b(?:[a-z\d]+\.))(?:(?:[^\s()<>]+|\((?:[^\s()<>]+|(?:\([^\s()<>]+\)))?\))+(?:\((?:[^\s()<>]+|(?:\(?:[^\s()<>]+\)))?\)|[^\s`!()\[\]{};:'".,<>?«»“”‘’]))?"#)
