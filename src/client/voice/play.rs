@@ -1,4 +1,4 @@
-use crate::client::voice::model::get_voice_messages_lock;
+use crate::client::{helper_funcs::get_guild_channel, voice::model::get_voice_messages_lock};
 
 use super::{
     helper_funcs::{
@@ -23,7 +23,7 @@ use songbird::{
     TrackEvent,
 };
 use std::{collections::VecDeque, ops::ControlFlow, sync::Arc, time::Duration};
-use tracing::{info_span, Instrument};
+use tracing::{error, info_span, Instrument};
 
 ///play song from youtube
 #[tracing::instrument(skip(ctx), level = "info")]
@@ -197,13 +197,25 @@ async fn fill_queue(
     for (i, mut input) in inputs.into_iter().enumerate() {
         let call_lock = call_lock.clone();
         let queue_data_lock = queue_data_lock.clone();
+        let mut call = call_lock.lock().await;
+
+        let voice_channel =
+            get_guild_channel(guild_id, ctx, call.current_channel().unwrap().0.into())
+                .await
+                .unwrap();
+
+        if voice_channel.members(&ctx.cache).unwrap().len() == 0 {
+            return;
+        }
 
         async move {
             let metadata = match input.aux_metadata().await {
                 Ok(e) => e,
-                Err(_) => return,
+                Err(e) => {
+                    error!("error when fetching playlist song metadata {}", e);
+                    AuxMetadata::default()
+                }
             };
-            let mut call = call_lock.lock().await;
 
             let queue_filling_stopped = !*queue_data_lock
                 .read()

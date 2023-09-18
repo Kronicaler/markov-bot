@@ -27,6 +27,7 @@ services:
       - DISCORD_TOKEN
       - APPLICATION_ID
       - DATABASE_URL=mysql://root:${DB_PASS}@mariadb/markov_bot
+      - RUST_LOG=error,markov_bot=info
     build:
       context: ./
       dockerfile: dockerfile
