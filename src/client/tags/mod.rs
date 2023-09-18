@@ -218,6 +218,7 @@ pub async fn set_tag_response_channel(
 /// If there is no tag response channel set then it first tries to send a message in the same channel.
 /// If that fails then it sends the message to the tag response channel if one is set
 /// If that fails then it iterates through every channel in the guild until it finds one it can send a message in
+#[tracing::instrument(skip(ctx, pool), level = "info")]
 pub async fn respond_to_tag(ctx: &Context, msg: &Message, message: &str, pool: &MySqlPool) {
     let tag_channel = get_tag_channel(msg.guild_id.unwrap().get(), pool).await;
 

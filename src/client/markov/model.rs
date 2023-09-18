@@ -36,6 +36,7 @@ pub async fn get_markov_chain_lock(data: &Arc<RwLock<TypeMap>>) -> Arc<RwLock<Ma
     markov_chain_lock
 }
 
+#[tracing::instrument(skip(data), level = "info")]
 pub async fn replace_markov_chain_lock(data: &Arc<RwLock<TypeMap>>) {
     let mut type_map = data.write().await;
 

@@ -60,9 +60,9 @@ pub async fn add_message_to_chain(
         let data = ctx.data.clone();
 
         if rand::random::<f32>() < 0.001 {
-        tokio::spawn(async move {
-            replace_markov_chain_lock(&data).await;
-        });
+            tokio::spawn(async move {
+                replace_markov_chain_lock(&data).await;
+            });
         }
 
         Ok(true)
@@ -71,6 +71,7 @@ pub async fn add_message_to_chain(
     }
 }
 
+#[tracing::instrument(skip(ctx), level = "info")]
 pub async fn generate_sentence(ctx: &Context) -> String {
     let markov_lock = get_markov_chain_lock(&ctx.data).await;
 
