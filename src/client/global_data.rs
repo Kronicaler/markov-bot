@@ -17,6 +17,7 @@ pub const HELP_MESSAGE: &str = "All of my commands are slash commands.
 /stop: stop the current song and clear the queue
 /playing: check which song is currently playing
 /queue: check which songs are in the queue
+/queue-shuffle: shuffle all the songs in the queue
 /loop: loop the current song
 /swap_songs: swap 2 songs positions in the queue
 /version: check the version of the bot";

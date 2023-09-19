@@ -66,6 +66,8 @@ pub enum UserCommand {
     stop,
     playing,
     queue,
+    #[strum(serialize = "queue-shuffle")]
+    queue_shuffle,
     #[strum(serialize = "loop")]
     loop_song,
     #[strum(serialize = "swap-songs")]
@@ -146,6 +148,7 @@ pub async fn command_responses(
             UserCommand::queue => voice::queue(&ctx, command).await,
             UserCommand::loop_song => voice::loop_song(&ctx, command).await,
             UserCommand::swap_songs => voice::swap(&ctx, command).await,
+            UserCommand::queue_shuffle => voice::shuffle_queue(&ctx, command).await,
         },
         Err(why) => {
             error!("Cannot respond to slash command {why}");

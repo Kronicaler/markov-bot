@@ -16,6 +16,8 @@ pub fn create_voice_commands() -> Vec<CreateApplicationCommand> {
             .description("get info for current song"),
         CreateApplicationCommand::new(UserCommand::queue.to_string())
             .description("get the current queue"),
+        CreateApplicationCommand::new(UserCommand::queue_shuffle.to_string())
+            .description("shuffle all the songs in the queue"),
         CreateApplicationCommand::new(UserCommand::loop_song.to_string())
             .description("loop the current "),
     ]
