@@ -173,6 +173,7 @@ async fn filling_up_queue_response(
             CreateMessage::new()
                 .content("Filling up the Queue. This can take some time with larger playlists."),
         )
+        .instrument(info_span!("Sending message"))
         .await
         .expect("Error sending message")
 }

@@ -25,6 +25,8 @@ pub use skip::skip;
 use songbird::EventHandler;
 pub use stop::stop;
 pub use swap::swap;
+use tracing::info_span;
+use tracing::Instrument;
 
 use crate::client::voice::play::create_track_embed;
 
@@ -55,104 +57,79 @@ impl EventHandler for TrackEndHandler {
             None => return None,
         };
 
-        let track_metadata = next_track
-            .typemap()
-            .read()
-            .await
-            .get::<MyAuxMetadata>()
-            .unwrap()
-            .read()
-            .await
-            .0
-            .clone();
+        async move {
+            let track_metadata = next_track
+                .typemap()
+                .read()
+                .await
+                .get::<MyAuxMetadata>()
+                .unwrap()
+                .read()
+                .await
+                .0
+                .clone();
 
-        let embed = create_track_embed(&track_metadata);
+            let embed = create_track_embed(&track_metadata);
 
-        let voice_messages_lock = get_voice_messages_lock(&self.ctx.data).await;
-        let mut voice_messages = voice_messages_lock.write().await;
+            let voice_messages_lock = get_voice_messages_lock(&self.ctx.data).await;
+            let mut voice_messages = voice_messages_lock.write().await;
 
-        let last_message = voice_messages
-            .get_last_message_type_in_channel(self.guild_id, &self.ctx)
-            .await;
+            let last_message = voice_messages
+                .get_last_message_type_in_channel(self.guild_id, &self.ctx)
+                .await;
 
-        match last_message {
-            model::LastMessageType::NowPlaying(mut message) => {
-                message
-                    .edit(&self.ctx.http, EditMessage::new().embed(embed))
-                    .await
-                    .unwrap();
-
-                voice_messages
-                    .last_now_playing
-                    .insert(self.guild_id, message);
-            }
-            model::LastMessageType::PositionInQueue(mut message) => {
-                if track_metadata.source_url.as_ref().unwrap()
-                    == message.embeds[0].url.as_ref().unwrap()
-                {
+            match last_message {
+                model::LastMessageType::NowPlaying(mut message) => {
                     message
-                        .edit(
-                            &self.ctx.http,
-                            EditMessage::new().embed(embed).content("Now playing"),
-                        )
+                        .edit(&self.ctx.http, EditMessage::new().embed(embed))
                         .await
-                        .unwrap();
-
-                    voice_messages
-                        .last_position_in_queue
-                        .remove(&self.guild_id)
                         .unwrap();
 
                     voice_messages
                         .last_now_playing
                         .insert(self.guild_id, message);
-                } else {
+                }
+                model::LastMessageType::PositionInQueue(mut message) => {
+                    if track_metadata.source_url.as_ref().unwrap()
+                        == message.embeds[0].url.as_ref().unwrap()
+                    {
+                        message
+                            .edit(
+                                &self.ctx.http,
+                                EditMessage::new().embed(embed).content("Now playing"),
+                            )
+                            .await
+                            .unwrap();
+
+                        voice_messages
+                            .last_position_in_queue
+                            .remove(&self.guild_id)
+                            .unwrap();
+
+                        voice_messages
+                            .last_now_playing
+                            .insert(self.guild_id, message);
+                    } else {
+                        let now_playing_msg = self.send_now_playing_message(embed).await;
+
+                        voice_messages
+                            .last_now_playing
+                            .insert(self.guild_id, now_playing_msg);
+                    }
+                }
+                model::LastMessageType::None => {
                     let now_playing_msg = self.send_now_playing_message(embed).await;
 
                     voice_messages
                         .last_now_playing
                         .insert(self.guild_id, now_playing_msg);
                 }
-            }
-            model::LastMessageType::None => {
-                let now_playing_msg = self.send_now_playing_message(embed).await;
+            };
 
-                voice_messages
-                    .last_now_playing
-                    .insert(self.guild_id, now_playing_msg);
-            }
-        };
-
-        // if let Some(last_now_playing_msg) = voice_messages.last_now_playing.get_mut(&self.guild_id)
-        // {
-        //     let last_now_playing_msg_is_last_message_in_channel = self
-        //         .voice_text_channel
-        //         .messages(
-        //             &self.ctx.http,
-        //             GetMessages::new().after(last_now_playing_msg.id).limit(1),
-        //         )
-        //         .await
-        //         .unwrap()
-        //         .is_empty();
-
-        //     if !last_now_playing_msg_is_last_message_in_channel {
-        //         *last_now_playing_msg = self.send_now_playing_message(embed).await;
-        //         return None;
-        //     }
-
-        //     last_now_playing_msg
-        //         .edit(&self.ctx.http, EditMessage::new().embed(embed))
-        //         .await
-        //         .unwrap();
-        // } else {
-        //     let now_playing_msg = self.send_now_playing_message(embed).await;
-
-        //     voice_messages
-        //         .last_now_playing
-        //         .insert(now_playing_msg.guild_id.unwrap(), now_playing_msg);
-        // }
-
-        None
+            None
+        }
+        .instrument(info_span!("Updating the 'Now playing' message"))
+        .await
     }
 }
 
@@ -163,6 +140,7 @@ impl TrackEndHandler {
                 &self.ctx.http,
                 CreateMessage::new().content("Now playing").embed(embed),
             )
+            .instrument(info_span!("Sending message"))
             .await
             .expect("Couldn't send message")
     }

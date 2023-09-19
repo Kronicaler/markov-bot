@@ -32,9 +32,10 @@ async fn main() {
     };
 
     let provider = TracerProvider::builder()
-        .with_simple_exporter(
+        .with_batch_exporter(
             opentelemetry_otlp::SpanExporter::new_tonic(exporter_config, TonicConfig::default())
                 .unwrap(),
+            opentelemetry::runtime::Tokio,
         )
         .with_config(
             Config::default().with_resource(Resource::new(vec![KeyValue::new(
