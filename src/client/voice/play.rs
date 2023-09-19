@@ -157,11 +157,11 @@ async fn handle_playlist(
         None
     };
 
+    fill_queue(sources, call_lock, ctx, command.guild_id.unwrap()).await;
+    
     if let Some(filling_queue_message) = filling_queue_message {
         filled_up_queue_response(filling_queue_message, ctx).await;
     }
-
-    fill_queue(sources, call_lock, ctx, command.guild_id.unwrap()).await;
 }
 
 async fn filling_up_queue_response(
