@@ -129,16 +129,6 @@ async fn handle_playlist(
         return;
     }
 
-    let filling_queue_message = if sources.len() > 10 {
-        Some(filling_up_queue_response(command, ctx).await)
-    } else {
-        None
-    };
-
-    if let Some(filling_queue_message) = filling_queue_message {
-        filled_up_queue_response(filling_queue_message, ctx).await;
-    }
-
     {
         async {
             let source = sources.pop_front().unwrap();
@@ -159,6 +149,16 @@ async fn handle_playlist(
         }
         .instrument(info_span!("Play first song"))
         .await;
+    }
+
+    let filling_queue_message = if sources.len() > 10 {
+        Some(filling_up_queue_response(command, ctx).await)
+    } else {
+        None
+    };
+
+    if let Some(filling_queue_message) = filling_queue_message {
+        filled_up_queue_response(filling_queue_message, ctx).await;
     }
 
     fill_queue(sources, call_lock, ctx, command.guild_id.unwrap()).await;
