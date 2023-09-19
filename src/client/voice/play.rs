@@ -91,7 +91,7 @@ pub async fn play(ctx: &Context, command: &ApplicationCommandInteraction) {
     }
 }
 
-#[tracing::instrument(skip_all)]
+#[tracing::instrument(skip(ctx, call_lock))]
 async fn handle_video(
     source: YoutubeDl,
     command: &ApplicationCommandInteraction,
@@ -117,7 +117,7 @@ async fn handle_video(
     ControlFlow::Continue(())
 }
 
-#[tracing::instrument(skip_all)]
+#[tracing::instrument(skip(sources,ctx,call_lock), fields(sources.length=sources.len()))]
 async fn handle_playlist(
     mut sources: VecDeque<YoutubeDl>,
     command: &ApplicationCommandInteraction,
@@ -128,6 +128,17 @@ async fn handle_playlist(
         invalid_link_response(command, ctx).await;
         return;
     }
+
+    let filling_queue_message = if sources.len() > 10 {
+        Some(filling_up_queue_response(command, ctx).await)
+    } else {
+        None
+    };
+
+    if let Some(filling_queue_message) = filling_queue_message {
+        filled_up_queue_response(filling_queue_message, ctx).await;
+    }
+
     {
         async {
             let source = sources.pop_front().unwrap();
@@ -150,16 +161,7 @@ async fn handle_playlist(
         .await;
     }
 
-    let filling_queue_message = if sources.len() > 10 {
-        Some(filling_up_queue_response(command, ctx).await)
-    } else {
-        None
-    };
-
     fill_queue(sources, call_lock, ctx, command.guild_id.unwrap()).await;
-    if let Some(filling_queue_message) = filling_queue_message {
-        filled_up_queue_response(filling_queue_message, ctx).await;
-    }
 }
 
 async fn filling_up_queue_response(
@@ -178,7 +180,7 @@ async fn filling_up_queue_response(
         .expect("Error sending message")
 }
 
-#[tracing::instrument(skip_all)]
+#[tracing::instrument(skip(sources,call_lock,ctx), fields(sources.length=sources.len()))]
 async fn fill_queue(
     sources: VecDeque<YoutubeDl>,
     call_lock: Arc<Mutex<songbird::Call>>,
