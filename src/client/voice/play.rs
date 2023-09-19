@@ -274,6 +274,7 @@ async fn invalid_link_response(command: &ApplicationCommandInteraction, ctx: &Co
             &ctx.http,
             EditInteractionResponse::new().content("Invalid link"),
         )
+        .instrument(info_span!("Sending message"))
         .await
         .expect("Error creating interaction response");
 }
@@ -317,6 +318,7 @@ async fn voice_channel_not_found_response(command: &ApplicationCommandInteractio
             EditInteractionResponse::new()
                 .content("You must be in a voice channel to use this command!"),
         )
+        .instrument(info_span!("Sending message"))
         .await
         .expect("Error creating interaction response");
 }
@@ -426,6 +428,7 @@ async fn return_response(
             &ctx.http,
             EditInteractionResponse::new().embed(embed).content(content),
         )
+        .instrument(info_span!("Sending message"))
         .await
         .expect("Error creating interaction response");
 

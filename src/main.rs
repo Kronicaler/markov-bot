@@ -26,7 +26,7 @@ async fn main() {
     _ = dotenvy::dotenv();
 
     let exporter_config = ExportConfig {
-        endpoint: "http://jaeger:4317".to_string(),
+        endpoint: dotenvy::var("OTLP_ENDPOINT").unwrap_or("http://localhost:4317".to_string()),
         protocol: opentelemetry_otlp::Protocol::Grpc,
         timeout: Duration::from_millis(500),
     };

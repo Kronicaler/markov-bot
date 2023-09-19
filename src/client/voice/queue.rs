@@ -14,6 +14,7 @@ use serenity::{
         Colour,
     },
 };
+use tracing::{info_span, Instrument};
 
 use crate::client::ButtonIds;
 
@@ -39,6 +40,7 @@ pub async fn queue(ctx: &Context, command: &ApplicationCommandInteraction) {
                     &ctx.http,
                     EditInteractionResponse::new().content("The queue is empty!"),
                 )
+                .instrument(info_span!("Sending message"))
                 .await
                 .expect("Error creating interaction response");
             return;
@@ -56,6 +58,7 @@ pub async fn queue(ctx: &Context, command: &ApplicationCommandInteraction) {
                     .embed(create_queue_embed(queue, &duration, colour, 0usize, i).await)
                     .components(create_queue_buttons(queue)),
             )
+            .instrument(info_span!("Sending message"))
             .await
             .expect("Error creating interaction response");
     } else {
@@ -65,6 +68,7 @@ pub async fn queue(ctx: &Context, command: &ApplicationCommandInteraction) {
                 EditInteractionResponse::new()
                     .content("You must be in a voice channel to use that command!"),
             )
+            .instrument(info_span!("Sending message"))
             .await
             .expect("Error creating interaction response");
     }
@@ -151,6 +155,7 @@ pub async fn change_queue_page(
                         &ctx.http,
                         EditInteractionResponse::new().content("The queue is empty!"),
                     )
+                    .instrument(info_span!("Sending message"))
                     .await
                     .expect("Error creating interaction response");
                 return;
@@ -165,6 +170,7 @@ pub async fn change_queue_page(
                     EditInteractionResponse::new()
                         .content("You must be in a voice channel to use that command!"),
                 )
+                .instrument(info_span!("Sending message"))
                 .await
                 .expect("Error creating interaction response");
         }
@@ -190,6 +196,7 @@ async fn change_page(
                 .embed(create_queue_embed(queue, &duration, colour, queue_start, queue_end).await)
                 .components(create_queue_buttons(queue)),
         )
+        .instrument(info_span!("Sending message"))
         .await
         .expect("Error creating interaction response");
 }

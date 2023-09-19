@@ -7,6 +7,7 @@ use serenity::{
     model::prelude::{interaction::application_command::ApplicationCommandInteraction, Colour},
 };
 use strum_macros::EnumString;
+use tracing::{info_span, Instrument};
 
 use super::helper_funcs::{
     get_call_lock, is_bot_in_another_voice_channel, voice_channel_not_same_response,
@@ -104,6 +105,7 @@ async fn couldnt_skip_response(command: &ApplicationCommandInteraction, ctx: &Cl
             &ctx.http,
             EditInteractionResponse::new().embed(CreateEmbed::new().title("Couldn't skip song")),
         )
+        .instrument(info_span!("Sending message"))
         .await
         .expect("Error creating interaction response");
 }
@@ -120,6 +122,7 @@ async fn skip_embed_response(
             &ctx.http,
             EditInteractionResponse::new().embed(CreateEmbed::new().title(title).colour(colour)),
         )
+        .instrument(info_span!("Sending message"))
         .await
         .expect("Error creating interaction response");
 }
@@ -130,6 +133,7 @@ async fn empty_queue_response(command: &ApplicationCommandInteraction, ctx: &Cli
             &ctx.http,
             EditInteractionResponse::new().content("The queue is empty."),
         )
+        .instrument(info_span!("Sending message"))
         .await
         .expect("Couldn't create response");
 }

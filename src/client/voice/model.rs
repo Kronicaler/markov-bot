@@ -19,7 +19,7 @@ impl TypeMapKey for MyAuxMetadata {
     type Value = Arc<RwLock<MyAuxMetadata>>;
 }
 
-#[derive(Clone, Default)]
+#[derive(Clone, Default, Debug)]
 pub struct VoiceMessages {
     pub last_now_playing: HashMap<GuildId, Message>,
     pub last_position_in_queue: HashMap<GuildId, Message>,
@@ -39,6 +39,7 @@ impl TypeMapKey for QueueData {
 }
 
 impl VoiceMessages {
+    #[tracing::instrument(skip(ctx))]
     pub async fn get_last_message_type_in_channel(
         &self,
         guild_id: GuildId,
@@ -64,7 +65,7 @@ impl VoiceMessages {
 }
 
 pub async fn is_last_message_in_channel(message: &Message, ctx: &Context) -> bool {
-    let Channel::Guild(channel) = message.channel(&ctx).await.unwrap()else{
+    let Channel::Guild(channel) = message.channel(&ctx).await.unwrap() else {
         return false;
     };
 
@@ -81,6 +82,7 @@ pub enum LastMessageType {
     None,
 }
 
+#[tracing::instrument(skip(data))]
 pub async fn get_voice_messages_lock(data: &Arc<RwLock<TypeMap>>) -> Arc<RwLock<VoiceMessages>> {
     data.read()
         .await
@@ -89,6 +91,7 @@ pub async fn get_voice_messages_lock(data: &Arc<RwLock<TypeMap>>) -> Arc<RwLock<
         .clone()
 }
 
+#[tracing::instrument(skip(data))]
 pub async fn get_queue_data_lock(data: &Arc<RwLock<TypeMap>>) -> Arc<RwLock<QueueData>> {
     data.read()
         .await

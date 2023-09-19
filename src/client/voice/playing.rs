@@ -3,6 +3,7 @@ use serenity::{
     client::Context,
     model::prelude::{interaction::application_command::ApplicationCommandInteraction, Colour},
 };
+use tracing::{info_span, Instrument};
 
 use super::MyAuxMetadata;
 
@@ -38,6 +39,7 @@ pub async fn playing(ctx: &Context, command: &ApplicationCommandInteraction) {
                 &ctx.http,
                 EditInteractionResponse::new().embed(create_playing_embed(queue).await),
             )
+            .instrument(info_span!("Sending message"))
             .await
             .expect("Error creating interaction response");
     } else {
@@ -51,6 +53,7 @@ async fn nothing_playing_response(command: &ApplicationCommandInteraction, ctx: 
             &ctx.http,
             EditInteractionResponse::new().content("Nothing is currently playing."),
         )
+        .instrument(info_span!("Sending message"))
         .await
         .expect("Error creating interaction response");
 }

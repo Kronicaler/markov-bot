@@ -7,6 +7,7 @@ use serenity::{
 };
 use songbird::tracks::TrackQueue;
 use thiserror::Error;
+use tracing::{info_span, Instrument};
 
 use super::{
     helper_funcs::{
@@ -95,7 +96,7 @@ pub async fn swap(ctx: &Context, command: &ApplicationCommandInteraction) {
     let first_track = get_track_from_queue(queue, first_track_idx).await;
     let second_track = get_track_from_queue(queue, second_track_idx).await;
 
-    let (Some(first_track),Some(second_track)) = (first_track,second_track) else{
+    let (Some(first_track), Some(second_track)) = (first_track, second_track) else {
         track_not_in_queue_response(command, ctx).await;
         return;
     };
@@ -129,9 +130,9 @@ async fn swapping_success_response(
             &ctx.http,
             EditInteractionResponse::new().content(format!(
                 "
-Swapped tracks \n
-{}. {}\n
-and\n
+Swapped tracks 
+{}. {} 
+and 
 {}. {}
 ",
                 first_track_idx,
@@ -146,6 +147,7 @@ and\n
                     .unwrap_or_else(|| "NO TITLE".to_string())
             )),
         )
+        .instrument(info_span!("Sending message"))
         .await
         .expect("Error creating interaction response");
 }
@@ -171,6 +173,7 @@ async fn invalid_number_response(command: &ApplicationCommandInteraction, ctx: &
             &ctx.http,
             EditInteractionResponse::new().content("Invalid number!"),
         )
+        .instrument(info_span!("Sending message"))
         .await
         .expect("Error creating interaction response");
 }
@@ -190,6 +193,7 @@ async fn swapping_error_response(
                     &ctx.http,
                     EditInteractionResponse::new().content("Nothing is playing!"),
                 )
+                .instrument(info_span!("Sending message"))
                 .await
                 .expect("Error creating interaction response");
         }
@@ -200,6 +204,7 @@ async fn swapping_error_response(
                     EditInteractionResponse::new()
                         .content("Can't swap the song that's currently playing!"),
                 )
+                .instrument(info_span!("Sending message"))
                 .await
                 .expect("Error creating interaction response");
         }
@@ -209,6 +214,7 @@ async fn swapping_error_response(
                     &ctx.http,
                     EditInteractionResponse::new().content("Can't swap the same song!"),
                 )
+                .instrument(info_span!("Sending message"))
                 .await
                 .expect("Error creating interaction response");
         }
@@ -221,6 +227,7 @@ async fn track_not_in_queue_response(command: &ApplicationCommandInteraction, ct
             &ctx.http,
             EditInteractionResponse::new().content("That track isn't in the queue!"),
         )
+        .instrument(info_span!("Sending message"))
         .await
         .expect("Error creating interaction response");
 }

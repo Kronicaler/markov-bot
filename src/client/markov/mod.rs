@@ -28,6 +28,7 @@ use serenity::{
 use sqlx::{MySql, MySqlPool, Pool};
 use std::{error::Error, sync::Arc};
 use tokio::sync::RwLockWriteGuard;
+use tracing::{info_span, Instrument};
 
 pub async fn add_message_to_chain(
     msg: &Message,
@@ -154,6 +155,7 @@ pub async fn add_user_to_blacklist(
                         .content("I'm already not saving your messages"),
                 ),
             )
+            .instrument(info_span!("Sending message"))
             .await
             .expect("Error creating interaction response");
         return;
@@ -180,6 +182,7 @@ pub async fn add_user_to_blacklist(
             CreateInteractionResponse::new()
                 .interaction_response_data(CreateInteractionResponseData::new().content(response)),
         )
+        .instrument(info_span!("Sending message"))
         .await
         .expect("Error creating interaction response");
 }
@@ -212,6 +215,7 @@ pub async fn remove_user_from_blacklist(
             CreateInteractionResponse::new()
                 .interaction_response_data(CreateInteractionResponseData::new().content(response)),
         )
+        .instrument(info_span!("Sending message"))
         .await
         .expect("Error creating interaction response");
 }
@@ -237,6 +241,7 @@ pub async fn stop_saving_messages_channel(
                         .content("Continuing message saving in this channel"),
                 ),
             )
+            .instrument(info_span!("Sending message"))
             .await
             .unwrap();
     } else {
@@ -251,6 +256,7 @@ pub async fn stop_saving_messages_channel(
                         .content("Stopping message saving in this channel"),
                 ),
             )
+            .instrument(info_span!("Sending message"))
             .await
             .unwrap();
     }
@@ -273,6 +279,7 @@ pub async fn stop_saving_messages_server(
                         .content("This command can only be used in a server"),
                 ),
             )
+            .instrument(info_span!("Sending message"))
             .await
             .unwrap();
         return;
@@ -292,6 +299,7 @@ pub async fn stop_saving_messages_server(
                         .content("Continuing message saving in this server"),
                 ),
             )
+            .instrument(info_span!("Sending message"))
             .await
             .unwrap();
     } else {
@@ -306,6 +314,7 @@ pub async fn stop_saving_messages_server(
                         .content("Stopping message saving in this server"),
                 ),
             )
+            .instrument(info_span!("Sending message"))
             .await
             .unwrap();
     }

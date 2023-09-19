@@ -8,6 +8,7 @@ pub use create_tag::create_tag;
 use regex::Regex;
 pub use remove_tag::remove_tag;
 use tokio::task;
+use tracing::{info_span, Instrument};
 
 use self::data_access::{
     create_tag_blacklisted_user, create_tag_channel, delete_tag_blacklisted_user,
@@ -58,6 +59,7 @@ pub async fn list_tags(ctx: &Context, command: &ApplicationCommandInteraction, p
             CreateInteractionResponse::new()
                 .interaction_response_data(CreateInteractionResponseData::new().content(message)),
         )
+        .instrument(info_span!("Sending message"))
         .await
         .expect("Error creating interaction response");
 }
@@ -77,6 +79,7 @@ pub async fn blacklist_user_from_tags_command(
             CreateInteractionResponse::new()
                 .interaction_response_data(CreateInteractionResponseData::new().content(response)),
         )
+        .instrument(info_span!("Sending message"))
         .await
         .expect("Error creating interaction response");
 }
@@ -183,6 +186,7 @@ pub async fn set_tag_response_channel(
                         .content("You can only use this command in a server"),
                 ),
             )
+            .instrument(info_span!("Sending message"))
             .await
             .expect("Error creating interaction response");
         return;
@@ -207,6 +211,7 @@ pub async fn set_tag_response_channel(
                     .content("Successfully set this channel as the tag response channel"),
             ),
         )
+        .instrument(info_span!("Sending message"))
         .await
         .expect("Error creating interaction response");
 }
@@ -229,7 +234,13 @@ pub async fn respond_to_tag(ctx: &Context, msg: &Message, message: &str, pool: &
     }
 
     //Try sending a message to the channel the tag listener was tripped off
-    if msg.channel_id.say(&ctx.http, message).await.is_err() {
+    if msg
+        .channel_id
+        .say(&ctx.http, message)
+        .instrument(info_span!("Sending message"))
+        .await
+        .is_err()
+    {
         //If sending a message fails iterate through the guild channels until it manages to send a message
         let channels: Vec<Channel> = msg
             .guild(&ctx.cache)
@@ -285,6 +296,7 @@ async fn tag_response(
                 .allowed_mentions(CreateAllowedMentions::new().parse(ParseValue::Users))
                 .content(msg.author.mention().to_string() + " " + message),
         )
+        .instrument(info_span!("Sending message"))
         .await
 }
 
@@ -331,6 +343,7 @@ async fn send_response_in_tag_channel(
 
     match tag_response_channel
         .send_message(&ctx.http, tag_response)
+        .instrument(info_span!("Sending message"))
         .await
     {
         Ok(mut msg) => {

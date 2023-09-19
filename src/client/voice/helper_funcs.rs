@@ -7,6 +7,7 @@ use serenity::{
         prelude::{interaction::application_command::ApplicationCommandInteraction, VoiceState},
     },
 };
+use tracing::{info_span, Instrument};
 
 use crate::client::helper_funcs::get_guild_channel;
 
@@ -56,6 +57,7 @@ pub async fn voice_channel_not_same_response(
             EditInteractionResponse::new()
                 .content("You must be in the same voice channel to use this command!"),
         )
+        .instrument(info_span!("Sending message"))
         .await
         .expect("Error creating interaction response");
 }
@@ -79,6 +81,7 @@ pub async fn get_call_lock(
                 EditInteractionResponse::new()
                     .content("Must be in a voice channel to use that command!"),
             )
+            .instrument(info_span!("Sending message"))
             .await
             .expect("Error creating interaction response");
         return None;

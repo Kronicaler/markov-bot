@@ -6,6 +6,7 @@ use serenity::{
     prelude::Context,
 };
 use sqlx::{MySql, Pool};
+use tracing::{info_span, Instrument};
 
 use super::data_access;
 
@@ -56,6 +57,7 @@ async fn tag_not_found_response(
                     .content(format!("Couldn't find the tag {listener}")),
             ),
         )
+        .instrument(info_span!("Sending message"))
         .await
         .expect("Error creating interaction response");
 }
@@ -72,6 +74,7 @@ async fn tag_removed_response(
                 CreateInteractionResponseData::new().content(format!("Removed the tag {listener}")),
             ),
         )
+        .instrument(info_span!("Sending message"))
         .await
         .expect("Error creating interaction response");
 }

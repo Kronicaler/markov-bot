@@ -7,6 +7,7 @@ use serenity::{
     prelude::Context,
 };
 use sqlx::{MySql, Pool};
+use tracing::{info_span, Instrument};
 
 #[tracing::instrument(skip(ctx), level = "info")]
 pub async fn create_tag(
@@ -62,6 +63,7 @@ async fn tag_exists_response(
                     .content(format!("The tag \"{listener}\" already exists")),
             ),
         )
+        .instrument(info_span!("Sending message"))
         .await
         .expect("Error creating interaction response");
 }
@@ -78,6 +80,7 @@ async fn tag_created_response(
                 CreateInteractionResponseData::new().content(format!("Created tag {listener}")),
             ),
         )
+        .instrument(info_span!("Sending message"))
         .await
         .expect("Error creating interaction response");
 }
@@ -91,6 +94,7 @@ async fn invalid_tag_response(command: &ApplicationCommandInteraction, ctx: &Con
                     .content("Tags can't contain mentions or non alphanumeric characters"),
             ),
         )
+        .instrument(info_span!("Sending message"))
         .await
         .expect("Error creating interaction response");
 }
@@ -104,6 +108,7 @@ async fn tag_outside_server_response(command: &ApplicationCommandInteraction, ct
                     .content("Can't create a tag outside of a server"),
             ),
         )
+        .instrument(info_span!("Sending message"))
         .await
         .expect("Error creating interaction response");
 }

@@ -3,6 +3,7 @@ use serenity::{
     model::prelude::interaction::application_command::ApplicationCommandInteraction,
 };
 use songbird::tracks::LoopState;
+use tracing::{info_span, Instrument};
 
 use super::helper_funcs::{is_bot_in_another_voice_channel, voice_channel_not_same_response};
 
@@ -64,6 +65,7 @@ async fn not_in_vc_response(command: &ApplicationCommandInteraction, ctx: &Conte
             EditInteractionResponse::new()
                 .content("Must be in a voice channel to use that command!"),
         )
+        .instrument(info_span!("Sending message"))
         .await
         .expect("Error creating interaction response");
 }
@@ -74,6 +76,7 @@ async fn nothing_playing_response(command: &ApplicationCommandInteraction, ctx: 
             &ctx.http,
             EditInteractionResponse::new().content("Nothing is playing."),
         )
+        .instrument(info_span!("Sending message"))
         .await
         .expect("Couldn't create response");
 }
@@ -89,6 +92,7 @@ async fn enable_looping(
             &ctx.http,
             EditInteractionResponse::new().content("Looping the current song."),
         )
+        .instrument(info_span!("Sending message"))
         .await
         .expect("Error creating interaction response");
 }
@@ -104,6 +108,7 @@ async fn disable_looping(
             &ctx.http,
             EditInteractionResponse::new().content("No longer looping the current song."),
         )
+        .instrument(info_span!("Sending message"))
         .await
         .expect("Error creating interaction response");
 }

@@ -3,6 +3,7 @@ use serenity::{
     client::Context,
     model::prelude::{interaction::application_command::ApplicationCommandInteraction, Colour},
 };
+use tracing::{info_span, Instrument};
 
 use super::{
     helper_funcs::{is_bot_in_another_voice_channel, voice_channel_not_same_response},
@@ -46,6 +47,7 @@ pub async fn stop(ctx: &Context, command: &ApplicationCommandInteraction) {
                 EditInteractionResponse::new()
                     .content("Must be in a voice channel to use that command!"),
             )
+            .instrument(info_span!("Sending message"))
             .await
             .expect("Error creating interaction response");
         return;
@@ -62,6 +64,7 @@ pub async fn stop(ctx: &Context, command: &ApplicationCommandInteraction) {
                     .colour(colour),
             ),
         )
+        .instrument(info_span!("Sending message"))
         .await
         .expect("Error creating interaction response");
 }

@@ -26,6 +26,7 @@ pub struct MarkovBlacklistedServer {
     pub server_id: u64,
 }
 
+#[tracing::instrument(skip(data))]
 pub async fn get_markov_chain_lock(data: &Arc<RwLock<TypeMap>>) -> Arc<RwLock<Markov>> {
     let markov_chain_lock = data
         .read()
@@ -36,7 +37,7 @@ pub async fn get_markov_chain_lock(data: &Arc<RwLock<TypeMap>>) -> Arc<RwLock<Ma
     markov_chain_lock
 }
 
-#[tracing::instrument(skip(data), level = "info")]
+#[tracing::instrument(skip(data))]
 pub async fn replace_markov_chain_lock(data: &Arc<RwLock<TypeMap>>) {
     let mut type_map = data.write().await;
 

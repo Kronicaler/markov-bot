@@ -13,6 +13,7 @@ use serenity::{
         },
     },
 };
+use tracing::{info_span, Instrument};
 
 #[tracing::instrument(skip(ctx), level = "info")]
 pub async fn user_id_command(ctx: Context, command: &ApplicationCommandInteraction) {
@@ -39,6 +40,7 @@ pub async fn user_id_command(ctx: Context, command: &ApplicationCommandInteracti
             CreateInteractionResponse::new()
                 .interaction_response_data(CreateInteractionResponseData::new().content(response)),
         )
+        .instrument(info_span!("Sending message"))
         .await
         .expect("Couldn't create interaction response");
 }
@@ -51,6 +53,7 @@ pub async fn ping_command(ctx: Context, command: &ApplicationCommandInteraction)
             CreateInteractionResponse::new()
                 .interaction_response_data(CreateInteractionResponseData::new().content("Pong!")),
         )
+        .instrument(info_span!("Sending message"))
         .await
         .expect("Couldn't create interaction response");
 }

@@ -23,7 +23,7 @@ use serenity::{
 };
 use sqlx::{MySql, Pool};
 use strum_macros::{Display, EnumProperty, EnumString};
-use tracing::{info, error};
+use tracing::{error, info, info_span, Instrument};
 
 /// All the slash commands the bot has implemented
 #[allow(non_camel_case_types)]
@@ -113,6 +113,7 @@ pub async fn command_responses(
                         CreateInteractionResponseData::new().content(global_data::HELP_MESSAGE),
                     ),
                 )
+                .instrument(info_span!("Sending message"))
                 .await
                 .expect("Error creating interaction response"),
             UserCommand::version => command
@@ -124,6 +125,7 @@ pub async fn command_responses(
                         ),
                     ),
                 )
+                .instrument(info_span!("Sending message"))
                 .await
                 .expect("Error creating interaction response"),
             UserCommand::continue_saving_my_messages => {

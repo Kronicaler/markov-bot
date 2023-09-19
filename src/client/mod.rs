@@ -9,6 +9,7 @@ pub mod voice;
 use global_data::{init_global_data_for_client, HELP_MESSAGE};
 use slash_commands::{command_responses, create_global_commands, create_test_commands};
 use sqlx::{MySql, Pool};
+use tracing::{info_span, Instrument};
 
 use self::{
     tags::{blacklist_user, respond_to_tag},
@@ -111,6 +112,7 @@ and the users can choose themselves if they don't want their messages saved (/st
                                         .flags(MessageFlags::EPHEMERAL),
                                 ),
                             )
+                            .instrument(info_span!("Sending message"))
                             .await
                             .expect("couldn't create response");
                     }
@@ -159,18 +161,24 @@ and the users can choose themselves if they don't want their messages saved (/st
             .await
             .expect("Couldn't read cache")
         {
-            if words_in_message.contains(&"help".to_owned()) {
+            async move {
+                if words_in_message.contains(&"help".to_owned()) {
+                    msg.channel_id
+                        .say(&ctx.http, HELP_MESSAGE)
+                        .instrument(info_span!("Sending message"))
+                        .await
+                        .expect("Couldn't send message");
+                    return;
+                }
+
                 msg.channel_id
-                    .say(&ctx.http, HELP_MESSAGE)
+                    .say(&ctx.http, markov::generate_sentence(&ctx).await)
+                    .instrument(info_span!("Sending message"))
                     .await
                     .expect("Couldn't send message");
-                return;
             }
-
-            msg.channel_id
-                .say(&ctx.http, markov::generate_sentence(&ctx).await)
-                .await
-                .expect("Couldn't send message");
+            .instrument(info_span!("Mentioned"))
+            .await;
         }
     }
 
