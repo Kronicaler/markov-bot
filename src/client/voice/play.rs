@@ -7,6 +7,7 @@ use super::{
     model::get_queue_data_lock,
     MyAuxMetadata, TrackEndHandler,
 };
+use futures::future::join_all;
 use reqwest::Client;
 use serenity::{
     builder::{CreateEmbed, CreateMessage, EditInteractionResponse, EditMessage},
@@ -158,7 +159,7 @@ async fn handle_playlist(
     };
 
     fill_queue(sources, call_lock, ctx, command.guild_id.unwrap()).await;
-    
+
     if let Some(filling_queue_message) = filling_queue_message {
         filled_up_queue_response(filling_queue_message, ctx).await;
     }
@@ -197,64 +198,91 @@ async fn fill_queue(
 
     let length = inputs.len();
 
+    let mut futures: Vec<_> = vec![];
     for (i, mut input) in inputs.into_iter().enumerate() {
         let call_lock = call_lock.clone();
         let queue_data_lock = queue_data_lock.clone();
-        let mut call = call_lock.lock().await;
+        {
+            let call = call_lock.lock().await;
 
-        let current_channel = match call.current_channel() {
-            Some(c) => c,
-            None => {
-                info!("returning early due to not being connected to any channel");
-                return;
-            }
-        };
-
-        let voice_channel = get_guild_channel(guild_id, ctx, current_channel.0.into())
-            .await
-            .unwrap();
-
-        if voice_channel.members(&ctx.cache).unwrap().len() == 0 {
-            info!("returning early due to empty channel");
-            return;
-        }
-
-        async move {
-            let metadata = match input.aux_metadata().await {
-                Ok(e) => e,
-                Err(e) => {
-                    error!("error when fetching playlist song metadata {}", e);
-                    AuxMetadata::default()
+            let current_channel = match call.current_channel() {
+                Some(c) => c,
+                None => {
+                    info!("Returning early due to not being connected to any channel");
+                    return;
                 }
             };
 
-            let queue_filling_stopped = !*queue_data_lock
-                .read()
+            let voice_channel = get_guild_channel(guild_id, ctx, current_channel.0.into())
                 .await
-                .filling_queue
-                .get(&guild_id)
                 .unwrap();
 
-            if call.current_channel().is_none() || queue_filling_stopped {
+            if voice_channel.members(&ctx.cache).unwrap().len() == 0 {
+                info!("Returning early due to empty channel");
                 return;
             }
+        }
 
-            let my_metadata = MyAuxMetadata(metadata);
-
-            let track_handle = call.enqueue_input(input).await;
-
-            track_handle
-                .typemap()
-                .write()
+        let x = async move {
+            match input
+                .aux_metadata()
+                .instrument(info_span!("Fetching metadata"))
                 .await
-                .insert::<MyAuxMetadata>(Arc::new(RwLock::new(my_metadata)));
+            {
+                Ok(e) => Some((e, input)),
+                Err(e) => {
+                    error!("Error when fetching playlist song metadata {}", e);
+                    None
+                }
+            }
         }
         .instrument(info_span!(
             "Add song to queue",
             playlist.position = i,
             playlist.length = length
-        ))
-        .await;
+        ));
+
+        futures.push(tokio::spawn(x));
+
+        if i % 10 == 0 {
+            let task_results = join_all(futures)
+                .await
+                .into_iter()
+                .filter(|m| m.is_ok())
+                .map(|m| m.unwrap())
+                .filter(|m| m.is_some())
+                .map(|m| m.unwrap());
+
+            let mut call = call_lock
+                .lock()
+                .instrument(info_span!("Waiting for call lock"))
+                .await;
+
+            for (metadata, input) in task_results {
+                let queue_filling_stopped = !*queue_data_lock
+                    .read()
+                    .await
+                    .filling_queue
+                    .get(&guild_id)
+                    .unwrap();
+
+                if call.current_channel().is_none() || queue_filling_stopped {
+                    return;
+                }
+
+                let my_metadata = MyAuxMetadata(metadata);
+
+                let track_handle = call.enqueue_input(input).await;
+
+                track_handle
+                    .typemap()
+                    .write()
+                    .await
+                    .insert::<MyAuxMetadata>(Arc::new(RwLock::new(my_metadata)));
+            }
+
+            futures = vec![];
+        }
     }
 }
 

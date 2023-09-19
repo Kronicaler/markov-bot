@@ -1076,6 +1076,7 @@ dependencies = [
  "crossbeam",
  "dashmap",
  "dotenvy",
+ "futures",
  "markov_strings",
  "opentelemetry",
  "opentelemetry-otlp",

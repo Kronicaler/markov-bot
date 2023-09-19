@@ -19,7 +19,7 @@ use tracing_subscriber::{
     EnvFilter, Registry,
 };
 
-#[tokio::main]
+#[tokio::main(flavor = "multi_thread")]
 async fn main() {
     file_operations::create_data_folders();
 

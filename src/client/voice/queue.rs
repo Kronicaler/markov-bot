@@ -97,9 +97,10 @@ async fn get_queue_duration(queue: &songbird::tracks::TrackQueue) -> String {
         .into_iter()
         .reduce(|a, f| a.checked_add(f).unwrap())
         .unwrap_or_default();
-    let minutes = total_queue_time.as_secs() / 60;
-    let seconds = total_queue_time.as_secs() - minutes * 60;
-    let duration = format!("{minutes}:{seconds:02}");
+    let hours = total_queue_time.as_secs() / 60 / 60;
+    let minutes = total_queue_time.as_secs() / 60 % 60;
+    let seconds = total_queue_time.as_secs() % 60;
+    let duration = format!("{hours:02}h:{minutes:02}m:{seconds:02}s");
 
     duration
 }
