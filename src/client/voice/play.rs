@@ -24,7 +24,7 @@ use songbird::{
     TrackEvent,
 };
 use std::{collections::VecDeque, ops::ControlFlow, sync::Arc, time::Duration};
-use tracing::{error, info, info_span, Instrument};
+use tracing::{error, info, info_span, warn, Instrument};
 
 ///play song from youtube
 #[tracing::instrument(skip(ctx), level = "info")]
@@ -231,7 +231,7 @@ async fn fill_queue(
             {
                 Ok(e) => Some((e, input)),
                 Err(e) => {
-                    error!("Error when fetching playlist song metadata {}", e);
+                    warn!("Error when fetching playlist song metadata: {}", e);
                     None
                 }
             }
