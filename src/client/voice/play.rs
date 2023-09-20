@@ -24,7 +24,7 @@ use songbird::{
     TrackEvent,
 };
 use std::{collections::VecDeque, ops::ControlFlow, sync::Arc, time::Duration};
-use tracing::{error, info, info_span, warn, Instrument};
+use tracing::{info, info_span, warn, Instrument};
 
 ///play song from youtube
 #[tracing::instrument(skip(ctx), level = "info")]
