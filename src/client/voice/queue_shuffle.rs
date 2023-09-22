@@ -15,9 +15,9 @@ pub async fn shuffle_queue(ctx: &Context, command: &ApplicationCommandInteractio
 
     command.defer(&ctx.http).await.unwrap();
 
-    if let Some(handler_lock) = manager.get(command.guild_id.unwrap()) {
-        let handler = handler_lock.lock().await;
-        let queue = handler.queue();
+    if let Some(call_lock) = manager.get(command.guild_id.unwrap()) {
+        let call = call_lock.lock().await;
+        let queue = call.queue();
 
         if queue.is_empty() {
             empty_queue_response(command, ctx).await;
