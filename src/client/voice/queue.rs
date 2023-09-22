@@ -1,8 +1,10 @@
-use std::convert::TryInto;
+use std::{cmp::min, convert::TryInto};
 
+use itertools::Itertools;
 use serenity::{
     builder::{
         CreateActionRow, CreateButton, CreateComponents, CreateEmbed, EditInteractionResponse,
+        EditMessage,
     },
     client::Context,
     model::prelude::{
@@ -18,7 +20,7 @@ use tracing::{info_span, Instrument};
 
 use crate::client::ButtonIds;
 
-use super::MyAuxMetadata;
+use super::{model::get_voice_messages_lock, MyAuxMetadata};
 
 ///get the queue
 #[tracing::instrument(skip(ctx), level = "info")]
@@ -45,22 +47,19 @@ pub async fn queue(ctx: &Context, command: &ApplicationCommandInteraction) {
                 .expect("Error creating interaction response");
             return;
         }
-        let i = if queue.len() < 10 { queue.len() } else { 10 };
 
-        let colour = Colour::from_rgb(149, 8, 2);
-        let duration = get_queue_duration(queue).await;
         //embed
-        command
-            .edit_original_interaction_response(
-                &ctx.http,
-                EditInteractionResponse::new()
-                    .content("0")
-                    .embed(create_queue_embed(queue, &duration, colour, 0usize, i).await)
-                    .components(create_queue_buttons(queue)),
-            )
+        let queue_message = command
+            .edit_original_interaction_response(&ctx.http, create_queue_response(1, &queue).await)
             .instrument(info_span!("Sending message"))
             .await
             .expect("Error creating interaction response");
+
+        let voice_messages_lock = get_voice_messages_lock(&ctx.data).await;
+        let mut voice_messages = voice_messages_lock.write().await;
+        voice_messages
+            .queue
+            .insert(command.guild_id.unwrap(), queue_message);
     } else {
         command
             .edit_original_interaction_response(
@@ -105,34 +104,29 @@ async fn get_queue_duration(queue: &songbird::tracks::TrackQueue) -> String {
     duration
 }
 
-fn create_queue_buttons(
-    queue: &songbird::tracks::TrackQueue,
-) -> serenity::builder::CreateComponents {
-    if queue.len() > 10 {
-        CreateComponents::new().set_action_row(
-            CreateActionRow::new()
-                .add_button(
-                    CreateButton::new()
-                        .emoji(serenity::model::channel::ReactionType::Unicode(
-                            "◀".to_string(),
-                        ))
-                        .style(ButtonStyle::Primary)
-                        .custom_id(ButtonIds::QueuePrevious.to_string()),
-                )
-                .add_button(
-                    CreateButton::new()
-                        .emoji(serenity::model::channel::ReactionType::Unicode(
-                            "▶".to_string(),
-                        ))
-                        .style(ButtonStyle::Primary)
-                        .custom_id(ButtonIds::QueueNext.to_string()),
-                ),
-        )
-    } else {
-        CreateComponents::new()
-    }
+fn create_queue_buttons() -> serenity::builder::CreateComponents {
+    CreateComponents::new().set_action_row(
+        CreateActionRow::new()
+            .add_button(
+                CreateButton::new()
+                    .emoji(serenity::model::channel::ReactionType::Unicode(
+                        "◀".to_string(),
+                    ))
+                    .style(ButtonStyle::Primary)
+                    .custom_id(ButtonIds::QueuePrevious.to_string()),
+            )
+            .add_button(
+                CreateButton::new()
+                    .emoji(serenity::model::channel::ReactionType::Unicode(
+                        "▶".to_string(),
+                    ))
+                    .style(ButtonStyle::Primary)
+                    .custom_id(ButtonIds::QueueNext.to_string()),
+            ),
+    )
 }
 
+#[tracing::instrument(skip(ctx), level = "info")]
 pub async fn change_queue_page(
     ctx: &Context,
     button: &mut MessageComponentInteraction,
@@ -161,8 +155,22 @@ pub async fn change_queue_page(
                     .expect("Error creating interaction response");
                 return;
             }
+            let queue_start =
+                get_queue_start_from_button(&button.message.content, button_id, queue);
 
-            change_page(button, ctx, button_id, queue).await;
+            let queue_response = create_queue_response(queue_start, queue).await;
+
+            let queue_message = button
+                .edit_original_interaction_response(&ctx.http, queue_response)
+                .instrument(info_span!("Sending message"))
+                .await
+                .expect("Error creating interaction response");
+
+            let voice_messages_lock = get_voice_messages_lock(&ctx.data).await;
+            let mut voice_messages = voice_messages_lock.write().await;
+            voice_messages
+                .queue
+                .insert(button.guild_id.unwrap(), queue_message);
         }
         None => {
             button
@@ -178,37 +186,33 @@ pub async fn change_queue_page(
     }
 }
 
-async fn change_page(
-    button: &mut MessageComponentInteraction,
-    ctx: &Context,
-    button_id: ButtonIds,
+async fn create_queue_response(
+    queue_start: usize,
     queue: &songbird::tracks::TrackQueue,
-) {
-    let (queue_start, queue_end) = get_page_ends(button, &button_id, queue);
+) -> EditInteractionResponse {
+    EditInteractionResponse::new()
+        .content(format!("Page {}", queue_start / 10 + 1))
+        .embed(create_queue_embed(queue, queue_start - 1).await)
+        .components(create_queue_buttons())
+}
 
-    let duration = get_queue_duration(queue).await;
-    let colour = Colour::from_rgb(149, 8, 2);
-
-    button
-        .edit_original_interaction_response(
-            &ctx.http,
-            EditInteractionResponse::new()
-                .content(queue_start.to_string())
-                .embed(create_queue_embed(queue, &duration, colour, queue_start, queue_end).await)
-                .components(create_queue_buttons(queue)),
-        )
-        .instrument(info_span!("Sending message"))
-        .await
-        .expect("Error creating interaction response");
+pub async fn create_queue_edit_message(
+    queue_start: usize,
+    queue: &songbird::tracks::TrackQueue,
+) -> EditMessage {
+    EditMessage::new()
+        .content(format!("Page {}", queue_start / 10 + 1))
+        .embed(create_queue_embed(queue, queue_start - 1).await)
+        .components(create_queue_buttons())
 }
 
 async fn create_queue_embed(
     queue: &songbird::tracks::TrackQueue,
-    duration: &str,
-    colour: Colour,
-    queue_start: usize,
-    queue_end: usize,
+    queue_start_index: usize,
 ) -> serenity::builder::CreateEmbed {
+    let duration = get_queue_duration(queue).await;
+    let colour = Colour::from_rgb(149, 8, 2);
+
     let mut e = CreateEmbed::new()
         .title("queue")
         .title("Current Queue:")
@@ -218,7 +222,10 @@ async fn create_queue_embed(
             duration
         ))
         .color(colour);
-    for i in queue_start..queue_end {
+
+    let queue_end = min(queue.len(), queue_start_index + 10);
+
+    for i in queue_start_index..queue_end {
         let song = queue
             .current_queue()
             .get(i)
@@ -246,43 +253,50 @@ async fn create_queue_embed(
     e
 }
 
-fn get_page_ends(
-    button: &MessageComponentInteraction,
-    button_id: &ButtonIds,
+pub fn get_queue_start(message_content: impl Into<String>) -> usize {
+    let mut queue_start: i64 = message_content.into().split(' ').collect_vec()[1]
+        .parse()
+        .unwrap();
+
+    if queue_start != 1 {
+        queue_start = queue_start * 10 - 10;
+    }
+
+    queue_start.try_into().unwrap()
+}
+
+fn get_queue_start_from_button(
+    message_content: impl Into<String>,
+    button_id: ButtonIds,
     queue: &songbird::tracks::TrackQueue,
-) -> (usize, usize) {
-    let queue_end: i64;
-    let mut queue_start: i64 = button.message.content.parse().unwrap();
-    if button_id == &ButtonIds::QueueNext {
-        queue_start += 10;
-        queue_end = if queue.len() as i64 - queue_start < 10 {
-            queue.len() as i64
-        } else {
-            queue_start + 10
-        };
+) -> usize {
+    let mut queue_start: i64 = get_queue_start(message_content) as i64;
 
-        while queue_start >= queue.len() as i64 {
-            queue_start -= 10;
-        }
-    } else {
-        queue_start = if queue_start < 10 {
-            0
-        } else {
-            queue_start - 10
-        };
+    let queue_len = queue.len() as i64;
 
-        queue_end = if queue.len() as i64 - queue_start < 10 {
-            queue.len() as i64
-        } else {
-            queue_start + 10
-        };
-
-        while queue_start < 0 {
+    match button_id {
+        ButtonIds::QueueNext => {
             queue_start += 10;
+
+            while queue_start >= queue_len {
+                queue_start -= 10;
+            }
+        }
+        ButtonIds::QueuePrevious => {
+            queue_start = if queue_start <= 10 {
+                1
+            } else {
+                queue_start - 10
+            };
+
+            while queue_start <= 0 {
+                queue_start += 10;
+            }
+        }
+        ButtonIds::BlacklistMeFromTags => {
+            panic!("Should never happen")
         }
     }
-    (
-        queue_start.try_into().unwrap(),
-        queue_end.try_into().unwrap(),
-    )
+
+    queue_start.try_into().unwrap()
 }

@@ -23,6 +23,7 @@ impl TypeMapKey for MyAuxMetadata {
 pub struct VoiceMessages {
     pub last_now_playing: HashMap<GuildId, Message>,
     pub last_position_in_queue: HashMap<GuildId, Message>,
+    pub queue: HashMap<GuildId, Message>,
 }
 
 impl TypeMapKey for VoiceMessages {
