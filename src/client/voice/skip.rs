@@ -2,17 +2,14 @@ use std::str::FromStr;
 
 use anyhow::Context;
 use serenity::{
-    builder::{
-        CreateEmbed, CreateInteractionResponse, CreateInteractionResponseData,
-        EditInteractionResponse,
-    },
+    builder::{CreateEmbed, CreateInteractionResponse, EditInteractionResponse},
     client::Context as ClientContext,
     model::prelude::{
         interaction::{
             application_command::ApplicationCommandInteraction,
             message_component::MessageComponentInteraction,
         },
-        Colour, MessageFlags,
+        Colour,
     },
 };
 use strum_macros::EnumString;
