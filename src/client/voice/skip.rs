@@ -20,13 +20,19 @@ use super::helper_funcs::{
 };
 
 #[tracing::instrument(skip(ctx))]
-pub async fn skip_button_press(ctx: &ClientContext, component: &MessageComponentInteraction) {
-    let guild_id = component.guild_id.expect("Couldn't get guild ID");
+pub async fn skip_button_press(ctx: &ClientContext, button: &MessageComponentInteraction) {
+    button
+        .defer(&ctx.http)
+        .instrument(info_span!("deferring response"))
+        .await
+        .unwrap();
+
+    let guild_id = button.guild_id.expect("Couldn't get guild ID");
 
     if is_bot_in_another_voice_channel(
         ctx,
         &guild_id.to_guild_cached(&ctx.cache).unwrap().clone(),
-        component.user.id,
+        button.user.id,
     ) {
         return;
     }
@@ -47,8 +53,8 @@ pub async fn skip_button_press(ctx: &ClientContext, component: &MessageComponent
 
     call.queue().skip().expect("Couldn't skip song");
 
-    component
-        .create_interaction_response(&ctx.http, CreateInteractionResponse::new())
+    button
+        .edit_original_interaction_response(&ctx.http, EditInteractionResponse::new())
         .instrument(info_span!("Sending button response"))
         .await
         .unwrap();
