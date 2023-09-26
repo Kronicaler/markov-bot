@@ -16,7 +16,6 @@ pub use playing::playing;
 pub use queue::change_queue_page;
 pub use queue::queue;
 pub use queue_shuffle::shuffle_queue;
-pub use skip::skip_button_press;
 use serenity::async_trait;
 use serenity::builder::CreateActionRow;
 use serenity::builder::CreateButton;
@@ -29,6 +28,7 @@ use serenity::model::id::GuildId;
 use serenity::model::prelude::component::ButtonStyle;
 use serenity::model::prelude::Message;
 pub use skip::skip;
+pub use skip::skip_button_press;
 use songbird::EventHandler;
 pub use stop::stop;
 pub use swap::swap;
@@ -129,7 +129,10 @@ impl TrackEndHandler {
         self.voice_text_channel
             .send_message(
                 &self.ctx.http,
-                CreateMessage::new().content("Now playing").embed(embed),
+                CreateMessage::new()
+                    .content("Now playing")
+                    .embed(embed)
+                    .components(set_skip_button_row()),
             )
             .instrument(info_span!("Sending message"))
             .await
@@ -240,7 +243,7 @@ impl TrackEndHandler {
                         &self.ctx.http,
                         EditMessage::new()
                             .embed(embed)
-                            .components(create_skip_button()),
+                            .components(set_skip_button_row()),
                     )
                     .instrument(info_span!("Sending message"))
                     .await
@@ -260,7 +263,10 @@ impl TrackEndHandler {
                     message
                         .edit(
                             &self.ctx.http,
-                            EditMessage::new().embed(embed).content("Now playing"),
+                            EditMessage::new()
+                                .embed(embed)
+                                .content("Now playing")
+                                .components(set_skip_button_row()),
                         )
                         .instrument(info_span!("Sending message"))
                         .await
@@ -305,13 +311,17 @@ impl TrackEndHandler {
     }
 }
 
-fn create_skip_button() -> serenity::builder::CreateComponents {
+fn set_skip_button_row() -> serenity::builder::CreateComponents {
     CreateComponents::new().set_action_row(
         CreateActionRow::new().add_button(
-            CreateButton::new()
-                .label("Skip")
-                .style(ButtonStyle::Primary)
-                .custom_id(ButtonIds::Skip.to_string()),
+            create_skip_button(),
         ),
     )
+}
+
+pub fn create_skip_button() -> CreateButton {
+    CreateButton::new()
+        .label("Skip")
+        .style(ButtonStyle::Primary)
+        .custom_id(ButtonIds::Skip.to_string())
 }
