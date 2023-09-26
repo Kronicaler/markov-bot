@@ -16,12 +16,17 @@ pub use playing::playing;
 pub use queue::change_queue_page;
 pub use queue::queue;
 pub use queue_shuffle::shuffle_queue;
+pub use skip::skip_button_press;
 use serenity::async_trait;
+use serenity::builder::CreateActionRow;
+use serenity::builder::CreateButton;
+use serenity::builder::CreateComponents;
 use serenity::builder::CreateMessage;
 use serenity::builder::EditMessage;
 use serenity::client::Context;
 use serenity::model::id::ChannelId;
 use serenity::model::id::GuildId;
+use serenity::model::prelude::component::ButtonStyle;
 use serenity::model::prelude::Message;
 pub use skip::skip;
 use songbird::EventHandler;
@@ -38,30 +43,16 @@ use self::model::MyAuxMetadata;
 use self::queue::create_queue_edit_message;
 use self::queue::get_queue_start;
 
+use super::ButtonIds;
+
 /*
  * voice.rs, LasagnaBoi 2022
  * voice channel functionality
  */
 
-struct TrackEndHandler {
-    voice_text_channel: ChannelId,
-    guild_id: GuildId,
-    ctx: Context,
-}
-
 struct PeriodicHandler {
     guild_id: GuildId,
     ctx: Context,
-}
-
-impl std::fmt::Debug for TrackEndHandler {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("TrackEndHandler")
-            .field("voice_text_channel", &self.voice_text_channel)
-            .field("guild_id", &self.guild_id)
-            .field("ctx", &Option::<i32>::None)
-            .finish()
-    }
 }
 
 #[async_trait]
@@ -97,6 +88,22 @@ impl PeriodicHandler {
         }
 
         false
+    }
+}
+
+struct TrackEndHandler {
+    voice_text_channel: ChannelId,
+    guild_id: GuildId,
+    ctx: Context,
+}
+
+impl std::fmt::Debug for TrackEndHandler {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("TrackEndHandler")
+            .field("voice_text_channel", &self.voice_text_channel)
+            .field("guild_id", &self.guild_id)
+            .field("ctx", &Option::<i32>::None)
+            .finish()
     }
 }
 
@@ -229,7 +236,12 @@ impl TrackEndHandler {
         match last_message {
             model::LastMessageType::NowPlaying(mut message) => {
                 message
-                    .edit(&self.ctx.http, EditMessage::new().embed(embed))
+                    .edit(
+                        &self.ctx.http,
+                        EditMessage::new()
+                            .embed(embed)
+                            .components(create_skip_button()),
+                    )
                     .instrument(info_span!("Sending message"))
                     .await
                     .unwrap();
@@ -291,4 +303,15 @@ impl TrackEndHandler {
             }
         };
     }
+}
+
+fn create_skip_button() -> serenity::builder::CreateComponents {
+    CreateComponents::new().set_action_row(
+        CreateActionRow::new().add_button(
+            CreateButton::new()
+                .label("Skip")
+                .style(ButtonStyle::Primary)
+                .custom_id(ButtonIds::Skip.to_string()),
+        ),
+    )
 }

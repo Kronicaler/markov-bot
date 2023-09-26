@@ -289,7 +289,7 @@ fn get_queue_start_from_button(
                 queue_start - 10
             };
         }
-        ButtonIds::BlacklistMeFromTags => {
+        _ => {
             panic!("Should never happen")
         }
     }

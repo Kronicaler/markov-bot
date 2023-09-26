@@ -13,7 +13,7 @@ use tracing::{info_span, Instrument};
 
 use self::{
     tags::{blacklist_user, respond_to_tag},
-    voice::{change_queue_page, helper_funcs::leave_vc_if_alone},
+    voice::{change_queue_page, helper_funcs::leave_vc_if_alone, skip_button_press},
 };
 use super::tags::check_for_tag_listeners;
 use serenity::{
@@ -43,6 +43,7 @@ pub enum ButtonIds {
     BlacklistMeFromTags,
     QueueNext,
     QueuePrevious,
+    Skip,
 }
 
 struct Handler {
@@ -118,6 +119,9 @@ and the users can choose themselves if they don't want their messages saved (/st
                     }
                     ButtonIds::QueueNext | ButtonIds::QueuePrevious => {
                         change_queue_page(&ctx, &mut component, button_id).await;
+                    }
+                    ButtonIds::Skip => {
+                        skip_button_press(&ctx, &mut component).await;
                     }
                 };
             }

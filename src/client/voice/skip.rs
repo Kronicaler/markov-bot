@@ -4,7 +4,13 @@ use anyhow::Context;
 use serenity::{
     builder::{CreateEmbed, EditInteractionResponse},
     client::Context as ClientContext,
-    model::prelude::{interaction::application_command::ApplicationCommandInteraction, Colour},
+    model::prelude::{
+        interaction::{
+            application_command::ApplicationCommandInteraction,
+            message_component::MessageComponentInteraction,
+        },
+        Colour,
+    },
 };
 use strum_macros::EnumString;
 use tracing::{info_span, Instrument};
@@ -13,8 +19,37 @@ use super::helper_funcs::{
     get_call_lock, is_bot_in_another_voice_channel, voice_channel_not_same_response,
 };
 
+#[tracing::instrument(skip(ctx))]
+pub async fn skip_button_press(ctx: &ClientContext, component: &MessageComponentInteraction) {
+    let guild_id = component.guild_id.expect("Couldn't get guild ID");
+
+    if is_bot_in_another_voice_channel(
+        ctx,
+        &guild_id.to_guild_cached(&ctx.cache).unwrap().clone(),
+        component.user.id,
+    ) {
+        return;
+    }
+
+    let manager = songbird::get(ctx)
+        .await
+        .expect("Songbird Voice client placed in at initialization.")
+        .clone();
+
+    let Some(call_lock) = manager.get(guild_id) else {
+        return;
+    };
+    let call = call_lock.lock().await;
+
+    if call.queue().is_empty() {
+        return;
+    }
+
+    call.queue().skip().expect("Couldn't skip song");
+}
+
 /// Skip the track
-#[tracing::instrument(skip(ctx), level = "info")]
+#[tracing::instrument(skip(ctx))]
 pub async fn skip(ctx: &ClientContext, command: &ApplicationCommandInteraction) {
     let guild_id = command.guild_id.expect("Couldn't get guild ID");
 
