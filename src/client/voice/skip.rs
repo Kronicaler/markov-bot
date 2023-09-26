@@ -2,14 +2,17 @@ use std::str::FromStr;
 
 use anyhow::Context;
 use serenity::{
-    builder::{CreateEmbed, EditInteractionResponse},
+    builder::{
+        CreateEmbed, CreateInteractionResponse, CreateInteractionResponseData,
+        EditInteractionResponse,
+    },
     client::Context as ClientContext,
     model::prelude::{
         interaction::{
             application_command::ApplicationCommandInteraction,
             message_component::MessageComponentInteraction,
         },
-        Colour,
+        Colour, MessageFlags,
     },
 };
 use strum_macros::EnumString;
@@ -46,6 +49,12 @@ pub async fn skip_button_press(ctx: &ClientContext, component: &MessageComponent
     }
 
     call.queue().skip().expect("Couldn't skip song");
+
+    component
+        .create_interaction_response(&ctx.http, CreateInteractionResponse::new())
+        .instrument(info_span!("Sending button response"))
+        .await
+        .unwrap();
 }
 
 /// Skip the track
