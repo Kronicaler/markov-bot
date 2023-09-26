@@ -5,7 +5,7 @@ use super::{
         get_voice_channel_of_user, is_bot_in_another_voice_channel, voice_channel_not_same_response,
     },
     model::get_queue_data_lock,
-    MyAuxMetadata, TrackEndHandler,
+    MyAuxMetadata, PeriodicHandler, TrackEndHandler,
 };
 use futures::future::join_all;
 use reqwest::Client;
@@ -203,7 +203,7 @@ async fn fill_queue(
         let call_lock = call_lock.clone();
         let queue_data_lock = queue_data_lock.clone();
         {
-            let call = call_lock.lock().await;
+            let mut call = call_lock.lock().await;
 
             let current_channel = match call.current_channel() {
                 Some(c) => c,
@@ -217,8 +217,13 @@ async fn fill_queue(
                 .await
                 .unwrap();
 
-            if voice_channel.members(&ctx.cache).unwrap().len() == 0 {
+            if voice_channel.members(&ctx.cache).unwrap().len() == 1 {
                 info!("Returning early due to empty channel");
+
+                call.queue().stop();
+                call.remove_all_global_events();
+                call.leave().await.expect("Couldn't leave voice channel");
+
                 return;
             }
         }
@@ -321,6 +326,14 @@ fn add_track_end_event(
             songbird::Event::Track(TrackEvent::End),
             TrackEndHandler {
                 voice_text_channel: command.channel_id,
+                guild_id: command.guild_id.unwrap(),
+                ctx: ctx.clone(),
+            },
+        );
+
+        call.add_global_event(
+            songbird::Event::Periodic(Duration::from_secs(60), None),
+            PeriodicHandler {
                 guild_id: command.guild_id.unwrap(),
                 ctx: ctx.clone(),
             },

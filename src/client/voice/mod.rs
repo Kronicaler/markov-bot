@@ -49,12 +49,53 @@ struct TrackEndHandler {
     ctx: Context,
 }
 
+struct PeriodicHandler {
+    guild_id: GuildId,
+    ctx: Context,
+}
+
 impl std::fmt::Debug for TrackEndHandler {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("TrackEndHandler")
             .field("voice_text_channel", &self.voice_text_channel)
             .field("guild_id", &self.guild_id)
             .finish()
+    }
+}
+
+#[async_trait]
+impl EventHandler for PeriodicHandler {
+    async fn act(&self, _ctx: &songbird::EventContext<'_>) -> Option<songbird::Event> {
+        let songbird = songbird::get(&self.ctx).await.unwrap();
+        let call_lock = songbird.get(self.guild_id).unwrap();
+        let mut call = call_lock.lock().await;
+
+        if self.is_current_voice_channel_empty(&call).await {
+            call.queue().stop();
+            call.remove_all_global_events();
+            call.leave().await.expect("Couldn't leave voice channel");
+
+            return None;
+        }
+
+        None
+    }
+}
+
+impl PeriodicHandler {
+    async fn is_current_voice_channel_empty(
+        &self,
+        call: &tokio::sync::MutexGuard<'_, songbird::Call>,
+    ) -> bool {
+        let channel_id = call.current_channel().unwrap();
+
+        let voice_channel = self.ctx.cache.guild_channel(channel_id.0).unwrap();
+
+        if voice_channel.members(&self.ctx.cache).unwrap().len() == 1 {
+            return true;
+        }
+
+        return false;
     }
 }
 
