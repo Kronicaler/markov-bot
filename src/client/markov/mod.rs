@@ -36,9 +36,8 @@ pub async fn add_message_to_chain(
     pool: &Pool<MySql>,
 ) -> Result<bool, std::io::Error> {
     // if the message was not sent in a guild
-    let guild_id = match msg.guild_id {
-        Some(g) => g,
-        None => return Ok(false),
+    let Some(guild_id) = msg.guild_id else {
+        return Ok(false);
     };
 
     let markov_blacklisted_user = get_markov_blacklisted_user(msg.author.id.get(), pool).await;
@@ -268,9 +267,7 @@ pub async fn stop_saving_messages_server(
     command: &ApplicationCommandInteraction,
     pool: &Pool<MySql>,
 ) {
-    let guild_id = if let Some(g) = command.guild_id {
-        g
-    } else {
+    let Some(guild_id) = command.guild_id else {
         command
             .create_interaction_response(
                 &ctx.http,

@@ -53,7 +53,7 @@ async fn main() {
         .with_default_directive(LevelFilter::INFO.into())
         .from_env_lossy();
 
-    let _subscriber = Registry::default().with(telemetry).with(env_filter).init();
+    Registry::default().with(telemetry).with(env_filter).init();
 
     start().await;
 }

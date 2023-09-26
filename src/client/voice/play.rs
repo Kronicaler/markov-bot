@@ -40,13 +40,10 @@ pub async fn play(ctx: &Context, command: &ApplicationCommandInteraction) {
         .expect("unable to fetch guild from the cache")
         .to_owned();
 
-    let voice_channel_id =
-        if let Some(voice_channel_id) = get_voice_channel_of_user(guild, command.user.id) {
-            voice_channel_id
-        } else {
-            voice_channel_not_found_response(command, ctx).await;
-            return;
-        };
+    let Some(voice_channel_id) = get_voice_channel_of_user(guild, command.user.id) else {
+        voice_channel_not_found_response(command, ctx).await;
+        return;
+    };
 
     let manager = songbird::get(ctx).await.expect("songbird error").clone();
 
@@ -100,20 +97,22 @@ async fn handle_video(
     call_lock: &Arc<Mutex<songbird::Call>>,
 ) -> ControlFlow<()> {
     let mut input: Input = source.into();
-    let metadata = if let Ok(e) = input.aux_metadata().await {
-        e
-    } else {
+
+    let Ok(metadata) = input.aux_metadata().await else {
         invalid_link_response(command, ctx).await;
         return ControlFlow::Break(());
     };
+
     let mut call = call_lock.lock().await;
     let track_handle = call.enqueue_input(input).await;
     let my_metadata = MyAuxMetadata(metadata.clone());
+
     track_handle
         .typemap()
         .write()
         .await
         .insert::<MyAuxMetadata>(Arc::new(RwLock::new(my_metadata)));
+
     return_response(&metadata, call.queue(), command, ctx).await;
     ControlFlow::Continue(())
 }
@@ -205,12 +204,9 @@ async fn fill_queue(
         {
             let mut call = call_lock.lock().await;
 
-            let current_channel = match call.current_channel() {
-                Some(c) => c,
-                None => {
-                    info!("Returning early due to not being connected to any channel");
-                    return;
-                }
+            let Some(current_channel) = call.current_channel() else {
+                info!("Returning early due to not being connected to any channel");
+                return;
             };
 
             let voice_channel = get_guild_channel(guild_id, ctx, current_channel.0.into())
@@ -253,10 +249,8 @@ async fn fill_queue(
             let task_results = join_all(futures)
                 .await
                 .into_iter()
-                .filter(|m| m.is_ok())
-                .map(|m| m.unwrap())
-                .filter(|m| m.is_some())
-                .map(|m| m.unwrap());
+                .filter(std::result::Result::is_ok)
+                .filter_map(std::result::Result::unwrap);
 
             let mut call = call_lock
                 .lock()
@@ -378,8 +372,8 @@ async fn get_source(query: String) -> SourceType {
     regex::Regex::new(r#"(?:(?:https?|ftp)://|\b(?:[a-z\d]+\.))(?:(?:[^\s()<>]+|\((?:[^\s()<>]+|(?:\([^\s()<>]+\)))?\))+(?:\((?:[^\s()<>]+|(?:\(?:[^\s()<>]+\)))?\)|[^\s`!()\[\]{};:'".,<>?«»“”‘’]))?"#)
     .expect("Invalid regular expression");
 
-    let list_regex = regex::Regex::new(r#"(&list).*|(\?list).*"#).unwrap();
-    let playlist_regex = regex::Regex::new(r#"playlist\?list="#).unwrap();
+    let list_regex = regex::Regex::new(r"(&list).*|(\?list).*").unwrap();
+    let playlist_regex = regex::Regex::new(r"playlist\?list=").unwrap();
 
     if link_regex.is_match(&query) {
         if playlist_regex.is_match(&query) {
@@ -430,23 +424,7 @@ async fn return_response(
 
     let time = metadata.duration.unwrap_or_else(|| Duration::new(0, 0));
 
-    let mut durations = vec![];
-
-    for track in queue.current_queue() {
-        durations.push(
-            track
-                .typemap()
-                .read()
-                .await
-                .get::<MyAuxMetadata>()
-                .unwrap()
-                .read()
-                .await
-                .0
-                .duration
-                .unwrap_or_else(|| Duration::from_secs(0)),
-        );
-    }
+    let durations = get_queue_durations(queue).await;
 
     let time_before_song = durations
         .into_iter()
@@ -488,6 +466,28 @@ async fn return_response(
             .last_position_in_queue
             .insert(command.guild_id.unwrap(), message);
     }
+}
+
+async fn get_queue_durations(queue: &TrackQueue) -> Vec<Duration> {
+    let mut durations = vec![];
+
+    for track in queue.current_queue() {
+        durations.push(
+            track
+                .typemap()
+                .read()
+                .await
+                .get::<MyAuxMetadata>()
+                .unwrap()
+                .read()
+                .await
+                .0
+                .duration
+                .unwrap_or_else(|| Duration::from_secs(0)),
+        );
+    }
+
+    durations
 }
 
 pub fn create_track_embed(metadata: &AuxMetadata) -> CreateEmbed {

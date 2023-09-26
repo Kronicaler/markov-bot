@@ -29,17 +29,13 @@ pub async fn loop_song(ctx: &Context, command: &ApplicationCommandInteraction) {
         .clone();
 
     // Get call
-    let call_lock = if let Some(c) = manager.get(guild_id) {
-        c
-    } else {
+    let Some(call_lock) = manager.get(guild_id) else {
         not_in_vc_response(command, ctx).await;
         return;
     };
     let call = call_lock.lock().await;
 
-    let track = if let Some(c) = call.queue().current() {
-        c
-    } else {
+    let Some(track) = call.queue().current() else {
         nothing_playing_response(command, ctx).await;
         return;
     };

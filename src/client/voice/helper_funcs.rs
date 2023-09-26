@@ -28,16 +28,14 @@ pub fn get_voice_channel_of_bot(ctx: &Context, guild: &Guild) -> Option<ChannelI
 pub fn is_bot_in_another_voice_channel(ctx: &Context, guild: &Guild, user_id: UserId) -> bool {
     let user_voice_channel = get_voice_channel_of_user(guild, user_id);
 
-    let user_voice_channel = match user_voice_channel {
-        Some(c) => c,
-        None => return true,
+    let Some(user_voice_channel) = user_voice_channel else {
+        return true;
     };
 
     let bot_voice_channel = get_voice_channel_of_bot(ctx, guild);
 
-    let bot_voice_channel = match bot_voice_channel {
-        Some(c) => c,
-        None => return false,
+    let Some(bot_voice_channel) = bot_voice_channel else {
+        return false;
     };
 
     if user_voice_channel != bot_voice_channel {
@@ -72,9 +70,7 @@ pub async fn get_call_lock(
         .expect("Songbird Voice client placed in at initialization.")
         .clone();
 
-    let call_lock = if let Some(c) = manager.get(guild_id) {
-        c
-    } else {
+    let Some(call_lock) = manager.get(guild_id) else {
         command
             .edit_original_interaction_response(
                 &ctx.http,
@@ -91,22 +87,12 @@ pub async fn get_call_lock(
 }
 
 pub async fn leave_vc_if_alone(old: Option<VoiceState>, ctx: &Context) {
-    let old = match old {
-        Some(e) => e,
-        // If a user joined a channel
-        None => return,
-    };
+    let Some(old) = old else { return };
 
-    let guild_id = match old.guild_id {
-        Some(e) => e,
-        // Don't know why this would be None
-        // Maybe if the User joined from a private or group call?
-        None => return,
-    };
+    let Some(guild_id) = old.guild_id else { return };
 
-    let channel_id = match old.channel_id {
-        Some(e) => e,
-        None => return,
+    let Some(channel_id) = old.channel_id else {
+        return;
     };
 
     let manager = songbird::get(ctx)

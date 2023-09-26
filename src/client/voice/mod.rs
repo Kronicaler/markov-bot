@@ -59,6 +59,7 @@ impl std::fmt::Debug for TrackEndHandler {
         f.debug_struct("TrackEndHandler")
             .field("voice_text_channel", &self.voice_text_channel)
             .field("guild_id", &self.guild_id)
+            .field("ctx", &Option::<i32>::None)
             .finish()
     }
 }
@@ -70,7 +71,7 @@ impl EventHandler for PeriodicHandler {
         let call_lock = songbird.get(self.guild_id).unwrap();
         let mut call = call_lock.lock().await;
 
-        if self.is_current_voice_channel_empty(&call).await {
+        if self.is_current_voice_channel_empty(&call) {
             call.queue().stop();
             call.remove_all_global_events();
             call.leave().await.expect("Couldn't leave voice channel");
@@ -83,7 +84,7 @@ impl EventHandler for PeriodicHandler {
 }
 
 impl PeriodicHandler {
-    async fn is_current_voice_channel_empty(
+    fn is_current_voice_channel_empty(
         &self,
         call: &tokio::sync::MutexGuard<'_, songbird::Call>,
     ) -> bool {
@@ -95,7 +96,7 @@ impl PeriodicHandler {
             return true;
         }
 
-        return false;
+        false
     }
 }
 
@@ -199,9 +200,8 @@ impl TrackEndHandler {
 
         let voice_messages_lock = get_voice_messages_lock(&self.ctx.data).await;
 
-        let next_track = match call.queue().current() {
-            Some(e) => e,
-            None => return,
+        let Some(next_track) = call.queue().current() else {
+            return;
         };
 
         drop(call);

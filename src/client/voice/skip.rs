@@ -29,9 +29,8 @@ pub async fn skip(ctx: &ClientContext, command: &ApplicationCommandInteraction) 
         return;
     }
 
-    let call_lock = match get_call_lock(ctx, guild_id, command).await {
-        Some(value) => value,
-        None => return,
+    let Some(call_lock) = get_call_lock(ctx, guild_id, command).await else {
+        return;
     };
     let call = call_lock.lock().await;
 

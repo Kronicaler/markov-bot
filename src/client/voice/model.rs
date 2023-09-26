@@ -70,11 +70,11 @@ pub async fn is_last_message_in_channel(message: &Message, ctx: &Context) -> boo
         return false;
     };
 
-    return channel
+    channel
         .messages(&ctx.http, GetMessages::new().after(message.id).limit(1))
         .await
         .unwrap()
-        .is_empty();
+        .is_empty()
 }
 
 pub enum LastMessageType {

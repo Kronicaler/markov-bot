@@ -15,9 +15,7 @@ pub async fn create_tag(
     command: &ApplicationCommandInteraction,
     pool: &Pool<MySql>,
 ) {
-    let guild_id = if let Some(g) = command.guild_id {
-        g
-    } else {
+    let Some(guild_id) = command.guild_id else {
         tag_outside_server_response(command, ctx).await;
         return;
     };
@@ -125,14 +123,12 @@ fn get_listener_and_response(command: &ApplicationCommandInteraction) -> (String
         panic!("The first option should be a SubCommand");
     };
 
-    let listener = match listener {
-        CommandDataOptionValue::String(s) => s,
-        _ => panic!("Expected listener to be a string"),
+    let CommandDataOptionValue::String(listener) = listener else {
+        panic!("Expected listener to be a string")
     };
 
-    let response = match response {
-        CommandDataOptionValue::String(s) => s,
-        _ => panic!("Expected listener to be a string"),
+    let CommandDataOptionValue::String(response) = response else {
+        panic!("Expected listener to be a string")
     };
 
     (listener, response)

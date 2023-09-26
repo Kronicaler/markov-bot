@@ -50,7 +50,7 @@ pub async fn queue(ctx: &Context, command: &ApplicationCommandInteraction) {
 
         //embed
         let queue_message = command
-            .edit_original_interaction_response(&ctx.http, create_queue_response(1, &queue).await)
+            .edit_original_interaction_response(&ctx.http, create_queue_response(1, queue).await)
             .instrument(info_span!("Sending message"))
             .await
             .expect("Error creating interaction response");
@@ -270,9 +270,9 @@ fn get_queue_start_from_button(
     button_id: ButtonIds,
     queue: &songbird::tracks::TrackQueue,
 ) -> usize {
-    let mut queue_start: i64 = get_queue_start(message_content) as i64;
+    let mut queue_start = get_queue_start(message_content);
 
-    let queue_len = queue.len() as i64;
+    let queue_len = queue.len();
 
     match button_id {
         ButtonIds::QueueNext => {
@@ -288,15 +288,11 @@ fn get_queue_start_from_button(
             } else {
                 queue_start - 10
             };
-
-            while queue_start <= 0 {
-                queue_start += 10;
-            }
         }
         ButtonIds::BlacklistMeFromTags => {
             panic!("Should never happen")
         }
     }
 
-    queue_start.try_into().unwrap()
+    queue_start
 }

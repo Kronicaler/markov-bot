@@ -175,9 +175,7 @@ pub async fn set_tag_response_channel(
     command: &ApplicationCommandInteraction,
     pool: &MySqlPool,
 ) {
-    let guild_id = if let Some(guild_id) = command.guild_id {
-        guild_id
-    } else {
+    let Some(guild_id) = command.guild_id else {
         command
             .create_interaction_response(
                 &ctx.http,
@@ -321,9 +319,8 @@ async fn send_response_in_tag_channel(
             .map(std::clone::Clone::clone);
     }
 
-    let tag_response_channel = match tag_response_channel {
-        Some(it) => it,
-        _ => return,
+    let Some(tag_response_channel) = tag_response_channel else {
+        return;
     };
 
     let mut tag_response = CreateMessage::new();

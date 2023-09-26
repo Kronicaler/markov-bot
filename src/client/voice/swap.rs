@@ -79,9 +79,8 @@ pub async fn swap(ctx: &Context, command: &ApplicationCommandInteraction) {
         }
     }
 
-    let call_lock = match get_call_lock(ctx, guild_id, command).await {
-        Some(value) => value,
-        None => return,
+    let Some(call_lock) = get_call_lock(ctx, guild_id, command).await else {
+        return;
     };
 
     let call = call_lock.lock().await;
@@ -233,14 +232,16 @@ async fn track_not_in_queue_response(command: &ApplicationCommandInteraction, ct
 }
 
 fn get_track_numbers(command: &ApplicationCommandInteraction) -> Option<(usize, usize)> {
-    let first_track_idx = match command.data.options.get(0).unwrap().value {
-        CommandDataOptionValue::Integer(i) => i,
-        _ => return None,
+    let CommandDataOptionValue::Integer(first_track_idx) =
+        command.data.options.get(0).unwrap().value
+    else {
+        return None;
     };
 
-    let second_track_idx = match command.data.options.get(1).unwrap().value {
-        CommandDataOptionValue::Integer(i) => i,
-        _ => return None,
+    let CommandDataOptionValue::Integer(second_track_idx) =
+        command.data.options.get(1).unwrap().value
+    else {
+        return None;
     };
 
     Some((
