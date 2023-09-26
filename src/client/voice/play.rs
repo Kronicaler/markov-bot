@@ -5,7 +5,7 @@ use super::{
         get_voice_channel_of_user, is_bot_in_another_voice_channel, voice_channel_not_same_response,
     },
     model::get_queue_data_lock,
-    MyAuxMetadata, PeriodicHandler, TrackEndHandler,
+    MyAuxMetadata, PeriodicHandler, TrackEndHandler, set_skip_button_row,
 };
 use futures::future::join_all;
 use reqwest::Client;
@@ -448,7 +448,10 @@ async fn return_response(
     let message = command
         .edit_original_interaction_response(
             &ctx.http,
-            EditInteractionResponse::new().embed(embed).content(content),
+            EditInteractionResponse::new()
+                .embed(embed)
+                .components(set_skip_button_row())
+                .content(content),
         )
         .instrument(info_span!("Sending message"))
         .await
