@@ -207,17 +207,6 @@ async fn swapping_error_response(
                 .await
                 .expect("Error creating interaction response");
         }
-        SwapableError::CannotSwapCurrentSong => {
-            command
-                .edit_original_interaction_response(
-                    &ctx.http,
-                    EditInteractionResponse::new()
-                        .content("Can't swap the song that's currently playing!"),
-                )
-                .instrument(info_span!("Sending message"))
-                .await
-                .expect("Error creating interaction response");
-        }
         SwapableError::CannotSwapSameSong => {
             command
                 .edit_original_interaction_response(
