@@ -32,6 +32,7 @@ pub use skip::skip_button_press;
 use songbird::EventHandler;
 pub use stop::stop;
 pub use swap::swap;
+use tracing::info;
 use tracing::info_span;
 use tracing::instrument;
 use tracing::Instrument;
@@ -208,9 +209,8 @@ impl TrackEndHandler {
             .instrument(info_span!("Waiting for call lock"))
             .await;
 
-        let voice_messages_lock = get_voice_messages_lock(&self.ctx.data).await;
-
         let Some(next_track) = call.queue().current() else {
+            info!("There is no currently playing track");
             return;
         };
 
@@ -228,6 +228,8 @@ impl TrackEndHandler {
             .clone();
 
         let embed = create_track_embed(&track_metadata);
+
+        let voice_messages_lock = get_voice_messages_lock(&self.ctx.data).await;
 
         let last_message = voice_messages_lock
             .read()
@@ -312,11 +314,7 @@ impl TrackEndHandler {
 }
 
 fn set_skip_button_row() -> serenity::builder::CreateComponents {
-    CreateComponents::new().set_action_row(
-        CreateActionRow::new().add_button(
-            create_skip_button(),
-        ),
-    )
+    CreateComponents::new().set_action_row(CreateActionRow::new().add_button(create_skip_button()))
 }
 
 pub fn create_skip_button() -> CreateButton {
