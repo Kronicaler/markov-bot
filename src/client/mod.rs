@@ -121,7 +121,7 @@ and the users can choose themselves if they don't want their messages saved (/st
                         change_queue_page(&ctx, &mut component, button_id).await;
                     }
                     ButtonIds::Skip => {
-                        skip_button_press(&ctx, &mut component).await;
+                        skip_button_press(&ctx, &component).await;
                     }
                 };
             }

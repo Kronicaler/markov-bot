@@ -2,7 +2,7 @@ use std::str::FromStr;
 
 use anyhow::Context;
 use serenity::{
-    builder::{CreateEmbed, CreateInteractionResponse, EditInteractionResponse},
+    builder::{CreateEmbed, EditInteractionResponse},
     client::Context as ClientContext,
     model::prelude::{
         interaction::{
