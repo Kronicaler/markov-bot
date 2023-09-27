@@ -1,3 +1,8 @@
+use std::{
+    cmp::{max, min},
+    time::Duration,
+};
+
 use serenity::{
     builder::EditInteractionResponse,
     client::Context,
@@ -26,19 +31,20 @@ pub enum SwapableError {
     IndexOutOfBounds,
     #[error("Can't swap any songs if the queue is empty")]
     NothingIsPlaying,
-    #[error("Can't swap the song that's currently being played")]
-    CannotSwapCurrentSong,
     #[error("Can't swap a song with itself")]
     CannotSwapSameSong,
 }
 
 impl Swapable for TrackQueue {
-    fn swap(&self, first_track_idx: usize, second_track_idx: usize) -> Result<(), SwapableError> {
+    fn swap(&self, first_track_pos: usize, second_track_pos: usize) -> Result<(), SwapableError> {
         self.modify_queue(|q| {
-            if q.len() < first_track_idx
-                || q.len() < second_track_idx
-                || first_track_idx < 1
-                || second_track_idx < 1
+            let first_track_pos = min(first_track_pos, second_track_pos);
+            let second_track_pos = max(first_track_pos, second_track_pos);
+
+            if q.len() < first_track_pos
+                || q.len() < second_track_pos
+                || first_track_pos < 1
+                || second_track_pos < 1
             {
                 return Err(SwapableError::IndexOutOfBounds);
             }
@@ -47,16 +53,21 @@ impl Swapable for TrackQueue {
                 return Err(SwapableError::NothingIsPlaying);
             }
 
-            if first_track_idx == 1 || second_track_idx == 1 {
-                return Err(SwapableError::CannotSwapCurrentSong);
-            }
-
-            if first_track_idx == second_track_idx {
+            if first_track_pos == second_track_pos {
                 return Err(SwapableError::CannotSwapSameSong);
             }
 
-            let first_track_idx = first_track_idx - 1;
-            let second_track_idx = second_track_idx - 1;
+            let first_track_idx = first_track_pos - 1;
+            let second_track_idx = second_track_pos - 1;
+
+            if first_track_pos == 1 {
+                let first_track = q.get(first_track_idx).unwrap();
+                _ = first_track.pause();
+                _ = first_track.seek(Duration::from_secs(0));
+
+                let second_track = q.get(second_track_idx).unwrap();
+                second_track.play().unwrap();
+            }
 
             q.swap(first_track_idx, second_track_idx);
 
@@ -87,27 +98,27 @@ pub async fn swap(ctx: &Context, command: &ApplicationCommandInteraction) {
 
     let queue = call.queue();
 
-    let Some((first_track_idx, second_track_idx)) = get_track_numbers(command) else {
+    let Some((first_track_pos, second_track_pos)) = get_track_numbers(command) else {
         invalid_number_response(command, ctx).await;
         return;
     };
 
-    let first_track = get_track_from_queue(queue, first_track_idx).await;
-    let second_track = get_track_from_queue(queue, second_track_idx).await;
+    let first_track = get_track_from_queue(queue, first_track_pos).await;
+    let second_track = get_track_from_queue(queue, second_track_pos).await;
 
     let (Some(first_track), Some(second_track)) = (first_track, second_track) else {
         track_not_in_queue_response(command, ctx).await;
         return;
     };
 
-    match queue.swap(first_track_idx, second_track_idx) {
+    match queue.swap(first_track_pos, second_track_pos) {
         Ok(_) => {
             swapping_success_response(
                 command,
                 ctx,
-                first_track_idx,
+                first_track_pos,
                 first_track,
-                second_track_idx,
+                second_track_pos,
                 second_track,
             )
             .await;
