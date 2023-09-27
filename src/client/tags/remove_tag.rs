@@ -10,7 +10,7 @@ use tracing::{info_span, Instrument};
 
 use super::data_access;
 
-#[tracing::instrument(skip(ctx), level = "info")]
+#[tracing::instrument(skip(ctx))]
 pub async fn remove_tag(
     ctx: &Context,
     command: &ApplicationCommandInteraction,

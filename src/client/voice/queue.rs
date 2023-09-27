@@ -23,7 +23,7 @@ use crate::client::ButtonIds;
 use super::{model::get_voice_messages_lock, MyAuxMetadata};
 
 ///get the queue
-#[tracing::instrument(skip(ctx), level = "info")]
+#[tracing::instrument(skip(ctx))]
 pub async fn queue(ctx: &Context, command: &ApplicationCommandInteraction) {
     let manager = songbird::get(ctx)
         .await
@@ -126,7 +126,7 @@ fn create_queue_buttons() -> serenity::builder::CreateComponents {
     )
 }
 
-#[tracing::instrument(skip(ctx), level = "info")]
+#[tracing::instrument(skip(ctx))]
 pub async fn change_queue_page(
     ctx: &Context,
     button: &mut MessageComponentInteraction,

@@ -27,7 +27,7 @@ use std::{collections::VecDeque, ops::ControlFlow, sync::Arc, time::Duration};
 use tracing::{info, info_span, warn, Instrument};
 
 ///play song from youtube
-#[tracing::instrument(skip(ctx), level = "info")]
+#[tracing::instrument(skip(ctx))]
 pub async fn play(ctx: &Context, command: &ApplicationCommandInteraction) {
     let guild_id = command.guild_id.expect("Couldn't get guild ID");
     let query = get_query(command);

@@ -37,7 +37,7 @@ use serenity::{
 use sqlx::{MySql, MySqlPool, Pool};
 use std::{fmt::Write, time::Duration};
 
-#[tracing::instrument(skip(ctx), level = "info")]
+#[tracing::instrument(skip(ctx))]
 pub async fn list_tags(ctx: &Context, command: &ApplicationCommandInteraction, pool: &Pool<MySql>) {
     let tags = data_access::get_tags_by_server_id(command.guild_id.unwrap().get(), pool).await;
 
@@ -64,7 +64,7 @@ pub async fn list_tags(ctx: &Context, command: &ApplicationCommandInteraction, p
         .expect("Error creating interaction response");
 }
 
-#[tracing::instrument(skip(ctx), level = "info")]
+#[tracing::instrument(skip(ctx))]
 pub async fn blacklist_user_from_tags_command(
     ctx: &Context,
     user: &User,
@@ -84,7 +84,7 @@ pub async fn blacklist_user_from_tags_command(
         .expect("Error creating interaction response");
 }
 
-#[tracing::instrument(skip(pool), level = "info")]
+#[tracing::instrument(skip(pool))]
 pub async fn blacklist_user(user: &User, pool: &MySqlPool) -> String {
     let is_user_blacklisted = get_tag_blacklisted_user(user.id.get(), pool)
         .await
@@ -169,7 +169,7 @@ pub async fn check_for_tag_listeners(
     None
 }
 
-#[tracing::instrument(skip(ctx), level = "info")]
+#[tracing::instrument(skip(ctx))]
 pub async fn set_tag_response_channel(
     ctx: &Context,
     command: &ApplicationCommandInteraction,
@@ -221,7 +221,7 @@ pub async fn set_tag_response_channel(
 /// If there is no tag response channel set then it first tries to send a message in the same channel.
 /// If that fails then it sends the message to the tag response channel if one is set
 /// If that fails then it iterates through every channel in the guild until it finds one it can send a message in
-#[tracing::instrument(skip(ctx, pool), level = "info")]
+#[tracing::instrument(skip(ctx, pool))]
 pub async fn respond_to_tag(ctx: &Context, msg: &Message, message: &str, pool: &MySqlPool) {
     let tag_channel = get_tag_channel(msg.guild_id.unwrap().get(), pool).await;
 

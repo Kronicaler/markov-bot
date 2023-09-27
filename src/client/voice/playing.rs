@@ -8,7 +8,7 @@ use tracing::{info_span, Instrument};
 use super::MyAuxMetadata;
 
 ///current song
-#[tracing::instrument(skip(ctx), level = "info")]
+#[tracing::instrument(skip(ctx))]
 pub async fn playing(ctx: &Context, command: &ApplicationCommandInteraction) {
     let Some(guild_id) = command.guild_id else {
         nothing_playing_response(command, ctx).await;

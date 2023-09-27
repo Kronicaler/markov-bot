@@ -76,7 +76,7 @@ pub enum UserCommand {
 
 /// Check which slash command was triggered, call the appropriate function and return a response to the user
 #[allow(clippy::too_many_lines)]
-#[tracing::instrument(name = "Command", skip(ctx, pool), level = "info")]
+#[tracing::instrument(name = "Command", skip(ctx, pool))]
 pub async fn command_responses(
     command: &ApplicationCommandInteraction,
     ctx: Context,
