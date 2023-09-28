@@ -1,16 +1,22 @@
-use crate::client::{helper_funcs::get_guild_channel, voice::model::get_voice_messages_lock};
+use crate::client::{
+    helper_funcs::get_guild_channel,
+    voice::{create_bring_to_front_button, create_play_now_button, model::get_voice_messages_lock},
+};
 
 use super::{
+    create_skip_button,
     helper_funcs::{
         get_voice_channel_of_user, is_bot_in_another_voice_channel, voice_channel_not_same_response,
     },
     model::get_queue_data_lock,
-    MyAuxMetadata, PeriodicHandler, TrackEndHandler, set_skip_button_row,
+    MyAuxMetadata, PeriodicHandler, TrackStartHandler,
 };
 use futures::future::join_all;
 use reqwest::Client;
 use serenity::{
-    builder::{CreateEmbed, CreateMessage, EditInteractionResponse, EditMessage},
+    builder::{
+        CreateActionRow, CreateComponents, CreateEmbed, EditInteractionResponse, EditMessage,
+    },
     client::Context,
     model::prelude::{
         interaction::application_command::{ApplicationCommandInteraction, CommandDataOptionValue},
@@ -74,7 +80,7 @@ pub async fn play(ctx: &Context, command: &ApplicationCommandInteraction) {
     {
         let mut call = call_lock.lock().await;
 
-        add_track_end_event(&mut call, command, ctx);
+        add_track_start_event(&mut call, command, ctx);
     }
     //get source from YouTube
     let source = get_source(query.clone()).await;
@@ -129,12 +135,19 @@ async fn handle_playlist(
         return;
     }
 
+    let filling_queue_message = if sources.len() > 10 {
+        Some(filling_up_queue_response(command, ctx).await)
+    } else {
+        None
+    };
+
     {
         async {
             let source = sources.pop_front().unwrap();
             let mut input: Input = source.into();
             let metadata = input.aux_metadata().await.unwrap_or_default();
             let mut call = call_lock.lock().await;
+
             let track_handle = call.enqueue_input(input).await;
 
             let my_metadata = MyAuxMetadata(metadata.clone());
@@ -151,12 +164,6 @@ async fn handle_playlist(
         .await;
     }
 
-    let filling_queue_message = if sources.len() > 10 {
-        Some(filling_up_queue_response(command, ctx).await)
-    } else {
-        None
-    };
-
     fill_queue(sources, call_lock, ctx, command.guild_id.unwrap()).await;
 
     if let Some(filling_queue_message) = filling_queue_message {
@@ -169,10 +176,9 @@ async fn filling_up_queue_response(
     ctx: &Context,
 ) -> Message {
     command
-        .channel_id
-        .send_message(
+        .edit_original_interaction_response(
             &ctx.http,
-            CreateMessage::new()
+            EditInteractionResponse::new()
                 .content("Filling up the Queue. This can take some time with larger playlists."),
         )
         .instrument(info_span!("Sending message"))
@@ -309,7 +315,7 @@ async fn invalid_link_response(command: &ApplicationCommandInteraction, ctx: &Co
         .expect("Error creating interaction response");
 }
 
-fn add_track_end_event(
+fn add_track_start_event(
     call: &mut tokio::sync::MutexGuard<songbird::Call>,
     command: &ApplicationCommandInteraction,
     ctx: &Context,
@@ -317,8 +323,8 @@ fn add_track_end_event(
     if call.queue().is_empty() {
         call.remove_all_global_events();
         call.add_global_event(
-            songbird::Event::Track(TrackEvent::End),
-            TrackEndHandler {
+            songbird::Event::Track(TrackEvent::Play),
+            TrackStartHandler {
                 voice_text_channel: command.channel_id,
                 guild_id: command.guild_id.unwrap(),
                 ctx: ctx.clone(),
@@ -438,10 +444,26 @@ async fn return_response(
         time_before_song.as_secs() - (time_before_song.as_secs() / 60) * 60
     );
 
+    let mut components = CreateComponents::new().add_action_row(CreateActionRow::new());
     let content = if queue.len() == 1 {
+        let mut action_row = components.0.pop().unwrap();
+
+        action_row = action_row.add_button(create_skip_button());
+
+        components = components.set_action_row(action_row);
+
         "Playing".to_owned()
     } else {
         embed = embed.field("Estimated time until playing: ", time_before_song, true);
+
+        let mut action_row = components.0.pop().unwrap();
+
+        action_row = action_row
+            .add_button(create_bring_to_front_button())
+            .add_button(create_play_now_button());
+
+        components = components.set_action_row(action_row);
+
         format!("Position in queue: {}", queue.len())
     };
 
@@ -450,7 +472,7 @@ async fn return_response(
             &ctx.http,
             EditInteractionResponse::new()
                 .embed(embed)
-                .components(set_skip_button_row())
+                .components(components)
                 .content(content),
         )
         .instrument(info_span!("Sending message"))

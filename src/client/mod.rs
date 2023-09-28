@@ -13,7 +13,13 @@ use tracing::{info_span, Instrument};
 
 use self::{
     tags::{blacklist_user, respond_to_tag},
-    voice::{change_queue_page, helper_funcs::leave_vc_if_alone, skip_button_press},
+    voice::{
+        button_presses::{
+            bring_to_front::bring_to_front, play_now::play_now, skip::skip_button_press,
+        },
+        change_queue_page,
+        helper_funcs::leave_vc_if_alone,
+    },
 };
 use super::tags::check_for_tag_listeners;
 use serenity::{
@@ -44,6 +50,8 @@ pub enum ButtonIds {
     QueueNext,
     QueuePrevious,
     Skip,
+    PlayNow,
+    BringToFront,
 }
 
 struct Handler {
@@ -103,7 +111,6 @@ and the users can choose themselves if they don't want their messages saved (/st
                 match button_id {
                     ButtonIds::BlacklistMeFromTags => {
                         let response = blacklist_user(&component.user, &self.pool).await;
-
                         component
                             .create_interaction_response(
                                 &ctx.http,
@@ -122,6 +129,12 @@ and the users can choose themselves if they don't want their messages saved (/st
                     }
                     ButtonIds::Skip => {
                         skip_button_press(&ctx, &component).await;
+                    }
+                    ButtonIds::PlayNow => {
+                        play_now(&ctx, &mut component).await;
+                    }
+                    ButtonIds::BringToFront => {
+                        bring_to_front(&ctx, &component).await;
                     }
                 };
             }

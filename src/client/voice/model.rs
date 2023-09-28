@@ -1,11 +1,12 @@
 use std::{collections::HashMap, sync::Arc};
 
 use serenity::{
+    async_trait,
     builder::GetMessages,
     model::prelude::{Channel, GuildId, Message},
     prelude::{Context, RwLock, TypeMap, TypeMapKey},
 };
-use songbird::input::AuxMetadata;
+use songbird::{input::AuxMetadata, tracks::{Queued, TrackHandle}};
 
 pub fn init_voice_data(data: &mut tokio::sync::RwLockWriteGuard<serenity::prelude::TypeMap>) {
     data.insert::<VoiceMessages>(Arc::new(RwLock::new(VoiceMessages::default())));
@@ -17,6 +18,41 @@ pub struct MyAuxMetadata(pub AuxMetadata);
 
 impl TypeMapKey for MyAuxMetadata {
     type Value = Arc<RwLock<MyAuxMetadata>>;
+}
+
+#[async_trait]
+pub trait HasAuxMetadata {
+    async fn get_aux_metadata(&self) -> AuxMetadata;
+}
+
+#[async_trait]
+impl HasAuxMetadata for Queued {
+    async fn get_aux_metadata(&self) -> AuxMetadata {
+        self.typemap()
+            .read()
+            .await
+            .get::<MyAuxMetadata>()
+            .unwrap()
+            .read()
+            .await
+            .0
+            .clone()
+    }
+}
+
+#[async_trait]
+impl HasAuxMetadata for TrackHandle {
+    async fn get_aux_metadata(&self) -> AuxMetadata {
+        self.typemap()
+            .read()
+            .await
+            .get::<MyAuxMetadata>()
+            .unwrap()
+            .read()
+            .await
+            .0
+            .clone()
+    }
 }
 
 #[derive(Clone, Default, Debug)]

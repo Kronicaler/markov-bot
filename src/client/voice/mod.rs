@@ -9,6 +9,7 @@ mod queue_shuffle;
 mod skip;
 mod stop;
 mod swap;
+pub mod button_presses;
 
 pub use loop_song::loop_song;
 pub use play::play;
@@ -28,7 +29,6 @@ use serenity::model::id::GuildId;
 use serenity::model::prelude::component::ButtonStyle;
 use serenity::model::prelude::Message;
 pub use skip::skip;
-pub use skip::skip_button_press;
 use songbird::EventHandler;
 pub use stop::stop;
 pub use swap::swap;
@@ -92,13 +92,13 @@ impl PeriodicHandler {
     }
 }
 
-struct TrackEndHandler {
+struct TrackStartHandler {
     voice_text_channel: ChannelId,
     guild_id: GuildId,
     ctx: Context,
 }
 
-impl std::fmt::Debug for TrackEndHandler {
+impl std::fmt::Debug for TrackStartHandler {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("TrackEndHandler")
             .field("voice_text_channel", &self.voice_text_channel)
@@ -109,7 +109,7 @@ impl std::fmt::Debug for TrackEndHandler {
 }
 
 #[async_trait]
-impl EventHandler for TrackEndHandler {
+impl EventHandler for TrackStartHandler {
     async fn act(&self, _ctx: &songbird::EventContext<'_>) -> Option<songbird::Event> {
         let update_last_message_future = self
             .update_last_message()
@@ -125,7 +125,7 @@ impl EventHandler for TrackEndHandler {
     }
 }
 
-impl TrackEndHandler {
+impl TrackStartHandler {
     async fn send_now_playing_message(&self, embed: serenity::builder::CreateEmbed) -> Message {
         self.voice_text_channel
             .send_message(
@@ -322,4 +322,18 @@ pub fn create_skip_button() -> CreateButton {
         .label("Skip")
         .style(ButtonStyle::Primary)
         .custom_id(ButtonIds::Skip.to_string())
+}
+
+pub fn create_play_now_button() -> CreateButton {
+    CreateButton::new()
+        .label("Play now")
+        .style(ButtonStyle::Primary)
+        .custom_id(ButtonIds::PlayNow.to_string())
+}
+
+pub fn create_bring_to_front_button() -> CreateButton {
+    CreateButton::new()
+        .label("Bring to front")
+        .style(ButtonStyle::Primary)
+        .custom_id(ButtonIds::BringToFront.to_string())
 }
