@@ -14,13 +14,11 @@ use super::{
 use futures::future::join_all;
 use reqwest::Client;
 use serenity::{
-    builder::{
-        CreateActionRow, CreateComponents, CreateEmbed, EditInteractionResponse, EditMessage,
-    },
+    builder::{CreateActionRow, CreateComponents, CreateEmbed, EditInteractionResponse},
     client::Context,
     model::prelude::{
         interaction::application_command::{ApplicationCommandInteraction, CommandDataOptionValue},
-        Colour, GuildId, Message,
+        Colour, GuildId,
     },
     prelude::{Mutex, RwLock},
 };
@@ -135,12 +133,6 @@ async fn handle_playlist(
         return;
     }
 
-    // let filling_queue_message = if sources.len() > 10 {
-    //     Some(filling_up_queue_response(command, ctx).await)
-    // } else {
-    //     None
-    // };
-
     {
         async {
             let source = sources.pop_front().unwrap();
@@ -165,25 +157,6 @@ async fn handle_playlist(
     }
 
     fill_queue(sources, call_lock, ctx, command.guild_id.unwrap()).await;
-
-    // if let Some(filling_queue_message) = filling_queue_message {
-    //     filled_up_queue_response(filling_queue_message, ctx).await;
-    // }
-}
-
-async fn filling_up_queue_response(
-    command: &ApplicationCommandInteraction,
-    ctx: &Context,
-) -> Message {
-    command
-        .edit_original_interaction_response(
-            &ctx.http,
-            EditInteractionResponse::new()
-                .content("Filling up the Queue. This can take some time with larger playlists."),
-        )
-        .instrument(info_span!("Sending message"))
-        .await
-        .expect("Error sending message")
 }
 
 #[tracing::instrument(skip(sources,call_lock,ctx), fields(sources.length=sources.len()))]
@@ -289,19 +262,6 @@ async fn fill_queue(
             futures = vec![];
         }
     }
-}
-
-async fn filled_up_queue_response(
-    mut filling_queue_message: serenity::model::prelude::Message,
-    ctx: &Context,
-) {
-    filling_queue_message
-        .edit(
-            &ctx.http,
-            EditMessage::new().content("Filled up the queue."),
-        )
-        .await
-        .unwrap();
 }
 
 async fn invalid_link_response(command: &ApplicationCommandInteraction, ctx: &Context) {

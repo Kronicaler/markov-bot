@@ -5,7 +5,6 @@ use crate::client::voice::model::HasAuxMetadata;
 use super::super::helper_funcs::is_bot_in_another_voice_channel;
 use futures::executor;
 use itertools::Itertools;
-use serenity::builder::EditInteractionResponse;
 use serenity::model::prelude::interaction::message_component::MessageComponentInteraction;
 use serenity::prelude::Context;
 use tracing::{self, Instrument};

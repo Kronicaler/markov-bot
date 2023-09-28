@@ -1,9 +1,7 @@
 use super::super::helper_funcs::is_bot_in_another_voice_channel;
 use crate::client::voice::model::HasAuxMetadata;
-use crate::client::voice::play::create_track_embed;
 use futures::executor;
 use itertools::Itertools;
-use serenity::builder::{CreateInteractionResponse, EditInteractionResponse};
 use serenity::model::prelude::interaction::message_component::MessageComponentInteraction;
 use serenity::prelude::Context;
 use tracing::info_span;
