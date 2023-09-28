@@ -135,11 +135,11 @@ async fn handle_playlist(
         return;
     }
 
-    let filling_queue_message = if sources.len() > 10 {
-        Some(filling_up_queue_response(command, ctx).await)
-    } else {
-        None
-    };
+    // let filling_queue_message = if sources.len() > 10 {
+    //     Some(filling_up_queue_response(command, ctx).await)
+    // } else {
+    //     None
+    // };
 
     {
         async {
@@ -166,9 +166,9 @@ async fn handle_playlist(
 
     fill_queue(sources, call_lock, ctx, command.guild_id.unwrap()).await;
 
-    if let Some(filling_queue_message) = filling_queue_message {
-        filled_up_queue_response(filling_queue_message, ctx).await;
-    }
+    // if let Some(filling_queue_message) = filling_queue_message {
+    //     filled_up_queue_response(filling_queue_message, ctx).await;
+    // }
 }
 
 async fn filling_up_queue_response(
