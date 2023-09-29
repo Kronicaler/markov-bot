@@ -6,7 +6,10 @@ use serenity::{
     model::prelude::{Channel, GuildId, Message},
     prelude::{Context, RwLock, TypeMap, TypeMapKey},
 };
-use songbird::{input::AuxMetadata, tracks::{Queued, TrackHandle}};
+use songbird::{
+    input::AuxMetadata,
+    tracks::{Queued, TrackHandle},
+};
 
 pub fn init_voice_data(data: &mut tokio::sync::RwLockWriteGuard<serenity::prelude::TypeMap>) {
     data.insert::<VoiceMessages>(Arc::new(RwLock::new(VoiceMessages::default())));

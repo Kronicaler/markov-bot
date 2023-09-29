@@ -14,10 +14,9 @@ use tracing::{info_span, Instrument};
 use self::{
     tags::{blacklist_user, respond_to_tag},
     voice::{
-        button_presses::{
-            bring_to_front::bring_to_front, play_now::play_now, skip::skip_button_press,
+        component_interactions::{
+            bring_to_front::bring_to_front, play_now::play_now, skip::skip_button_press, change_queue_page::change_queue_page,
         },
-        change_queue_page,
         helper_funcs::leave_vc_if_alone,
     },
 };
@@ -45,13 +44,15 @@ use strum_macros::{Display, EnumString};
 use tokio::join;
 
 #[derive(Display, EnumString, Debug, PartialEq, Eq, Clone, Copy)]
-pub enum ButtonIds {
+pub enum ComponentIds {
     BlacklistMeFromTags,
     QueueNext,
     QueuePrevious,
     Skip,
     PlayNow,
+    PlayNowMenu,
     BringToFront,
+    BringToFrontMenu,
 }
 
 struct Handler {
@@ -105,12 +106,12 @@ and the users can choose themselves if they don't want their messages saved (/st
                 command_responses(&command, ctx, &self.pool).await;
             }
             Interaction::MessageComponent(mut component) => {
-                let button_id =
-                    ButtonIds::from_str(&component.data.custom_id).expect("unexpected button ID");
+                let button_id = ComponentIds::from_str(&component.data.custom_id)
+                    .expect("unexpected button ID");
 
                 match button_id {
-                    ButtonIds::BlacklistMeFromTags => {
-                        let response = blacklist_user(&component.user, &self.pool).await;
+                    ComponentIds::BlacklistMeFromTags => {
+                        let response = blacklist_user(&component.user, &__self.pool).await;
                         component
                             .create_interaction_response(
                                 &ctx.http,
@@ -124,16 +125,16 @@ and the users can choose themselves if they don't want their messages saved (/st
                             .await
                             .expect("couldn't create response");
                     }
-                    ButtonIds::QueueNext | ButtonIds::QueuePrevious => {
+                    ComponentIds::QueueNext | ComponentIds::QueuePrevious => {
                         change_queue_page(&ctx, &mut component, button_id).await;
                     }
-                    ButtonIds::Skip => {
+                    ComponentIds::Skip => {
                         skip_button_press(&ctx, &component).await;
                     }
-                    ButtonIds::PlayNow => {
-                        play_now(&ctx, &mut component).await;
+                    ComponentIds::PlayNow | ComponentIds::PlayNowMenu => {
+                        play_now(&ctx, &component).await;
                     }
-                    ButtonIds::BringToFront => {
+                    ComponentIds::BringToFront | ComponentIds::BringToFrontMenu => {
                         bring_to_front(&ctx, &component).await;
                     }
                 };

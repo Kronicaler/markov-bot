@@ -8,19 +8,19 @@ use serenity::{
     },
     client::Context,
     model::prelude::{
-        component::ButtonStyle,
-        interaction::{
-            application_command::ApplicationCommandInteraction,
-            message_component::MessageComponentInteraction,
-        },
+        component::ButtonStyle, interaction::application_command::ApplicationCommandInteraction,
         Colour,
     },
 };
+use songbird::tracks::TrackQueue;
 use tracing::{info_span, Instrument};
 
-use crate::client::ButtonIds;
+use crate::client::ComponentIds;
 
-use super::{model::get_voice_messages_lock, MyAuxMetadata};
+use super::{
+    create_bring_to_front_select_menu, create_play_now_select_menu, model::get_voice_messages_lock,
+    MyAuxMetadata,
+};
 
 ///get the queue
 #[tracing::instrument(skip(ctx))]
@@ -32,9 +32,11 @@ pub async fn queue(ctx: &Context, command: &ApplicationCommandInteraction) {
 
     command.defer(&ctx.http).await.unwrap();
 
-    if let Some(handler_lock) = manager.get(command.guild_id.unwrap()) {
-        let handler = handler_lock.lock().await;
-        let queue = handler.queue();
+    if let Some(call_lock) = manager.get(command.guild_id.unwrap()) {
+        let call = call_lock.lock().await;
+        let queue = call.queue().clone();
+
+        drop(call);
 
         if queue.is_empty() {
             command
@@ -50,7 +52,7 @@ pub async fn queue(ctx: &Context, command: &ApplicationCommandInteraction) {
 
         //embed
         let queue_message = command
-            .edit_original_interaction_response(&ctx.http, create_queue_response(1, queue).await)
+            .edit_original_interaction_response(&ctx.http, create_queue_response(1, &queue).await)
             .instrument(info_span!("Sending message"))
             .await
             .expect("Error creating interaction response");
@@ -104,96 +106,48 @@ async fn get_queue_duration(queue: &songbird::tracks::TrackQueue) -> String {
     duration
 }
 
-fn create_queue_buttons() -> serenity::builder::CreateComponents {
-    CreateComponents::new().set_action_row(
-        CreateActionRow::new()
-            .add_button(
-                CreateButton::new()
-                    .emoji(serenity::model::channel::ReactionType::Unicode(
-                        "◀".to_string(),
-                    ))
-                    .style(ButtonStyle::Primary)
-                    .custom_id(ButtonIds::QueuePrevious.to_string()),
-            )
-            .add_button(
-                CreateButton::new()
-                    .emoji(serenity::model::channel::ReactionType::Unicode(
-                        "▶".to_string(),
-                    ))
-                    .style(ButtonStyle::Primary)
-                    .custom_id(ButtonIds::QueueNext.to_string()),
-            ),
-    )
-}
-
-#[tracing::instrument(skip(ctx))]
-pub async fn change_queue_page(
-    ctx: &Context,
-    button: &mut MessageComponentInteraction,
-    button_id: ButtonIds,
-) {
-    let manager = songbird::get(ctx)
-        .await
-        .expect("Songbird Voice client placed in at initialization.")
-        .clone();
-
-    match manager.get(button.guild_id.unwrap()) {
-        Some(handler_lock) => {
-            let handler = handler_lock.lock().await;
-            let queue = handler.queue();
-
-            button.defer(&ctx.http).await.unwrap();
-
-            if queue.is_empty() {
-                button
-                    .edit_original_interaction_response(
-                        &ctx.http,
-                        EditInteractionResponse::new().content("The queue is empty!"),
-                    )
-                    .instrument(info_span!("Sending message"))
-                    .await
-                    .expect("Error creating interaction response");
-                return;
-            }
-            let queue_start =
-                get_queue_start_from_button(&button.message.content, button_id, queue);
-
-            let queue_response = create_queue_response(queue_start, queue).await;
-
-            let queue_message = button
-                .edit_original_interaction_response(&ctx.http, queue_response)
-                .instrument(info_span!("Sending message"))
-                .await
-                .expect("Error creating interaction response");
-
-            let voice_messages_lock = get_voice_messages_lock(&ctx.data).await;
-            let mut voice_messages = voice_messages_lock.write().await;
-            voice_messages
-                .queue
-                .insert(button.guild_id.unwrap(), queue_message);
-        }
-        None => {
-            button
-                .edit_original_interaction_response(
-                    &ctx.http,
-                    EditInteractionResponse::new()
-                        .content("You must be in a voice channel to use that command!"),
+async fn create_queue_buttons(
+    queue: &TrackQueue,
+    queue_start: usize,
+) -> serenity::builder::CreateComponents {
+    CreateComponents::new()
+        .set_action_row(
+            CreateActionRow::new()
+                .add_button(
+                    CreateButton::new()
+                        .emoji(serenity::model::channel::ReactionType::Unicode(
+                            "◀".to_string(),
+                        ))
+                        .style(ButtonStyle::Primary)
+                        .custom_id(ComponentIds::QueuePrevious.to_string()),
                 )
-                .instrument(info_span!("Sending message"))
-                .await
-                .expect("Error creating interaction response");
-        }
-    }
+                .add_button(
+                    CreateButton::new()
+                        .emoji(serenity::model::channel::ReactionType::Unicode(
+                            "▶".to_string(),
+                        ))
+                        .style(ButtonStyle::Primary)
+                        .custom_id(ComponentIds::QueueNext.to_string()),
+                ),
+        )
+        .add_action_row(
+            CreateActionRow::new()
+                .add_select_menu(create_bring_to_front_select_menu(queue, queue_start).await),
+        )
+        .add_action_row(
+            CreateActionRow::new()
+                .add_select_menu(create_play_now_select_menu(queue, queue_start).await),
+        )
 }
 
-async fn create_queue_response(
+pub async fn create_queue_response(
     queue_start: usize,
     queue: &songbird::tracks::TrackQueue,
 ) -> EditInteractionResponse {
     EditInteractionResponse::new()
         .content(format!("Page {}", queue_start / 10 + 1))
         .embed(create_queue_embed(queue, queue_start - 1).await)
-        .components(create_queue_buttons())
+        .components(create_queue_buttons(queue, queue_start).await)
 }
 
 pub async fn create_queue_edit_message(
@@ -203,7 +157,7 @@ pub async fn create_queue_edit_message(
     EditMessage::new()
         .content(format!("Page {}", queue_start / 10 + 1))
         .embed(create_queue_embed(queue, queue_start - 1).await)
-        .components(create_queue_buttons())
+        .components(create_queue_buttons(queue, queue_start).await)
 }
 
 async fn create_queue_embed(
@@ -226,31 +180,40 @@ async fn create_queue_embed(
     let queue_end = min(queue.len(), queue_start_index + 10);
 
     for i in queue_start_index..queue_end {
-        let song = queue
-            .current_queue()
-            .get(i)
-            .unwrap()
-            .typemap()
-            .read()
-            .await
-            .get::<MyAuxMetadata>()
-            .unwrap()
-            .read()
-            .await
-            .0
-            .clone();
-
-        let channel = &song.channel.as_ref().unwrap();
-        let title = &song.title.as_ref().unwrap();
-        //duration
-        let time = &song.duration.as_ref().unwrap();
-        let minutes = time.as_secs() / 60;
-        let seconds = time.as_secs() - minutes * 60;
-        let duration = format!("{minutes}:{seconds:02}");
-        let arg1 = format!("{}. {title} | {channel}", i + 1);
-        e = e.field(arg1, duration, false);
+        let (song_name_and_channel, duration) = get_song_name_and_duration(queue, i).await;
+        e = e.field(song_name_and_channel, duration, false);
     }
     e
+}
+
+pub async fn get_song_name_and_duration(
+    queue: &TrackQueue,
+    index_in_queue: usize,
+) -> (String, String) {
+    let song = queue
+        .current_queue()
+        .get(index_in_queue)
+        .unwrap()
+        .typemap()
+        .read()
+        .await
+        .get::<MyAuxMetadata>()
+        .unwrap()
+        .read()
+        .await
+        .0
+        .clone();
+
+    let channel = &song.channel.as_ref().unwrap();
+    let title = &song.title.as_ref().unwrap();
+    //duration
+    let time = &song.duration.as_ref().unwrap();
+    let minutes = time.as_secs() / 60;
+    let seconds = time.as_secs() - minutes * 60;
+    let duration = format!("{minutes}:{seconds:02}");
+    let song_name_and_channel = format!("{}. {title} | {channel}", index_in_queue + 1);
+
+    (song_name_and_channel, duration)
 }
 
 pub fn get_queue_start(message_content: impl Into<String>) -> usize {
@@ -265,9 +228,9 @@ pub fn get_queue_start(message_content: impl Into<String>) -> usize {
     queue_start.try_into().unwrap()
 }
 
-fn get_queue_start_from_button(
+pub fn get_queue_start_from_button(
     message_content: impl Into<String>,
-    button_id: ButtonIds,
+    button_id: ComponentIds,
     queue: &songbird::tracks::TrackQueue,
 ) -> usize {
     let mut queue_start = get_queue_start(message_content);
@@ -275,14 +238,14 @@ fn get_queue_start_from_button(
     let queue_len = queue.len();
 
     match button_id {
-        ButtonIds::QueueNext => {
+        ComponentIds::QueueNext => {
             queue_start += 10;
 
             while queue_start >= queue_len {
                 queue_start -= 10;
             }
         }
-        ButtonIds::QueuePrevious => {
+        ComponentIds::QueuePrevious => {
             queue_start = if queue_start <= 10 {
                 1
             } else {

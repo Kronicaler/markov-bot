@@ -14,7 +14,7 @@ use self::data_access::{
     create_tag_blacklisted_user, create_tag_channel, delete_tag_blacklisted_user,
     get_tag_blacklisted_user, get_tag_channel, update_tag_channel,
 };
-use super::ButtonIds;
+use super::ComponentIds;
 pub use model::Tag;
 use serenity::{
     builder::{
@@ -287,7 +287,7 @@ async fn tag_response(
                             CreateButton::new()
                                 .label("Stop pinging me")
                                 .style(ButtonStyle::Primary)
-                                .custom_id(ButtonIds::BlacklistMeFromTags.to_string()),
+                                .custom_id(ComponentIds::BlacklistMeFromTags.to_string()),
                         ),
                     ),
                 )
@@ -366,7 +366,7 @@ fn stop_pinging_me_button(tag_response: CreateMessage) -> CreateMessage {
                 CreateButton::new()
                     .label("Stop pinging me")
                     .style(ButtonStyle::Primary)
-                    .custom_id(ButtonIds::BlacklistMeFromTags.to_string()),
+                    .custom_id(ComponentIds::BlacklistMeFromTags.to_string()),
             ),
         ),
     )
