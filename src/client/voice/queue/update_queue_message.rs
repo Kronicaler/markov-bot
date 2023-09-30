@@ -5,11 +5,11 @@ use tracing::{info_span, instrument, Instrument};
 
 use crate::client::voice::model::get_voice_messages_lock;
 
-use super::queue_command_response::{get_queue_start_from_queue_message, create_queue_edit_message};
+use super::command_response::{get_queue_start_from_queue_message, create_queue_edit_message};
 
 #[instrument(skip(ctx))]
 pub async fn update_queue_message(ctx: &Context, guild_id: GuildId) {
-    let songbird = songbird::get(&ctx).await.unwrap();
+    let songbird = songbird::get(ctx).await.unwrap();
 
     let call_lock = songbird.get(guild_id).unwrap();
 

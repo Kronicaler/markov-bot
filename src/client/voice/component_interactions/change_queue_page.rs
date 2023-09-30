@@ -1,5 +1,5 @@
 use super::super::model::get_voice_messages_lock;
-use crate::client::voice::queue::queue_command_response::{
+use crate::client::voice::queue::command_response::{
     create_queue_response, get_queue_start_from_button,
 };
 use crate::client::ComponentIds;

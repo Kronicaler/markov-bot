@@ -12,7 +12,7 @@ mod swap;
 
 use self::model::get_voice_messages_lock;
 use self::model::MyAuxMetadata;
-use self::queue::queue_command_response::get_song_name_and_duration_from_queue;
+use self::queue::command_response::get_song_name_and_duration_from_queue;
 use super::ComponentIds;
 use crate::client::voice::play::create_track_embed;
 use crate::client::voice::queue::update_queue_message::update_queue_message;
@@ -290,7 +290,6 @@ pub async fn create_bring_to_front_select_menu(
     let number_of_songs = if queue_start_index == 1 { 9 } else { 10 };
 
     let options = (queue_start_index..(min(queue_start_index + number_of_songs, queue.len())))
-        .into_iter()
         .map(|i| async move {
             CreateSelectMenuOption::new(
                 get_song_name_and_duration_from_queue(queue, i)
@@ -322,7 +321,6 @@ pub async fn create_play_now_select_menu(
     let number_of_songs = if queue_start_index == 2 { 8 } else { 10 };
 
     let options = (queue_start_index..(min(queue_start_index + number_of_songs, queue.len())))
-        .into_iter()
         .map(|i| async move {
             CreateSelectMenuOption::new(
                 get_song_name_and_duration_from_queue(queue, i)

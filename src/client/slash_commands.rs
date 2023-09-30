@@ -9,7 +9,7 @@ use super::{
     },
     voice::commands::create_voice_commands,
 };
-use crate::{global_data, markov, voice, GuildId, client::voice::queue::{queue_command_response::queue, queue_shuffle::shuffle_queue}};
+use crate::{global_data, markov, voice, GuildId, client::voice::queue::{command_response::queue, shuffle::shuffle_queue}};
 use serenity::{
     builder::{
         CreateApplicationCommand, CreateApplicationCommandOption, CreateInteractionResponse,

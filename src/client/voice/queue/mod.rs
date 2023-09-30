@@ -1,3 +1,3 @@
-pub mod queue_command_response;
+pub mod command_response;
 pub mod update_queue_message;
-pub mod queue_shuffle;
+pub mod shuffle;
