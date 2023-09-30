@@ -1,3 +1,5 @@
+use std::cmp::max;
+
 use serenity::builder::EditMessage;
 use serenity::client::Context;
 use serenity::model::id::GuildId;
@@ -5,7 +7,7 @@ use tracing::{info_span, instrument, Instrument};
 
 use crate::client::voice::model::get_voice_messages_lock;
 
-use super::command_response::{get_queue_start_from_queue_message, create_queue_edit_message};
+use super::command_response::{create_queue_edit_message, get_queue_start_from_queue_message};
 
 #[instrument(skip(ctx))]
 pub async fn update_queue_message(ctx: &Context, guild_id: GuildId) {
@@ -38,7 +40,7 @@ pub async fn update_queue_message(ctx: &Context, guild_id: GuildId) {
                 .expect("Error creating interaction response");
             return;
         }
-        let queue_start = get_queue_start_from_queue_message(&queue_message.content);
+        let mut queue_start = get_queue_start_from_queue_message(&queue_message.content);
 
         let queue = call_lock
             .lock()
@@ -46,6 +48,14 @@ pub async fn update_queue_message(ctx: &Context, guild_id: GuildId) {
             .await
             .queue()
             .clone();
+
+        let queue_len = queue.len();
+        if queue_start > queue_len {
+            queue_start = queue_len.saturating_sub(10).saturating_sub(queue_len % 10);
+
+            queue_start = max(queue_start, 1);
+        }
+
         let queue_response = create_queue_edit_message(queue_start, &queue).await;
 
         queue_message

@@ -98,7 +98,7 @@ async fn get_queue_duration(queue: &songbird::tracks::TrackQueue) -> String {
     duration
 }
 
-async fn create_queue_buttons(
+async fn create_queue_components(
     queue: &TrackQueue,
     queue_start: usize,
 ) -> serenity::builder::CreateComponents {
@@ -139,7 +139,7 @@ pub async fn create_queue_response(
     EditInteractionResponse::new()
         .content(format!("Page {}", queue_start / 10 + 1))
         .embed(create_queue_embed(queue, queue_start - 1).await)
-        .components(create_queue_buttons(queue, queue_start).await)
+        .components(create_queue_components(queue, queue_start).await)
 }
 
 pub async fn create_queue_edit_message(
@@ -149,7 +149,7 @@ pub async fn create_queue_edit_message(
     EditMessage::new()
         .content(format!("Page {}", queue_start / 10 + 1))
         .embed(create_queue_embed(queue, queue_start - 1).await)
-        .components(create_queue_buttons(queue, queue_start).await)
+        .components(create_queue_components(queue, queue_start).await)
 }
 
 async fn create_queue_embed(
