@@ -9,7 +9,7 @@ use super::{
     },
     voice::commands::create_voice_commands,
 };
-use crate::{global_data, markov, voice, GuildId};
+use crate::{global_data, markov, voice, GuildId, client::voice::queue::{queue_command_response::queue, queue_shuffle::shuffle_queue}};
 use serenity::{
     builder::{
         CreateApplicationCommand, CreateApplicationCommandOption, CreateInteractionResponse,
@@ -145,10 +145,10 @@ pub async fn command_responses(
             UserCommand::skip => voice::skip(&ctx, command).await,
             UserCommand::stop => voice::stop(&ctx, command).await,
             UserCommand::playing => voice::playing(&ctx, command).await,
-            UserCommand::queue => voice::queue(&ctx, command).await,
+            UserCommand::queue => queue(&ctx, command).await,
             UserCommand::loop_song => voice::loop_song(&ctx, command).await,
             UserCommand::swap_songs => voice::swap(&ctx, command).await,
-            UserCommand::queue_shuffle => voice::shuffle_queue(&ctx, command).await,
+            UserCommand::queue_shuffle => shuffle_queue(&ctx, command).await,
         },
         Err(why) => {
             error!("Cannot respond to slash command {why}");

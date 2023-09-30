@@ -1,5 +1,4 @@
-use std::{cmp::min, convert::TryInto};
-
+use crate::client::{ComponentIds, voice::{model::{get_voice_messages_lock, MyAuxMetadata}, create_bring_to_front_select_menu, create_play_now_select_menu}};
 use itertools::Itertools;
 use serenity::{
     builder::{
@@ -13,16 +12,9 @@ use serenity::{
     },
 };
 use songbird::tracks::TrackQueue;
+use std::{cmp::min, convert::TryInto};
 use tracing::{info_span, Instrument};
 
-use crate::client::ComponentIds;
-
-use super::{
-    create_bring_to_front_select_menu, create_play_now_select_menu, model::get_voice_messages_lock,
-    MyAuxMetadata,
-};
-
-///get the queue
 #[tracing::instrument(skip(ctx))]
 pub async fn queue(ctx: &Context, command: &ApplicationCommandInteraction) {
     let manager = songbird::get(ctx)
@@ -180,13 +172,14 @@ async fn create_queue_embed(
     let queue_end = min(queue.len(), queue_start_index + 10);
 
     for i in queue_start_index..queue_end {
-        let (song_name_and_channel, duration) = get_song_name_and_duration(queue, i).await;
+        let (song_name_and_channel, duration) =
+            get_song_name_and_duration_from_queue(queue, i).await;
         e = e.field(song_name_and_channel, duration, false);
     }
     e
 }
 
-pub async fn get_song_name_and_duration(
+pub async fn get_song_name_and_duration_from_queue(
     queue: &TrackQueue,
     index_in_queue: usize,
 ) -> (String, String) {
@@ -216,7 +209,7 @@ pub async fn get_song_name_and_duration(
     (song_name_and_channel, duration)
 }
 
-pub fn get_queue_start(message_content: impl Into<String>) -> usize {
+pub fn get_queue_start_from_queue_message(message_content: impl Into<String>) -> usize {
     let mut queue_start: i64 = message_content.into().split(' ').collect_vec()[1]
         .parse()
         .unwrap();
@@ -233,7 +226,7 @@ pub fn get_queue_start_from_button(
     button_id: ComponentIds,
     queue: &songbird::tracks::TrackQueue,
 ) -> usize {
-    let mut queue_start = get_queue_start(message_content);
+    let mut queue_start = get_queue_start_from_queue_message(message_content);
 
     let queue_len = queue.len();
 

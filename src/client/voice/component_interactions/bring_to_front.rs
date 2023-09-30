@@ -1,6 +1,6 @@
 use super::super::helper_funcs::is_bot_in_another_voice_channel;
 use crate::client::voice::model::HasAuxMetadata;
-use crate::client::voice::update_queue_message;
+use crate::client::voice::queue::update_queue_message::update_queue_message;
 use serenity::model::prelude::component::ComponentType;
 use serenity::model::prelude::interaction::message_component::MessageComponentInteraction;
 use serenity::prelude::Context;

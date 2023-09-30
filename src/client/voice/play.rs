@@ -9,6 +9,7 @@ use super::{
         get_voice_channel_of_user, is_bot_in_another_voice_channel, voice_channel_not_same_response,
     },
     model::get_queue_data_lock,
+    queue::update_queue_message::update_queue_message,
     MyAuxMetadata, PeriodicHandler, TrackStartHandler,
 };
 use futures::future::join_all;
@@ -258,6 +259,8 @@ async fn fill_queue(
                     .await
                     .insert::<MyAuxMetadata>(Arc::new(RwLock::new(my_metadata)));
             }
+
+            update_queue_message(&ctx, guild_id).await;
 
             futures = vec![];
         }

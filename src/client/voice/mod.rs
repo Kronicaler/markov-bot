@@ -5,19 +5,22 @@ mod loop_song;
 pub mod model;
 mod play;
 mod playing;
-mod queue;
-mod queue_shuffle;
+pub mod queue;
 mod skip;
 mod stop;
 mod swap;
 
+use self::model::get_voice_messages_lock;
+use self::model::MyAuxMetadata;
+use self::queue::queue_command_response::get_song_name_and_duration_from_queue;
+use super::ComponentIds;
+use crate::client::voice::play::create_track_embed;
+use crate::client::voice::queue::update_queue_message::update_queue_message;
 use futures::future::join_all;
 use itertools::Itertools;
 pub use loop_song::loop_song;
 pub use play::play;
 pub use playing::playing;
-pub use queue::queue;
-pub use queue_shuffle::shuffle_queue;
 use serenity::async_trait;
 use serenity::builder::CreateActionRow;
 use serenity::builder::CreateButton;
@@ -42,16 +45,6 @@ use tracing::info;
 use tracing::info_span;
 use tracing::instrument;
 use tracing::Instrument;
-
-use crate::client::voice::play::create_track_embed;
-
-use self::model::get_voice_messages_lock;
-use self::model::MyAuxMetadata;
-use self::queue::create_queue_edit_message;
-use self::queue::get_queue_start;
-use self::queue::get_song_name_and_duration;
-
-use super::ComponentIds;
 
 /*
  * voice.rs, LasagnaBoi 2022
@@ -131,61 +124,7 @@ impl EventHandler for TrackStartHandler {
     }
 }
 
-#[instrument(skip(ctx))]
-async fn update_queue_message(ctx: &Context, guild_id: GuildId) {
-    let songbird = songbird::get(&ctx).await.unwrap();
-
-    let call_lock = songbird.get(guild_id).unwrap();
-
-    let voice_messages_lock = get_voice_messages_lock(&ctx.data).await;
-
-    let queue_message = voice_messages_lock
-        .read()
-        .instrument(info_span!("Waiting for voice_messages read lock"))
-        .await
-        .queue
-        .get(&guild_id)
-        .cloned();
-
-    if let Some(mut queue_message) = queue_message {
-        if call_lock
-            .lock()
-            .instrument(info_span!("Waiting for call lock"))
-            .await
-            .queue()
-            .is_empty()
-        {
-            queue_message
-                .edit(&ctx.http, EditMessage::new().content("The queue is empty!"))
-                .instrument(info_span!("Sending message"))
-                .await
-                .expect("Error creating interaction response");
-            return;
-        }
-        let queue_start = get_queue_start(&queue_message.content);
-
-        let queue = call_lock
-            .lock()
-            .instrument(info_span!("Waiting for call lock"))
-            .await
-            .queue()
-            .clone();
-        let queue_response = create_queue_edit_message(queue_start, &queue).await;
-
-        queue_message
-            .edit(&ctx.http, queue_response)
-            .instrument(info_span!("Sending message"))
-            .await
-            .expect("Error creating interaction response");
-
-        voice_messages_lock
-            .write()
-            .instrument(info_span!("Waiting for voice_messages write lock"))
-            .await
-            .queue
-            .insert(guild_id, queue_message);
-    }
-}
+mod modname {}
 
 impl TrackStartHandler {
     #[instrument]
@@ -354,7 +293,7 @@ pub async fn create_bring_to_front_select_menu(
         .into_iter()
         .map(|i| async move {
             CreateSelectMenuOption::new(
-                get_song_name_and_duration(queue, i)
+                get_song_name_and_duration_from_queue(queue, i)
                     .await
                     .0
                     .chars()
@@ -386,7 +325,7 @@ pub async fn create_play_now_select_menu(
         .into_iter()
         .map(|i| async move {
             CreateSelectMenuOption::new(
-                get_song_name_and_duration(queue, i)
+                get_song_name_and_duration_from_queue(queue, i)
                     .await
                     .0
                     .chars()
