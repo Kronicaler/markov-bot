@@ -260,7 +260,10 @@ async fn fill_queue(
                     .insert::<MyAuxMetadata>(Arc::new(RwLock::new(my_metadata)));
             }
 
-            update_queue_message(ctx, guild_id).await;
+            let ctx = ctx.clone();
+            tokio::spawn(async move {
+                update_queue_message(&ctx, guild_id).await;
+            });
 
             futures = vec![];
         }
