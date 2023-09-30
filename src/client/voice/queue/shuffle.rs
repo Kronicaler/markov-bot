@@ -6,6 +6,8 @@ use serenity::{
 use songbird::tracks::Queued;
 use tracing::{info_span, Instrument};
 
+use super::update_queue_message::update_queue_message;
+
 #[tracing::instrument(skip(ctx))]
 pub async fn shuffle_queue(ctx: &Context, command: &ApplicationCommandInteraction) {
     let manager = songbird::get(ctx)
@@ -46,6 +48,8 @@ pub async fn shuffle_queue(ctx: &Context, command: &ApplicationCommandInteractio
         });
 
         queue.resume().unwrap();
+
+        update_queue_message(ctx, command.guild_id.unwrap()).await;
 
         command
             .edit_original_interaction_response(
