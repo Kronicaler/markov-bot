@@ -37,6 +37,7 @@ use serenity::model::prelude::Message;
 pub use skip::skip;
 use songbird::tracks::TrackQueue;
 use songbird::EventHandler;
+use tracing::warn;
 use std::cmp::max;
 use std::cmp::min;
 pub use stop::stop;
@@ -115,14 +116,14 @@ impl EventHandler for TrackStartHandler {
             .update_last_message()
             .instrument(info_span!("Updating the 'Now playing' message"));
 
-        let manager = songbird::get(ctx)
+        let manager = songbird::get(&self.ctx)
             .await
             .expect("Songbird Voice client placed in at initialization.")
             .clone();
 
-        let Some(call_lock) = manager.get(guild_id) else {
+        let Some(call_lock) = manager.get(self.guild_id) else {
             warn!("Couldn't get call lock");
-            return;
+            return None;
         };
 
         let update_queue_message_future =

@@ -45,12 +45,14 @@ pub async fn bring_to_front(ctx: &Context, component: &MessageComponentInteracti
     }
 
     match component.data.component_type {
-        ComponentType::Button => bring_to_front_button(component, call_lock).await,
-        ComponentType::SelectMenu => bring_to_front_select_menu(component, call_lock).await,
+        ComponentType::Button => bring_to_front_button(component, call_lock.clone()).await,
+        ComponentType::SelectMenu => bring_to_front_select_menu(component, call_lock.clone()).await,
         _ => panic!("Unexpected component type"),
     }
 
-    update_queue_message(ctx, component.guild_id.unwrap(), call_lock.lock().await()).await;
+    let call = call_lock.lock().await;
+
+    update_queue_message(ctx, component.guild_id.unwrap(), call).await;
 }
 
 async fn bring_to_front_button(button: &MessageComponentInteraction, call_lock: Arc<Mutex<Call>>) {
