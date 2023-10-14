@@ -260,6 +260,7 @@ async fn fill_queue(
                     .insert::<MyAuxMetadata>(Arc::new(RwLock::new(my_metadata)));
             }
 
+            drop(call);
             let ctx = ctx.clone();
             let call_lock = call_lock.clone();
             tokio::spawn(async move {
