@@ -266,7 +266,6 @@ async fn fill_queue(
             tokio::spawn(async move {
                 let call = call_lock
                 .lock()
-                .instrument(info_span!("Waiting for call lock"))
                 .await;
                 update_queue_message(&ctx, guild_id, call).await;
             });
