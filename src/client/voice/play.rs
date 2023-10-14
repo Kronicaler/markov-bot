@@ -262,7 +262,7 @@ async fn fill_queue(
 
             let ctx = ctx.clone();
             tokio::spawn(async move {
-                update_queue_message(&ctx, guild_id).await;
+                update_queue_message(&ctx, guild_id, call).await;
             });
 
             futures = vec![];

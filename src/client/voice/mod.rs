@@ -115,8 +115,19 @@ impl EventHandler for TrackStartHandler {
             .update_last_message()
             .instrument(info_span!("Updating the 'Now playing' message"));
 
-        let update_queue_message_future = update_queue_message(&self.ctx, self.guild_id)
-            .instrument(info_span!("Updating the queue message"));
+        let manager = songbird::get(ctx)
+            .await
+            .expect("Songbird Voice client placed in at initialization.")
+            .clone();
+
+        let Some(call_lock) = manager.get(guild_id) else {
+            warn!("Couldn't get call lock");
+            return;
+        };
+
+        let update_queue_message_future =
+            update_queue_message(&self.ctx, self.guild_id, call_lock.lock().await)
+                .instrument(info_span!("Updating the queue message"));
 
         tokio::join!(update_last_message_future, update_queue_message_future);
 

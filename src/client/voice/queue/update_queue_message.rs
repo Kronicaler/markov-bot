@@ -10,11 +10,7 @@ use crate::client::voice::model::get_voice_messages_lock;
 use super::command_response::{create_queue_edit_message, get_queue_start_from_queue_message};
 
 #[instrument(skip(ctx))]
-pub async fn update_queue_message(ctx: &Context, guild_id: GuildId) {
-    let songbird = songbird::get(ctx).await.unwrap();
-
-    let call_lock = songbird.get(guild_id).unwrap();
-
+pub async fn update_queue_message(ctx: &Context, guild_id: GuildId, call: MutexGuard<'_, Call>) {
     let voice_messages_lock = get_voice_messages_lock(&ctx.data).await;
 
     let queue_message = voice_messages_lock
@@ -26,13 +22,7 @@ pub async fn update_queue_message(ctx: &Context, guild_id: GuildId) {
         .cloned();
 
     if let Some(mut queue_message) = queue_message {
-        if call_lock
-            .lock()
-            .instrument(info_span!("Waiting for call lock"))
-            .await
-            .queue()
-            .is_empty()
-        {
+        if call.queue().is_empty() {
             queue_message
                 .edit(&ctx.http, EditMessage::new().content("The queue is empty!"))
                 .instrument(info_span!("Sending message"))
@@ -42,12 +32,7 @@ pub async fn update_queue_message(ctx: &Context, guild_id: GuildId) {
         }
         let mut queue_start = get_queue_start_from_queue_message(&queue_message.content);
 
-        let queue = call_lock
-            .lock()
-            .instrument(info_span!("Waiting for call lock"))
-            .await
-            .queue()
-            .clone();
+        let queue = call.queue().clone();
 
         let queue_len = queue.len();
         if queue_start > queue_len {

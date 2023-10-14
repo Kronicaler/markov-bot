@@ -49,7 +49,7 @@ pub async fn shuffle_queue(ctx: &Context, command: &ApplicationCommandInteractio
 
         queue.resume().unwrap();
 
-        update_queue_message(ctx, command.guild_id.unwrap()).await;
+        update_queue_message(ctx, command.guild_id.unwrap(), call).await;
 
         command
             .edit_original_interaction_response(

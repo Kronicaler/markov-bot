@@ -50,7 +50,7 @@ pub async fn bring_to_front(ctx: &Context, component: &MessageComponentInteracti
         _ => panic!("Unexpected component type"),
     }
 
-    update_queue_message(ctx, component.guild_id.unwrap()).await;
+    update_queue_message(ctx, component.guild_id.unwrap(), call_lock.lock().await()).await;
 }
 
 async fn bring_to_front_button(button: &MessageComponentInteraction, call_lock: Arc<Mutex<Call>>) {
