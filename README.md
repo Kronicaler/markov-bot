@@ -12,7 +12,7 @@ A discord chat and music bot written in Rust
 - Discord bot application ID
 
 ### Running the bot
-
+$$V_{sphere} = \frac{4}{3}\pi r^3$$
 Download the docker-compose.yml.
 
 In the same folder as the docker-compose.yml create a `.env` file with the environment variables `DB_PASS`, `DISCORD_TOKEN` and `APPLICATION_ID`.
