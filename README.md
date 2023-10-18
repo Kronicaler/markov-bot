@@ -40,7 +40,7 @@ x.V & \text{otherwise}
 \end{cases}
 $$
 
-$$ \text{Where:} \quad \text{T}_{i\text{a}} < \text{T}_{i\text{b}} \leq \text{T}_{(i+1)\text{a}} \text{ for all } i \in \mathbb{N} $$
+$$\text{Where:} \quad \text{T}_{i\text{a}} < \text{T}_{i\text{b}} \leq \text{T}_{(i+1)\text{a}} \text{ for all } i \in \mathbb{N}$$
 
 Download the docker-compose.yml.
 
