@@ -22,8 +22,8 @@ F(factor) \in \mathbb{Q}, \text{  } O(offset) \in \mathbb{Z}
 $$
 
 $$
-f(x) = 
-\begin{cases} 
+f(x) =
+\begin{cases}
 x.V \times \text{F}_1 + \text{O}_1 & \text{if } x.T \in [T_{1a}, T_{1b}) 
 \\
 x.V \times \text{F}_2 + \text{O}_2 & \text{if } x.T \in [T_{2a}, T_{2b})
@@ -40,9 +40,7 @@ x.V & \text{otherwise}
 \end{cases}
 $$
 
-$$
-\text{Where:} \quad \text{T}_{i\text{a}} < \text{T}_{i\text{b}} \leq \text{T}_{(i+1)\text{a}} \text{ for all } i \in \mathbb{N}
-$$
+$$ \text{Where:} \quad \text{T}_{i\text{a}} < \text{T}_{i\text{b}} \leq \text{T}_{(i+1)\text{a}} \text{ for all } i \in \mathbb{N} $$
 
 Download the docker-compose.yml.
 
