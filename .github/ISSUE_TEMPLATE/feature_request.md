@@ -4,7 +4,7 @@ about: Suggest an idea for this project
 title: ''
 labels: ''
 assignees: ''
-projects: ["TheKroni/3"]
+projects: ["TheKroni/MarkovBot"]
 
 ---
 
