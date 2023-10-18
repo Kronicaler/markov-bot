@@ -16,9 +16,11 @@ A discord chat and music bot written in Rust
 $$
 x := \{V, T\} \quad \text{where V(value)} \in \mathbb{Q} \text{ and T(timestamp) } \in \mathbb{N_0}
 $$
+
 $$
 F(factor) \in \mathbb{Q}, \text{  } O(offset) \in \mathbb{Z}
 $$
+
 $$
 f(x) = 
 \begin{cases} 
@@ -37,6 +39,7 @@ x.V \times \text{F}_n + \text{O}_n & \begin{cases} \text{if } x.T \in [T_{na}, T
 x.V & \text{otherwise}
 \end{cases}
 $$
+
 $$
 \text{Where:} \quad \text{T}_{i\text{a}} < \text{T}_{i\text{b}} \leq \text{T}_{(i+1)\text{a}} \text{ for all } i \in \mathbb{N}
 $$
