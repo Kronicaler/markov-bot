@@ -128,7 +128,7 @@ fn create_default_chain() -> Markov {
     markov_chain
 }
 
-#[instrument]
+#[instrument(skip(export))]
 fn create_default_chain_from_export(export: ImportExport) -> Markov {
     let mut markov_chain = Markov::from_export(export);
     markov_chain.set_max_tries(MARKOV_MAX_TRIES);
