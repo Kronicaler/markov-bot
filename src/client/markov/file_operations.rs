@@ -7,6 +7,7 @@ use crate::client::file_operations::create_file_if_missing;
 use anyhow::Result;
 use markov_strings::{ImportExport, InputData};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
+use tracing::instrument;
 use std::{
     fs::{self, OpenOptions},
     io::Write,
@@ -44,6 +45,7 @@ pub fn clean_markov_file() {
     }
 }
 
+#[instrument]
 pub fn export_corpus_to_file(export: &ImportExport) -> Result<(), std::io::Error> {
     fs::write(
         MARKOV_EXPORT_PATH,
@@ -51,6 +53,7 @@ pub fn export_corpus_to_file(export: &ImportExport) -> Result<(), std::io::Error
     )
 }
 
+#[instrument]
 pub fn import_corpus_from_file() -> Result<ImportExport> {
     let x = serde_json::from_str::<ImportExport>(&fs::read_to_string(create_file_if_missing(
         MARKOV_EXPORT_PATH,
@@ -60,6 +63,7 @@ pub fn import_corpus_from_file() -> Result<ImportExport> {
     Ok(x)
 }
 
+#[instrument]
 /// Reads the Markov data set from [`MARKOV_DATA_SET_PATH`]
 pub fn import_messages_from_file() -> Result<Vec<InputData>> {
     let text_from_file = fs::read_to_string(create_file_if_missing(MARKOV_DATA_SET_PATH, "")?)?;
@@ -73,6 +77,7 @@ pub fn import_messages_from_file() -> Result<Vec<InputData>> {
         .collect())
 }
 
+#[instrument]
 pub fn generate_new_corpus_from_msg_file() -> Result<ImportExport> {
     let messages = import_messages_from_file()?;
 

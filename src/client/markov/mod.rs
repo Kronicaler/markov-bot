@@ -28,7 +28,7 @@ use serenity::{
 use sqlx::{MySql, MySqlPool, Pool};
 use std::{error::Error, sync::Arc};
 use tokio::sync::RwLockWriteGuard;
-use tracing::{info_span, Instrument};
+use tracing::{info_span, instrument, Instrument};
 
 pub async fn add_message_to_chain(
     msg: &Message,
@@ -93,13 +93,18 @@ pub async fn generate_sentence(ctx: &Context) -> String {
         .to_owned(),
     }
 }
+
+#[instrument]
 /// Initializes the Markov chain from [`MARKOV_EXPORT_PATH`][model::MARKOV_EXPORT_PATH]
 pub fn init() -> Result<Markov, Box<dyn Error>> {
     let mut markov_chain = create_default_chain();
 
     if !std::path::Path::new(MARKOV_EXPORT_PATH).exists() {
         let input_data = import_messages_from_file()?;
-        markov_chain.add_to_corpus(input_data);
+
+        info_span!("Add markov data to corpus").in_scope(|| {
+            markov_chain.add_to_corpus(input_data);
+        });
 
         export_corpus_to_file(&markov_chain.export())?;
     }
@@ -112,6 +117,7 @@ pub fn init() -> Result<Markov, Box<dyn Error>> {
 pub const MARKOV_STATE_SIZE: usize = 4;
 pub const MARKOV_MAX_TRIES: u16 = 5000;
 
+#[instrument]
 fn create_default_chain() -> Markov {
     let mut markov_chain = Markov::new();
     markov_chain
@@ -122,6 +128,7 @@ fn create_default_chain() -> Markov {
     markov_chain
 }
 
+#[instrument]
 fn create_default_chain_from_export(export: ImportExport) -> Markov {
     let mut markov_chain = Markov::from_export(export);
     markov_chain.set_max_tries(MARKOV_MAX_TRIES);
@@ -317,6 +324,7 @@ pub async fn stop_saving_messages_server(
     }
 }
 
+#[instrument(skip(data))]
 pub fn init_markov_data(data: &mut RwLockWriteGuard<TypeMap>) -> Result<(), Box<dyn Error>> {
     let markov = init()?;
 
