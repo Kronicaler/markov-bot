@@ -4,14 +4,14 @@ use super::{
     model::{MARKOV_DATA_SET_PATH, MARKOV_EXPORT_PATH},
 };
 use crate::client::file_operations::create_file_if_missing;
-use anyhow::Result;
+use anyhow::{Context, Result};
 use markov_strings::{ImportExport, InputData};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
-use tracing::instrument;
 use std::{
     fs::{self, OpenOptions},
     io::Write,
 };
+use tracing::{info_span, instrument};
 
 /// Append a sentence to the markov file
 pub fn append_to_markov_file(str: &str) -> Result<(), std::io::Error> {
@@ -55,12 +55,15 @@ pub fn export_corpus_to_file(export: &ImportExport) -> Result<(), std::io::Error
 
 #[instrument]
 pub fn import_corpus_from_file() -> Result<ImportExport> {
-    let x = serde_json::from_str::<ImportExport>(&fs::read_to_string(create_file_if_missing(
-        MARKOV_EXPORT_PATH,
-        "",
-    )?)?)?;
+    let file_contents = info_span!("Reading file").in_scope(|| {
+        let x = create_file_if_missing(MARKOV_EXPORT_PATH, "").context("Failed to create file")?;
+        fs::read_to_string(x).context("Failed to read file")
+    })?;
 
-    Ok(x)
+    let import_export = info_span!("Parsing file contents")
+        .in_scope(|| serde_json::from_str::<ImportExport>(&file_contents))?;
+
+    Ok(import_export)
 }
 
 #[instrument]
