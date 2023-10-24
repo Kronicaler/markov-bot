@@ -16,6 +16,7 @@ COPY --from=planner /app/recipe.json recipe.json
 RUN cargo chef cook --release --recipe-path recipe.json
 COPY . .
 RUN cargo build --release
+RUN strip /app/target/release/markov_bot
 
 FROM debian:bookworm-slim as release
 
@@ -26,5 +27,6 @@ RUN chmod a+rx /usr/local/bin/yt-dlp;
 
 WORKDIR /app
 COPY --from=builder /app/target/release/markov_bot /app/markov_bot
+
 
 ENTRYPOINT ["/app/markov_bot"]

@@ -9,7 +9,10 @@ use super::{
     },
     voice::commands::create_voice_commands,
 };
-use crate::{global_data, markov, voice, GuildId, client::voice::queue::{command_response::queue, shuffle::shuffle_queue}};
+use crate::{
+    client::voice::queue::{command_response::queue, shuffle::shuffle_queue},
+    global_data, markov, voice, GuildId,
+};
 use serenity::{
     builder::{
         CreateApplicationCommand, CreateApplicationCommandOption, CreateInteractionResponse,
@@ -62,6 +65,8 @@ pub enum UserCommand {
 
     // =====VOICE=====
     play,
+    #[strum(serialize = "Play Now")]
+    play_from_attachment,
     skip,
     stop,
     playing,
@@ -142,6 +147,7 @@ pub async fn command_responses(
 
             // ===== VOICE =====
             UserCommand::play => voice::play(&ctx, command).await,
+            UserCommand::play_from_attachment => voice::play_from_attachment(&ctx, command).await,
             UserCommand::skip => voice::skip(&ctx, command).await,
             UserCommand::stop => voice::stop(&ctx, command).await,
             UserCommand::playing => voice::playing(&ctx, command).await,

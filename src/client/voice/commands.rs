@@ -8,6 +8,7 @@ use crate::client::slash_commands::UserCommand;
 pub fn create_voice_commands() -> Vec<CreateApplicationCommand> {
     vec![
         create_play_command(),
+        create_play_video_command(),
         create_skip_command(),
         create_swap_command(),
         CreateApplicationCommand::new(UserCommand::stop.to_string())
@@ -34,6 +35,11 @@ fn create_play_command() -> CreateApplicationCommand {
             )
             .required(true),
         )
+}
+
+fn create_play_video_command() -> CreateApplicationCommand {
+    CreateApplicationCommand::new(UserCommand::play_from_attachment.to_string())
+        .kind(serenity::model::prelude::command::CommandType::Message)
 }
 
 fn create_skip_command() -> CreateApplicationCommand {

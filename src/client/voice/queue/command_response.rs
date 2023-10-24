@@ -1,4 +1,10 @@
-use crate::client::{ComponentIds, voice::{model::{get_voice_messages_lock, MyAuxMetadata}, create_bring_to_front_select_menu, create_play_now_select_menu}};
+use crate::client::{
+    voice::{
+        create_bring_to_front_select_menu, create_play_now_select_menu,
+        model::{get_voice_messages_lock, MyAuxMetadata},
+    },
+    ComponentIds,
+};
 use itertools::Itertools;
 use serenity::{
     builder::{
@@ -11,7 +17,7 @@ use serenity::{
         Colour,
     },
 };
-use songbird::tracks::TrackQueue;
+use songbird::{input::AuxMetadata, tracks::TrackQueue};
 use std::{cmp::min, convert::TryInto};
 use tracing::{info_span, Instrument};
 
@@ -71,19 +77,12 @@ async fn get_queue_duration(queue: &songbird::tracks::TrackQueue) -> String {
     let mut durations = vec![];
 
     for track in queue.current_queue() {
-        durations.push(
-            track
-                .typemap()
-                .read()
-                .await
-                .get::<MyAuxMetadata>()
-                .unwrap()
-                .read()
-                .await
-                .0
-                .duration
-                .unwrap(),
-        );
+        let typemap = track.typemap().read().await;
+        let metadata = typemap.get::<MyAuxMetadata>();
+
+        if let Some(metadata) = metadata {
+            durations.push(metadata.read().await.0.duration.unwrap());
+        }
     }
 
     let total_queue_time = durations
@@ -183,28 +182,39 @@ pub async fn get_song_name_and_duration_from_queue(
     queue: &TrackQueue,
     index_in_queue: usize,
 ) -> (String, String) {
-    let song = queue
-        .current_queue()
-        .get(index_in_queue)
-        .unwrap()
+    let queue = queue.current_queue();
+    let song = queue.get(index_in_queue).unwrap();
+
+    let metadata: Option<AuxMetadata> = song
         .typemap()
         .read()
         .await
         .get::<MyAuxMetadata>()
-        .unwrap()
-        .read()
-        .await
-        .0
-        .clone();
+        .and_then(|m| {
+            Some(futures::executor::block_on(async {
+                m.read().await.0.clone()
+            }))
+        });
 
-    let channel = &song.channel.as_ref().unwrap();
-    let title = &song.title.as_ref().unwrap();
-    //duration
-    let time = &song.duration.as_ref().unwrap();
-    let minutes = time.as_secs() / 60;
-    let seconds = time.as_secs() - minutes * 60;
-    let duration = format!("{minutes}:{seconds:02}");
-    let song_name_and_channel = format!("{}. {title} | {channel}", index_in_queue + 1);
+    let song_name_and_channel = if let Some(metadata) = &metadata {
+        let channel = &metadata.channel.as_ref().unwrap();
+        let title = &metadata.title.as_ref().unwrap();
+        let song_name_and_channel = format!("{}. {title} | {channel}", index_in_queue + 1);
+        song_name_and_channel
+    } else {
+        "Discord attachment".to_string()
+    };
+
+    let duration = match metadata {
+        Some(i) => {
+            let time = i.duration.unwrap_or_default();
+            let minutes = time.as_secs() / 60;
+            let seconds = time.as_secs() - minutes * 60;
+            let duration = format!("{minutes}:{seconds:02}");
+            duration
+        }
+        None => "00:00".to_string(),
+    };
 
     (song_name_and_channel, duration)
 }
