@@ -86,7 +86,7 @@ pub async fn play(ctx: &Context, command: &ApplicationCommandInteraction) {
 
     match source {
         SourceType::Video(source) => {
-            handle_video(source.into(), command, ctx, &call_lock).await;
+            handle_video(source, command, ctx, &call_lock).await;
         }
         SourceType::Playlist(sources) => {
             handle_playlist(sources, command, ctx, call_lock).await;
@@ -94,13 +94,15 @@ pub async fn play(ctx: &Context, command: &ApplicationCommandInteraction) {
     }
 }
 
-#[tracing::instrument(skip(input, ctx, call_lock))]
-pub async fn handle_video(
-    mut input: Input,
+#[tracing::instrument(skip(ctx, call_lock))]
+async fn handle_video(
+    source: YoutubeDl,
     command: &ApplicationCommandInteraction,
     ctx: &Context,
     call_lock: &Arc<Mutex<songbird::Call>>,
 ) -> ControlFlow<()> {
+    let mut input: Input = source.into();
+
     let Ok(metadata) = input.aux_metadata().await else {
         invalid_link_response(command, ctx).await;
         return ControlFlow::Break(());
@@ -262,7 +264,9 @@ async fn fill_queue(
             let ctx = ctx.clone();
             let call_lock = call_lock.clone();
             tokio::spawn(async move {
-                let call = call_lock.lock().await;
+                let call = call_lock
+                .lock()
+                .await;
                 update_queue_message(&ctx, guild_id, call).await;
             });
 
@@ -282,7 +286,7 @@ async fn invalid_link_response(command: &ApplicationCommandInteraction, ctx: &Co
         .expect("Error creating interaction response");
 }
 
-pub fn add_track_start_event(
+fn add_track_start_event(
     call: &mut tokio::sync::MutexGuard<songbird::Call>,
     command: &ApplicationCommandInteraction,
     ctx: &Context,
@@ -322,10 +326,7 @@ fn get_query(command: &ApplicationCommandInteraction) -> String {
     }
 }
 
-pub async fn voice_channel_not_found_response(
-    command: &ApplicationCommandInteraction,
-    ctx: &Context,
-) {
+async fn voice_channel_not_found_response(command: &ApplicationCommandInteraction, ctx: &Context) {
     command
         .edit_original_interaction_response(
             &ctx.http,
@@ -473,7 +474,11 @@ async fn get_queue_durations(queue: &TrackQueue) -> Vec<Duration> {
                 .read()
                 .await
                 .get::<MyAuxMetadata>()
-                .and_then(|m| futures::executor::block_on(async { m.read().await.0.duration }))
+                .unwrap()
+                .read()
+                .await
+                .0
+                .duration
                 .unwrap_or_else(|| Duration::from_secs(0)),
         );
     }
