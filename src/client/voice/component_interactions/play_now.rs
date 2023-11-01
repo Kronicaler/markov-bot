@@ -60,18 +60,13 @@ async fn play_now_button(button: &MessageComponentInteraction, call_lock: Arc<Mu
         .unwrap()
         .clone();
 
-    for (index, song_to_play_now) in call_lock
-        .lock()
-        .await
-        .queue()
-        .current_queue()
-        .iter()
-        .enumerate()
-    {
+    let call = call_lock.lock().await;
+
+    for (index, song_to_play_now) in call.queue().current_queue().iter().enumerate() {
         let queued_song_title = song_to_play_now.get_aux_metadata().await.title.unwrap();
 
         if queued_song_title == song_title {
-            call_lock.lock().await.queue().modify_queue(|q| {
+            call.queue().modify_queue(|q| {
                 let Some(playing_song) = q.get(0) else {
                     return;
                 };
