@@ -258,7 +258,6 @@ async fn fill_queue(
 
                 if call_lock
                     .lock()
-                    .instrument(info_span!("Waiting for call lock"))
                     .await
                     .current_channel()
                     .is_none()
@@ -271,7 +270,6 @@ async fn fill_queue(
 
                 let track_handle = call_lock
                     .lock()
-                    .instrument(info_span!("Waiting for call lock"))
                     .await
                     .enqueue_input(input)
                     .await;
