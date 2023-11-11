@@ -28,8 +28,8 @@ use songbird::{
     tracks::TrackQueue,
     TrackEvent,
 };
-use tokio::time::timeout;
 use std::{collections::VecDeque, ops::ControlFlow, sync::Arc, time::Duration};
+use tokio::time::timeout;
 use tracing::{info, info_span, warn, Instrument};
 
 ///play song from youtube
@@ -78,7 +78,9 @@ pub async fn play(ctx: &Context, command: &ApplicationCommandInteraction) {
     }
 
     {
-        let mut call = timeout(Duration::from_secs(5),call_lock.lock()).await.unwrap();
+        let mut call = timeout(Duration::from_secs(5), call_lock.lock())
+            .await
+            .unwrap();
 
         add_track_start_event(&mut call, command, ctx);
     }
@@ -109,7 +111,9 @@ async fn handle_video(
         return ControlFlow::Break(());
     };
 
-    let mut call = timeout(Duration::from_secs(5),call_lock.lock()).await.unwrap();
+    let mut call = timeout(Duration::from_secs(5), call_lock.lock())
+        .await
+        .unwrap();
     let track_handle = call.enqueue_input(input).await;
     let my_metadata = MyAuxMetadata(metadata.clone());
 
@@ -140,7 +144,9 @@ async fn handle_playlist(
             let source = sources.pop_front().unwrap();
             let mut input: Input = source.into();
             let metadata = input.aux_metadata().await.unwrap_or_default();
-            let mut call = timeout(Duration::from_secs(5),call_lock.lock()).await.unwrap();
+            let mut call = timeout(Duration::from_secs(5), call_lock.lock())
+                .await
+                .unwrap();
 
             let track_handle = call.enqueue_input(input).await;
 
@@ -171,41 +177,50 @@ async fn fill_queue(
     let inputs: VecDeque<Input> = sources.into_iter().map(Into::into).collect();
 
     let queue_data_lock = get_queue_data_lock(&ctx.data).await;
-    {
-        let mut queue_data = queue_data_lock.write().await;
-        queue_data.filling_queue.insert(guild_id, true);
-    }
+
+    queue_data_lock
+        .write()
+        .await
+        .filling_queue
+        .insert(guild_id, true);
 
     let length = inputs.len();
 
-    let mut futures: Vec<_> = vec![];
     for (i, mut input) in inputs.into_iter().enumerate() {
+        let mut fetch_aux_metadata_futures: Vec<_> = vec![];
         let call_lock = call_lock.clone();
         let queue_data_lock = queue_data_lock.clone();
-        {
-            let mut call = timeout(Duration::from_secs(5),call_lock.lock()).await.unwrap();
 
-            let Some(current_channel) = call.current_channel() else {
-                info!("Returning early due to not being connected to any channel");
-                return;
-            };
+        let call = timeout(Duration::from_secs(5), call_lock.lock())
+            .await
+            .unwrap();
 
-            let voice_channel = get_guild_channel(guild_id, ctx, current_channel.0.into())
+        let Some(current_channel) = call.current_channel() else {
+            info!("Returning early due to not being connected to any channel");
+            return;
+        };
+
+        drop(call);
+
+        let voice_channel = get_guild_channel(guild_id, ctx, current_channel.0.into())
+            .await
+            .unwrap();
+
+        if voice_channel.members(&ctx.cache).unwrap().len() == 1 {
+            info!("Returning early due to empty channel");
+
+            let mut call = timeout(Duration::from_secs(5), call_lock.lock())
                 .await
                 .unwrap();
 
-            if voice_channel.members(&ctx.cache).unwrap().len() == 1 {
-                info!("Returning early due to empty channel");
+            call.queue().stop();
+            call.remove_all_global_events();
+            call.leave().await.expect("Couldn't leave voice channel");
 
-                call.queue().stop();
-                call.remove_all_global_events();
-                call.leave().await.expect("Couldn't leave voice channel");
-
-                return;
-            }
+            return;
         }
 
-        let x = async move {
+        let fetch_aux_metadata = async move {
             match input
                 .aux_metadata()
                 .instrument(info_span!("Fetching metadata"))
@@ -224,35 +239,42 @@ async fn fill_queue(
             playlist.length = length
         ));
 
-        futures.push(tokio::spawn(x));
+        fetch_aux_metadata_futures.push(tokio::spawn(fetch_aux_metadata));
 
         if i % 10 == 0 {
-            let task_results = join_all(futures)
+            let task_results = join_all(fetch_aux_metadata_futures)
                 .await
                 .into_iter()
                 .filter(std::result::Result::is_ok)
                 .filter_map(std::result::Result::unwrap);
 
-            let mut call = call_lock
-                .lock()
-                .instrument(info_span!("Waiting for call lock"))
-                .await;
-
             for (metadata, input) in task_results {
-                let queue_filling_stopped = !*queue_data_lock
+                let queue_filling_stopped = !queue_data_lock
                     .read()
                     .await
                     .filling_queue
                     .get(&guild_id)
                     .unwrap();
 
-                if call.current_channel().is_none() || queue_filling_stopped {
+                if call_lock
+                    .lock()
+                    .instrument(info_span!("Waiting for call lock"))
+                    .await
+                    .current_channel()
+                    .is_none()
+                    || queue_filling_stopped
+                {
                     return;
                 }
 
                 let my_metadata = MyAuxMetadata(metadata);
 
-                let track_handle = call.enqueue_input(input).await;
+                let track_handle = call_lock
+                    .lock()
+                    .instrument(info_span!("Waiting for call lock"))
+                    .await
+                    .enqueue_input(input)
+                    .await;
 
                 track_handle
                     .typemap()
@@ -261,15 +283,16 @@ async fn fill_queue(
                     .insert::<MyAuxMetadata>(Arc::new(RwLock::new(my_metadata)));
             }
 
-            drop(call);
             let ctx = ctx.clone();
-            let call_lock = call_lock.clone();
-            tokio::spawn(async move {
-                let call = timeout(Duration::from_secs(5),call_lock.lock()).await.unwrap();
-                update_queue_message(&ctx, guild_id, call).await;
-            });
-
-            futures = vec![];
+            tokio::spawn(
+                async move {
+                    let call = timeout(Duration::from_secs(5), call_lock.lock())
+                        .await
+                        .unwrap();
+                    update_queue_message(&ctx, guild_id, call).await;
+                }
+                .instrument(info_span!("Updating queue message")),
+            );
         }
     }
 }
