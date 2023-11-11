@@ -186,8 +186,8 @@ async fn fill_queue(
 
     let length = inputs.len();
 
+    let mut fetch_aux_metadata_futures: Vec<_> = vec![];
     for (i, mut input) in inputs.into_iter().enumerate() {
-        let mut fetch_aux_metadata_futures: Vec<_> = vec![];
         let call_lock = call_lock.clone();
         let queue_data_lock = queue_data_lock.clone();
 
@@ -241,7 +241,7 @@ async fn fill_queue(
 
         fetch_aux_metadata_futures.push(tokio::spawn(fetch_aux_metadata));
 
-        if i % 10 == 0 {
+        if fetch_aux_metadata_futures.len() >= 10 {
             let task_results = join_all(fetch_aux_metadata_futures)
                 .await
                 .into_iter()
@@ -293,6 +293,8 @@ async fn fill_queue(
                 }
                 .instrument(info_span!("Updating queue message")),
             );
+
+            fetch_aux_metadata_futures = vec![];
         }
     }
 }
