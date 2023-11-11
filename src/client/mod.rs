@@ -15,7 +15,8 @@ use self::{
     tags::{blacklist_user, respond_to_tag},
     voice::{
         component_interactions::{
-            bring_to_front::bring_to_front, play_now::play_now, skip::skip_button_press, change_queue_page::change_queue_page,
+            bring_to_front::bring_to_front, change_queue_page::change_queue_page,
+            play_now::play_now, skip::skip_button_press,
         },
         helper_funcs::leave_vc_if_alone,
     },

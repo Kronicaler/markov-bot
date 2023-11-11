@@ -1,9 +1,12 @@
+use std::time::Duration;
+
 use rand::{seq::SliceRandom, thread_rng};
 use serenity::{
     builder::EditInteractionResponse,
     model::prelude::interaction::application_command::ApplicationCommandInteraction, prelude::*,
 };
 use songbird::tracks::Queued;
+use tokio::time::timeout;
 use tracing::{info_span, Instrument};
 
 use super::update_queue_message::update_queue_message;
@@ -18,7 +21,9 @@ pub async fn shuffle_queue(ctx: &Context, command: &ApplicationCommandInteractio
     command.defer(&ctx.http).await.unwrap();
 
     if let Some(call_lock) = manager.get(command.guild_id.unwrap()) {
-        let call = call_lock.lock().await;
+        let call = timeout(Duration::from_secs(5), call_lock.lock())
+            .await
+            .unwrap();
         let queue = call.queue();
 
         if queue.is_empty() {

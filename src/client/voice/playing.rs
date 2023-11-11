@@ -73,17 +73,17 @@ async fn create_playing_embed(
         .clone();
     //create embed
     //title
-    let title = &song.title.unwrap();
+    let title = &song.title.unwrap_or_else(|| "Unknown".to_string());
     //channel
-    let channel = &song.channel.unwrap();
+    let channel = &song.channel.unwrap_or_else(|| "Unknown".to_string());
     //image
-    let thumbnail = &song.thumbnail.unwrap();
+    let thumbnail = &song.thumbnail.unwrap_or_else(|| "Unknown".to_string());
     //embed
-    let url = &song.source_url.unwrap();
+    let url = &song.source_url.unwrap_or_else(|| "Unknown".to_string());
     //color
     let colour = Colour::from_rgb(149, 8, 2);
 
-    let time = &song.duration.unwrap();
+    let time = &song.duration.unwrap_or_default();
     let minutes = time.as_secs() / 60;
     let seconds = time.as_secs() % 60;
     let duration = format!("{minutes}:{seconds:02}");

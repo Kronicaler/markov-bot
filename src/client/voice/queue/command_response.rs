@@ -1,4 +1,10 @@
-use crate::client::{ComponentIds, voice::{model::{get_voice_messages_lock, MyAuxMetadata}, create_bring_to_front_select_menu, create_play_now_select_menu}};
+use crate::client::{
+    voice::{
+        create_bring_to_front_select_menu, create_play_now_select_menu,
+        model::{get_voice_messages_lock, MyAuxMetadata},
+    },
+    ComponentIds,
+};
 use itertools::Itertools;
 use serenity::{
     builder::{
@@ -172,14 +178,13 @@ async fn create_queue_embed(
     let queue_end = min(queue.len(), queue_start_index + 10);
 
     for i in queue_start_index..queue_end {
-        let (song_name_and_channel, duration) =
-            get_song_name_and_duration_from_queue(queue, i).await;
+        let (song_name_and_channel, duration) = get_song_metadata_from_queue(queue, i).await;
         e = e.field(song_name_and_channel, duration, false);
     }
     e
 }
 
-pub async fn get_song_name_and_duration_from_queue(
+pub async fn get_song_metadata_from_queue(
     queue: &TrackQueue,
     index_in_queue: usize,
 ) -> (String, String) {
@@ -197,10 +202,10 @@ pub async fn get_song_name_and_duration_from_queue(
         .0
         .clone();
 
-    let channel = &song.channel.as_ref().unwrap();
-    let title = &song.title.as_ref().unwrap();
+    let channel = &song.channel.unwrap_or_else(|| "Unknown".to_string());
+    let title = &song.title.unwrap_or_else(|| "Unknown".to_string());
     //duration
-    let time = &song.duration.as_ref().unwrap();
+    let time = &song.duration.unwrap_or_default();
     let minutes = time.as_secs() / 60;
     let seconds = time.as_secs() - minutes * 60;
     let duration = format!("{minutes}:{seconds:02}");

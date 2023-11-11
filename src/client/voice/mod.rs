@@ -12,7 +12,7 @@ mod swap;
 
 use self::model::get_voice_messages_lock;
 use self::model::MyAuxMetadata;
-use self::queue::command_response::get_song_name_and_duration_from_queue;
+use self::queue::command_response::get_song_metadata_from_queue;
 use super::ComponentIds;
 use crate::client::voice::play::create_track_embed;
 use crate::client::voice::queue::update_queue_message::update_queue_message;
@@ -37,7 +37,6 @@ use serenity::model::prelude::Message;
 pub use skip::skip;
 use songbird::tracks::TrackQueue;
 use songbird::EventHandler;
-use tracing::warn;
 use std::cmp::max;
 use std::cmp::min;
 pub use stop::stop;
@@ -45,6 +44,7 @@ pub use swap::swap;
 use tracing::info;
 use tracing::info_span;
 use tracing::instrument;
+use tracing::warn;
 use tracing::Instrument;
 
 /*
@@ -304,7 +304,7 @@ pub async fn create_bring_to_front_select_menu(
     let options = (queue_start_index..(min(queue_start_index + number_of_songs, queue.len())))
         .map(|i| async move {
             CreateSelectMenuOption::new(
-                get_song_name_and_duration_from_queue(queue, i)
+                get_song_metadata_from_queue(queue, i)
                     .await
                     .0
                     .chars()
@@ -335,7 +335,7 @@ pub async fn create_play_now_select_menu(
     let options = (queue_start_index..(min(queue_start_index + number_of_songs, queue.len())))
         .map(|i| async move {
             CreateSelectMenuOption::new(
-                get_song_name_and_duration_from_queue(queue, i)
+                get_song_metadata_from_queue(queue, i)
                     .await
                     .0
                     .chars()

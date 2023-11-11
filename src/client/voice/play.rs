@@ -264,9 +264,7 @@ async fn fill_queue(
             let ctx = ctx.clone();
             let call_lock = call_lock.clone();
             tokio::spawn(async move {
-                let call = call_lock
-                .lock()
-                .await;
+                let call = call_lock.lock().await;
                 update_queue_message(&ctx, guild_id, call).await;
             });
 
