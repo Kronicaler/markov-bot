@@ -40,9 +40,9 @@ use songbird::{
     driver::retry::{Retry, Strategy},
     Config, SerenityInit,
 };
-use std::{env, str::FromStr};
+use std::{env, str::FromStr, time::Duration};
 use strum_macros::{Display, EnumString};
-use tokio::join;
+use tokio::{join, time::timeout};
 
 #[derive(Display, EnumString, Debug, PartialEq, Eq, Clone, Copy)]
 pub enum ComponentIds {
@@ -208,7 +208,7 @@ and the users can choose themselves if they don't want their messages saved (/st
             let manager = songbird::get(&ctx).await.unwrap();
 
             let call_lock = manager.get(new.guild_id.unwrap()).unwrap();
-            let mut call = call_lock.lock().await;
+            let mut call = timeout(Duration::from_secs(5),call_lock.lock()).await.unwrap();
 
             call.queue().stop();
             call.remove_all_global_events();

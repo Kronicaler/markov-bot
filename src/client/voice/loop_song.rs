@@ -1,8 +1,11 @@
+use std::time::Duration;
+
 use serenity::{
     builder::EditInteractionResponse, client::Context,
     model::prelude::interaction::application_command::ApplicationCommandInteraction,
 };
 use songbird::tracks::LoopState;
+use tokio::time::timeout;
 use tracing::{info_span, Instrument};
 
 use super::helper_funcs::{is_bot_in_another_voice_channel, voice_channel_not_same_response};
@@ -33,7 +36,7 @@ pub async fn loop_song(ctx: &Context, command: &ApplicationCommandInteraction) {
         not_in_vc_response(command, ctx).await;
         return;
     };
-    let call = call_lock.lock().await;
+    let call = timeout(Duration::from_secs(5),call_lock.lock()).await.unwrap();
 
     let Some(track) = call.queue().current() else {
         nothing_playing_response(command, ctx).await;

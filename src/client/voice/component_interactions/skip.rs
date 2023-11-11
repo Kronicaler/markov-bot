@@ -1,6 +1,9 @@
+use std::time::Duration;
+
 use super::super::helper_funcs::is_bot_in_another_voice_channel;
 use serenity::model::prelude::interaction::message_component::MessageComponentInteraction;
 use serenity::prelude::Context;
+use tokio::time::timeout;
 use tracing::info_span;
 use tracing::{self, Instrument};
 
@@ -30,7 +33,7 @@ pub async fn skip_button_press(ctx: &Context, button: &MessageComponentInteracti
     let Some(call_lock) = manager.get(guild_id) else {
         return;
     };
-    let call = call_lock.lock().await;
+    let call = timeout(Duration::from_secs(5),call_lock.lock()).await.unwrap();
 
     if call.queue().is_empty() {
         return;

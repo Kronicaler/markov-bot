@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use super::super::model::get_voice_messages_lock;
 use crate::client::voice::queue::command_response::{
     create_queue_response, get_queue_start_from_button,
@@ -6,6 +8,7 @@ use crate::client::ComponentIds;
 use serenity::builder::EditInteractionResponse;
 use serenity::client::Context;
 use serenity::model::prelude::interaction::message_component::MessageComponentInteraction;
+use tokio::time::timeout;
 use tracing;
 use tracing::{info_span, Instrument};
 
@@ -22,7 +25,7 @@ pub async fn change_queue_page(
 
     match manager.get(button.guild_id.unwrap()) {
         Some(call_lock) => {
-            let call = call_lock.lock().await;
+            let call = timeout(Duration::from_secs(5),call_lock.lock()).await.unwrap();
             let queue = call.queue().clone();
 
             drop(call);

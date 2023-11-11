@@ -12,6 +12,7 @@ use serenity::{
 };
 use songbird::tracks::TrackQueue;
 use thiserror::Error;
+use tokio::time::timeout;
 use tracing::{info_span, Instrument};
 
 use super::{
@@ -94,7 +95,7 @@ pub async fn swap(ctx: &Context, command: &ApplicationCommandInteraction) {
         return;
     };
 
-    let call = call_lock.lock().await;
+    let call = timeout(Duration::from_secs(5),call_lock.lock()).await.unwrap();
 
     let queue = call.queue();
 

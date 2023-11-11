@@ -1,4 +1,4 @@
-use std::str::FromStr;
+use std::{str::FromStr, time::Duration};
 
 use anyhow::Context;
 use serenity::{
@@ -7,6 +7,7 @@ use serenity::{
     model::prelude::{interaction::application_command::ApplicationCommandInteraction, Colour},
 };
 use strum_macros::EnumString;
+use tokio::time::timeout;
 use tracing::{info_span, Instrument};
 
 use super::helper_funcs::{
@@ -32,7 +33,7 @@ pub async fn skip(ctx: &ClientContext, command: &ApplicationCommandInteraction) 
     let Some(call_lock) = get_call_lock(ctx, guild_id, command).await else {
         return;
     };
-    let call = call_lock.lock().await;
+    let call = timeout(Duration::from_secs(5),call_lock.lock()).await.unwrap();
 
     if call.queue().is_empty() {
         empty_queue_response(command, ctx).await;

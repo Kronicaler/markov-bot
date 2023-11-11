@@ -1,6 +1,5 @@
 use std::sync::Arc;
 use std::time::Duration;
-
 use super::super::helper_funcs::is_bot_in_another_voice_channel;
 use crate::client::voice::model::HasAuxMetadata;
 use serenity::model::prelude::component::ComponentType;
@@ -8,6 +7,7 @@ use serenity::model::prelude::interaction::message_component::MessageComponentIn
 use serenity::prelude::Context;
 use songbird::Call;
 use tokio::sync::Mutex;
+use tokio::time::timeout;
 use tracing::{self, Instrument};
 use tracing::{info, info_span};
 
@@ -38,7 +38,7 @@ pub async fn play_now(ctx: &Context, component: &MessageComponentInteraction) {
         return;
     };
 
-    if call_lock.lock().await.queue().is_empty() {
+    if timeout(Duration::from_secs(5),call_lock.lock()).await.unwrap().queue().is_empty() {
         return;
     }
 
@@ -60,7 +60,7 @@ async fn play_now_button(button: &MessageComponentInteraction, call_lock: Arc<Mu
         .unwrap()
         .clone();
 
-    let call = call_lock.lock().await;
+    let call = timeout(Duration::from_secs(5),call_lock.lock()).await.unwrap();
 
     for (index, song_to_play_now) in call.queue().current_queue().iter().enumerate() {
         let queued_song_title = song_to_play_now.get_aux_metadata().await.title.unwrap();
@@ -95,7 +95,7 @@ async fn play_now_select_menu(
 ) {
     let index: usize = select_menu.data.values[0].parse().unwrap();
 
-    call_lock.lock().await.queue().modify_queue(|q| {
+    timeout(Duration::from_secs(5),call_lock.lock()).await.unwrap().queue().modify_queue(|q| {
         let Some(playing_song) = q.get(0) else {
             return;
         };

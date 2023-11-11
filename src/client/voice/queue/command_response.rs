@@ -18,7 +18,8 @@ use serenity::{
     },
 };
 use songbird::tracks::TrackQueue;
-use std::{cmp::min, convert::TryInto};
+use tokio::time::timeout;
+use std::{cmp::min, convert::TryInto, time::Duration};
 use tracing::{info_span, Instrument};
 
 #[tracing::instrument(skip(ctx))]
@@ -31,7 +32,7 @@ pub async fn queue(ctx: &Context, command: &ApplicationCommandInteraction) {
     command.defer(&ctx.http).await.unwrap();
 
     if let Some(call_lock) = manager.get(command.guild_id.unwrap()) {
-        let call = call_lock.lock().await;
+        let call = timeout(Duration::from_secs(5),call_lock.lock()).await.unwrap();
         let queue = call.queue().clone();
 
         drop(call);
