@@ -35,7 +35,7 @@ pub async fn shuffle_queue(ctx: &Context, command: &ApplicationCommandInteractio
             let mut vec: Vec<Queued> = vec![];
 
             let current_song = q.pop_front().unwrap();
-            for _ in 0..q.len() {
+            while q.len() != 0 {
                 let queued_song = q.pop_front().unwrap();
 
                 vec.push(queued_song);
