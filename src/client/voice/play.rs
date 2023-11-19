@@ -241,7 +241,7 @@ async fn fill_queue(
 
         fetch_aux_metadata_futures.push(tokio::spawn(fetch_aux_metadata));
 
-        if fetch_aux_metadata_futures.len() >= 10 {
+        if fetch_aux_metadata_futures.len() >= 10 || i == length - 1 {
             let task_results = join_all(fetch_aux_metadata_futures)
                 .await
                 .into_iter()
