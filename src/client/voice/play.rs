@@ -256,23 +256,13 @@ async fn fill_queue(
                     .get(&guild_id)
                     .unwrap();
 
-                if call_lock
-                    .lock()
-                    .await
-                    .current_channel()
-                    .is_none()
-                    || queue_filling_stopped
-                {
+                if call_lock.lock().await.current_channel().is_none() || queue_filling_stopped {
                     return;
                 }
 
                 let my_metadata = MyAuxMetadata(metadata);
 
-                let track_handle = call_lock
-                    .lock()
-                    .await
-                    .enqueue_input(input)
-                    .await;
+                let track_handle = call_lock.lock().await.enqueue_input(input).await;
 
                 track_handle
                     .typemap()

@@ -37,12 +37,12 @@ use serenity::model::prelude::Message;
 pub use skip::skip;
 use songbird::tracks::TrackQueue;
 use songbird::EventHandler;
-use tokio::time::timeout;
 use std::cmp::max;
 use std::cmp::min;
 use std::time::Duration;
 pub use stop::stop;
 pub use swap::swap;
+use tokio::time::timeout;
 use tracing::info;
 use tracing::info_span;
 use tracing::instrument;
@@ -64,7 +64,9 @@ impl EventHandler for PeriodicHandler {
     async fn act(&self, _ctx: &songbird::EventContext<'_>) -> Option<songbird::Event> {
         let songbird = songbird::get(&self.ctx).await.unwrap();
         let call_lock = songbird.get(self.guild_id).unwrap();
-        let mut call = timeout(Duration::from_secs(5),call_lock.lock()).await.unwrap();
+        let mut call = timeout(Duration::from_secs(5), call_lock.lock())
+            .await
+            .unwrap();
 
         if self.is_current_voice_channel_empty(&call) {
             call.queue().stop();
@@ -128,9 +130,14 @@ impl EventHandler for TrackStartHandler {
             return None;
         };
 
-        let update_queue_message_future =
-            update_queue_message(&self.ctx, self.guild_id, timeout(Duration::from_secs(5),call_lock.lock()).await.unwrap())
-                .instrument(info_span!("Updating the queue message"));
+        let update_queue_message_future = update_queue_message(
+            &self.ctx,
+            self.guild_id,
+            timeout(Duration::from_secs(5), call_lock.lock())
+                .await
+                .unwrap(),
+        )
+        .instrument(info_span!("Updating the queue message"));
 
         tokio::join!(update_last_message_future, update_queue_message_future);
 

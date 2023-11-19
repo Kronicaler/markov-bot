@@ -95,7 +95,9 @@ pub async fn swap(ctx: &Context, command: &ApplicationCommandInteraction) {
         return;
     };
 
-    let call = timeout(Duration::from_secs(5),call_lock.lock()).await.unwrap();
+    let call = timeout(Duration::from_secs(5), call_lock.lock())
+        .await
+        .unwrap();
 
     let queue = call.queue();
 

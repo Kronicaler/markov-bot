@@ -5,10 +5,10 @@ use serenity::model::prelude::component::ComponentType;
 use serenity::model::prelude::interaction::message_component::MessageComponentInteraction;
 use serenity::prelude::Context;
 use songbird::Call;
-use tokio::time::timeout;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::Mutex;
+use tokio::time::timeout;
 use tracing::{self, info, Instrument};
 use tracing::{info_span, warn};
 
@@ -41,7 +41,12 @@ pub async fn bring_to_front(ctx: &Context, component: &MessageComponentInteracti
         return;
     };
 
-    if timeout(Duration::from_secs(5),call_lock.lock()).await.unwrap().queue().is_empty() {
+    if timeout(Duration::from_secs(5), call_lock.lock())
+        .await
+        .unwrap()
+        .queue()
+        .is_empty()
+    {
         info!("Queue is empty");
         return;
     }
@@ -52,7 +57,9 @@ pub async fn bring_to_front(ctx: &Context, component: &MessageComponentInteracti
         _ => panic!("Unexpected component type"),
     }
 
-    let call = timeout(Duration::from_secs(5),call_lock.lock()).await.unwrap();
+    let call = timeout(Duration::from_secs(5), call_lock.lock())
+        .await
+        .unwrap();
 
     update_queue_message(ctx, component.guild_id.unwrap(), call).await;
 }
@@ -68,16 +75,24 @@ async fn bring_to_front_button(button: &MessageComponentInteraction, call_lock: 
         .unwrap()
         .clone();
 
-    let queue = timeout(Duration::from_secs(5),call_lock.lock()).await.unwrap().queue().current_queue();
+    let queue = timeout(Duration::from_secs(5), call_lock.lock())
+        .await
+        .unwrap()
+        .queue()
+        .current_queue();
 
     for (index, song_to_play_now) in queue.iter().enumerate() {
         let queued_song_title = song_to_play_now.get_aux_metadata().await.title.unwrap();
 
         if queued_song_title == song_title {
-            timeout(Duration::from_secs(5),call_lock.lock()).await.unwrap().queue().modify_queue(|q| {
-                let song = q.remove(index).unwrap();
-                q.insert(1, song);
-            });
+            timeout(Duration::from_secs(5), call_lock.lock())
+                .await
+                .unwrap()
+                .queue()
+                .modify_queue(|q| {
+                    let song = q.remove(index).unwrap();
+                    q.insert(1, song);
+                });
 
             return;
         }
