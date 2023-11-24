@@ -78,7 +78,7 @@ pub async fn play(ctx: &Context, command: &ApplicationCommandInteraction) {
     }
 
     {
-        let mut call = timeout(Duration::from_secs(5), call_lock.lock())
+        let mut call = timeout(Duration::from_secs(30), call_lock.lock())
             .await
             .unwrap();
 
@@ -111,7 +111,7 @@ async fn handle_video(
         return ControlFlow::Break(());
     };
 
-    let mut call = timeout(Duration::from_secs(5), call_lock.lock())
+    let mut call = timeout(Duration::from_secs(30), call_lock.lock())
         .await
         .unwrap();
     let track_handle = call.enqueue_input(input).await;
@@ -144,7 +144,7 @@ async fn handle_playlist(
             let source = sources.pop_front().unwrap();
             let mut input: Input = source.into();
             let metadata = input.aux_metadata().await.unwrap_or_default();
-            let mut call = timeout(Duration::from_secs(5), call_lock.lock())
+            let mut call = timeout(Duration::from_secs(30), call_lock.lock())
                 .await
                 .unwrap();
 
@@ -191,7 +191,7 @@ async fn fill_queue(
         let call_lock = call_lock.clone();
         let queue_data_lock = queue_data_lock.clone();
 
-        let call = timeout(Duration::from_secs(5), call_lock.lock())
+        let call = timeout(Duration::from_secs(30), call_lock.lock())
             .await
             .unwrap();
 
@@ -209,7 +209,7 @@ async fn fill_queue(
         if voice_channel.members(&ctx.cache).unwrap().len() == 1 {
             info!("Returning early due to empty channel");
 
-            let mut call = timeout(Duration::from_secs(5), call_lock.lock())
+            let mut call = timeout(Duration::from_secs(30), call_lock.lock())
                 .await
                 .unwrap();
 
@@ -274,7 +274,7 @@ async fn fill_queue(
             let ctx = ctx.clone();
             tokio::spawn(
                 async move {
-                    let call = timeout(Duration::from_secs(5), call_lock.lock())
+                    let call = timeout(Duration::from_secs(30), call_lock.lock())
                         .await
                         .unwrap();
                     update_queue_message(&ctx, guild_id, call).await;

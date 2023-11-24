@@ -25,7 +25,7 @@ pub async fn change_queue_page(
 
     match manager.get(button.guild_id.unwrap()) {
         Some(call_lock) => {
-            let call = timeout(Duration::from_secs(5), call_lock.lock())
+            let call = timeout(Duration::from_secs(30), call_lock.lock())
                 .await
                 .unwrap();
             let queue = call.queue().clone();

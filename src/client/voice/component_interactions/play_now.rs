@@ -38,7 +38,7 @@ pub async fn play_now(ctx: &Context, component: &MessageComponentInteraction) {
         return;
     };
 
-    if timeout(Duration::from_secs(5), call_lock.lock())
+    if timeout(Duration::from_secs(30), call_lock.lock())
         .await
         .unwrap()
         .queue()
@@ -65,7 +65,7 @@ async fn play_now_button(button: &MessageComponentInteraction, call_lock: Arc<Mu
         .unwrap()
         .clone();
 
-    let call = timeout(Duration::from_secs(5), call_lock.lock())
+    let call = timeout(Duration::from_secs(30), call_lock.lock())
         .await
         .unwrap();
 
@@ -102,7 +102,7 @@ async fn play_now_select_menu(
 ) {
     let index: usize = select_menu.data.values[0].parse().unwrap();
 
-    timeout(Duration::from_secs(5), call_lock.lock())
+    timeout(Duration::from_secs(30), call_lock.lock())
         .await
         .unwrap()
         .queue()

@@ -36,7 +36,7 @@ pub async fn loop_song(ctx: &Context, command: &ApplicationCommandInteraction) {
         not_in_vc_response(command, ctx).await;
         return;
     };
-    let call = timeout(Duration::from_secs(5), call_lock.lock())
+    let call = timeout(Duration::from_secs(30), call_lock.lock())
         .await
         .unwrap();
 

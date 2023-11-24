@@ -208,7 +208,7 @@ and the users can choose themselves if they don't want their messages saved (/st
             let manager = songbird::get(&ctx).await.unwrap();
 
             let call_lock = manager.get(new.guild_id.unwrap()).unwrap();
-            let mut call = timeout(Duration::from_secs(5), call_lock.lock())
+            let mut call = timeout(Duration::from_secs(30), call_lock.lock())
                 .await
                 .unwrap();
 

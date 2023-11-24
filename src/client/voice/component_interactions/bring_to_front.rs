@@ -41,7 +41,7 @@ pub async fn bring_to_front(ctx: &Context, component: &MessageComponentInteracti
         return;
     };
 
-    if timeout(Duration::from_secs(5), call_lock.lock())
+    if timeout(Duration::from_secs(30), call_lock.lock())
         .await
         .unwrap()
         .queue()
@@ -57,7 +57,7 @@ pub async fn bring_to_front(ctx: &Context, component: &MessageComponentInteracti
         _ => panic!("Unexpected component type"),
     }
 
-    let call = timeout(Duration::from_secs(5), call_lock.lock())
+    let call = timeout(Duration::from_secs(30), call_lock.lock())
         .await
         .unwrap();
 
@@ -75,7 +75,7 @@ async fn bring_to_front_button(button: &MessageComponentInteraction, call_lock: 
         .unwrap()
         .clone();
 
-    let queue = timeout(Duration::from_secs(5), call_lock.lock())
+    let queue = timeout(Duration::from_secs(30), call_lock.lock())
         .await
         .unwrap()
         .queue()
@@ -85,7 +85,7 @@ async fn bring_to_front_button(button: &MessageComponentInteraction, call_lock: 
         let queued_song_title = song_to_play_now.get_aux_metadata().await.title.unwrap();
 
         if queued_song_title == song_title {
-            timeout(Duration::from_secs(5), call_lock.lock())
+            timeout(Duration::from_secs(30), call_lock.lock())
                 .await
                 .unwrap()
                 .queue()

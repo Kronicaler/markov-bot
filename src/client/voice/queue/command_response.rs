@@ -32,7 +32,7 @@ pub async fn queue(ctx: &Context, command: &ApplicationCommandInteraction) {
     command.defer(&ctx.http).await.unwrap();
 
     if let Some(call_lock) = manager.get(command.guild_id.unwrap()) {
-        let call = timeout(Duration::from_secs(5), call_lock.lock())
+        let call = timeout(Duration::from_secs(30), call_lock.lock())
             .await
             .unwrap();
         let queue = call.queue().clone();

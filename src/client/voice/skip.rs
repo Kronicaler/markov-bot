@@ -33,7 +33,7 @@ pub async fn skip(ctx: &ClientContext, command: &ApplicationCommandInteraction) 
     let Some(call_lock) = get_call_lock(ctx, guild_id, command).await else {
         return;
     };
-    let call = timeout(Duration::from_secs(5), call_lock.lock())
+    let call = timeout(Duration::from_secs(30), call_lock.lock())
         .await
         .unwrap();
 

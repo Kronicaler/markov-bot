@@ -33,7 +33,7 @@ pub async fn skip_button_press(ctx: &Context, button: &MessageComponentInteracti
     let Some(call_lock) = manager.get(guild_id) else {
         return;
     };
-    let call = timeout(Duration::from_secs(5), call_lock.lock())
+    let call = timeout(Duration::from_secs(30), call_lock.lock())
         .await
         .unwrap();
 

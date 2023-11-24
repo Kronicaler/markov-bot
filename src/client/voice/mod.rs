@@ -64,7 +64,7 @@ impl EventHandler for PeriodicHandler {
     async fn act(&self, _ctx: &songbird::EventContext<'_>) -> Option<songbird::Event> {
         let songbird = songbird::get(&self.ctx).await.unwrap();
         let call_lock = songbird.get(self.guild_id).unwrap();
-        let mut call = timeout(Duration::from_secs(5), call_lock.lock())
+        let mut call = timeout(Duration::from_secs(30), call_lock.lock())
             .await
             .unwrap();
 
@@ -133,7 +133,7 @@ impl EventHandler for TrackStartHandler {
         let update_queue_message_future = update_queue_message(
             &self.ctx,
             self.guild_id,
-            timeout(Duration::from_secs(5), call_lock.lock())
+            timeout(Duration::from_secs(30), call_lock.lock())
                 .await
                 .unwrap(),
         )

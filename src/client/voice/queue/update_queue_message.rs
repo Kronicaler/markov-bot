@@ -35,6 +35,7 @@ pub async fn update_queue_message(ctx: &Context, guild_id: GuildId, call: MutexG
         let mut queue_start = get_queue_start_from_queue_message(&queue_message.content);
 
         let queue = call.queue().clone();
+        drop(call);
 
         let queue_len = queue.len();
         if queue_start > queue_len {
