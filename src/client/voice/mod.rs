@@ -133,9 +133,7 @@ impl EventHandler for TrackStartHandler {
         let update_queue_message_future = update_queue_message(
             &self.ctx,
             self.guild_id,
-            timeout(Duration::from_secs(30), call_lock.lock())
-                .await
-                .unwrap(),
+            call_lock,
         )
         .instrument(info_span!("Updating the queue message"));
 

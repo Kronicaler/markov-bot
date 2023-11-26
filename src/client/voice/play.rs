@@ -274,10 +274,7 @@ async fn fill_queue(
             let ctx = ctx.clone();
             tokio::spawn(
                 async move {
-                    let call = timeout(Duration::from_secs(30), call_lock.lock())
-                        .await
-                        .unwrap();
-                    update_queue_message(&ctx, guild_id, call).await;
+                    update_queue_message(&ctx, guild_id, call_lock).await;
                 }
                 .instrument(info_span!("Updating queue message")),
             );

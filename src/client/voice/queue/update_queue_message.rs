@@ -1,10 +1,10 @@
-use std::cmp::max;
+use std::{cmp::max, sync::Arc, time::Duration};
 
 use serenity::builder::EditMessage;
 use serenity::client::Context;
 use serenity::model::id::GuildId;
 use songbird::Call;
-use tokio::sync::MutexGuard;
+use tokio::{sync::Mutex, time::timeout};
 use tracing::{info_span, instrument, Instrument};
 
 use crate::client::voice::model::get_voice_messages_lock;
@@ -12,7 +12,7 @@ use crate::client::voice::model::get_voice_messages_lock;
 use super::command_response::{create_queue_edit_message, get_queue_start_from_queue_message};
 
 #[instrument(skip(ctx))]
-pub async fn update_queue_message(ctx: &Context, guild_id: GuildId, call: MutexGuard<'_, Call>) {
+pub async fn update_queue_message(ctx: &Context, guild_id: GuildId, call_lock: Arc<Mutex<Call>>) {
     let voice_messages_lock = get_voice_messages_lock(&ctx.data).await;
 
     let queue_message = voice_messages_lock
@@ -24,6 +24,10 @@ pub async fn update_queue_message(ctx: &Context, guild_id: GuildId, call: MutexG
         .cloned();
 
     if let Some(mut queue_message) = queue_message {
+        let call = timeout(Duration::from_secs(30), call_lock.lock())
+            .await
+            .unwrap();
+
         if call.queue().is_empty() {
             queue_message
                 .edit(&ctx.http, EditMessage::new().content("The queue is empty!"))

@@ -47,14 +47,19 @@ pub async fn shuffle_queue(ctx: &Context, command: &ApplicationCommandInteractio
 
             q.push_front(current_song);
 
-            for _ in 0..vec.len() {
+            while vec.len() != 0 {
                 q.push_back(vec.pop().unwrap());
             }
         });
 
         queue.resume().unwrap();
+        drop(call);
 
-        update_queue_message(ctx, command.guild_id.unwrap(), call).await;
+        let cloned_ctx = ctx.clone();
+        let guild_id = command.guild_id;
+        tokio::spawn(async move {
+            update_queue_message(&cloned_ctx, guild_id.unwrap(), call_lock).await
+        });
 
         command
             .edit_original_interaction_response(
