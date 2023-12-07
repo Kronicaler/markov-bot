@@ -157,6 +157,7 @@ and the users can choose themselves if they don't want their messages saved (/st
         let words_in_message = msg
             .content
             .to_lowercase()
+            .replace('\n', " ")
             .split(' ')
             .map(ToString::to_string)
             .collect::<Vec<String>>();
@@ -256,3 +257,4 @@ pub async fn start() {
 
     client.start().await.expect("Couldn't start the client");
 }
+
