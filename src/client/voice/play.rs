@@ -243,8 +243,8 @@ async fn fill_queue(
 
         if fetch_aux_metadata_futures.len() >= 10 || i == length - 1 {
             let task_results = join_all(fetch_aux_metadata_futures)
-                .await
                 .instrument(info_span!("Fetching metadatas"))
+                .await
                 .into_iter()
                 .filter(std::result::Result::is_ok)
                 .filter_map(std::result::Result::unwrap);
