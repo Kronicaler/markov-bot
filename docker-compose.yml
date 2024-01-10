@@ -2,7 +2,7 @@ version: '1.2.0'
 
 services:
   jaeger:
-    image: jaegertracing/all-in-one:1.49
+    image: jaegertracing/all-in-one:1.52
     restart: unless-stopped
     ports:
       - 16686:16686
@@ -13,12 +13,20 @@ services:
     environment:
       MARIADB_ROOT_PASSWORD: ${DB_PASS}
       MARIADB_DATABASE: markov_bot
+    volumes:
+      - ./data/mariadb:/var/lib/mysql:Z
     deploy:
       resources:
         limits:
           memory: 500M
     ports:
-      - 3306
+      - 3306-3306
+      
+  adminer:
+    image: adminer
+    restart: always
+    ports:
+      - 8080:8080
 
   markov_bot:
     image: kronicaler/markov_bot
@@ -34,7 +42,7 @@ services:
       dockerfile: dockerfile
     restart: unless-stopped
     volumes:
-      - markovbot:/app/data
+      - ./data:/app/data:Z
 
 volumes:
   markovbot:
