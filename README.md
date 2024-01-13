@@ -12,7 +12,7 @@ A discord chat and music bot written in Rust
 
 ### Running the bot
 
-Download the docker-compose.yml.
+Download the [docker-compose.yml](https://github.com/Kronicaler/markov-bot/blob/master/docker-compose.yml).
 
 In the same folder as the docker-compose.yml create a `.env` file with the environment variables `DB_PASS`, `DISCORD_TOKEN` and `APPLICATION_ID`.
 
