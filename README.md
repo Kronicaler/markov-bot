@@ -7,7 +7,6 @@ A discord chat and music bot written in Rust
 ### Prerequisites
 
 - Docker
-- [Docker Compose](https://docs.docker.com/compose/install/#install-compose)
 - Discord bot token
 - Discord bot application ID
 
