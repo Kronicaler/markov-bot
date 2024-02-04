@@ -242,15 +242,13 @@ pub fn get_queue_start_from_button(
         ComponentIds::QueueNext => {
             queue_start += 10;
 
-            while queue_start >= queue_len {
-                queue_start -= 10;
-            }
+            queue_start = min(queue_start, queue_len);
         }
         ComponentIds::QueuePrevious => {
             queue_start = if queue_start <= 10 {
                 1
             } else {
-                queue_start - 10
+                queue_start.saturating_sub(10)
             };
         }
         _ => {

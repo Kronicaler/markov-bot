@@ -1,4 +1,4 @@
-use std::{collections::HashMap, sync::Arc};
+use std::{collections::HashMap, sync::Arc, time::Duration};
 
 use serenity::{
     async_trait,
@@ -10,6 +10,7 @@ use songbird::{
     input::AuxMetadata,
     tracks::{Queued, TrackHandle},
 };
+use tokio::time::timeout;
 
 pub fn init_voice_data(data: &mut tokio::sync::RwLockWriteGuard<serenity::prelude::TypeMap>) {
     data.insert::<VoiceMessages>(Arc::new(RwLock::new(VoiceMessages::default())));
@@ -124,8 +125,9 @@ pub enum LastMessageType {
 
 #[tracing::instrument(skip(data))]
 pub async fn get_voice_messages_lock(data: &Arc<RwLock<TypeMap>>) -> Arc<RwLock<VoiceMessages>> {
-    data.read()
+    timeout(Duration::from_secs(30), data.read())
         .await
+        .unwrap()
         .get::<VoiceMessages>()
         .expect("expected VoiceMessages in TypeMap")
         .clone()
@@ -133,8 +135,9 @@ pub async fn get_voice_messages_lock(data: &Arc<RwLock<TypeMap>>) -> Arc<RwLock<
 
 #[tracing::instrument(skip(data))]
 pub async fn get_queue_data_lock(data: &Arc<RwLock<TypeMap>>) -> Arc<RwLock<QueueData>> {
-    data.read()
+    timeout(Duration::from_secs(30), data.read())
         .await
+        .unwrap()
         .get::<QueueData>()
         .expect("expected QueueData in TypeMap")
         .clone()
