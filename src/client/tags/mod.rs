@@ -371,4 +371,3 @@ fn stop_pinging_me_button(tag_response: CreateMessage) -> CreateMessage {
         ),
     )
 }
-

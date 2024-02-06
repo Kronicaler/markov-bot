@@ -100,7 +100,12 @@ The admins of the server can prevent the saving of messages in certain channels 
 and the users can choose themselves if they don't want their messages saved (/stop-saving-my-messages)")
             ).await.unwrap();
         } else {
-            println!("Got data for guild {} owned by {}", guild.name, owner.tag());
+            println!(
+                "Got data for guild {} owned by {} with {} members",
+                guild.name,
+                owner.tag(),
+                guild.member_count
+            );
         }
     }
 

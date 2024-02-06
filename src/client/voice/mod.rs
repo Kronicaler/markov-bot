@@ -130,12 +130,8 @@ impl EventHandler for TrackStartHandler {
             return None;
         };
 
-        let update_queue_message_future = update_queue_message(
-            &self.ctx,
-            self.guild_id,
-            call_lock,
-        )
-        .instrument(info_span!("Updating the queue message"));
+        let update_queue_message_future = update_queue_message(&self.ctx, self.guild_id, call_lock)
+            .instrument(info_span!("Updating the queue message"));
 
         tokio::join!(update_last_message_future, update_queue_message_future);
 
