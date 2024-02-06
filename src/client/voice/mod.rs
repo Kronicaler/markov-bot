@@ -335,9 +335,9 @@ pub async fn create_play_now_select_menu(
     queue: &TrackQueue,
     queue_start: usize,
 ) -> CreateSelectMenu {
-    let queue_start_index = max(queue_start - 1, 2);
+    let queue_start_index = max(queue_start - 1, 1);
 
-    let number_of_songs = if queue_start_index == 2 { 8 } else { 10 };
+    let number_of_songs = if queue_start_index == 1 { 9 } else { 10 };
 
     let options = (queue_start_index..(min(queue_start_index + number_of_songs, queue.len())))
         .map(|i| async move {

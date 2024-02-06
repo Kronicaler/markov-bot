@@ -91,7 +91,7 @@ async fn get_queue_duration(queue: &songbird::tracks::TrackQueue) -> String {
                 .await
                 .0
                 .duration
-                .unwrap(),
+                .unwrap_or_default(),
         );
     }
 
@@ -240,9 +240,9 @@ pub fn get_queue_start_from_button(
 
     match button_id {
         ComponentIds::QueueNext => {
-            queue_start += 10;
-
-            queue_start = min(queue_start, queue_len);
+            if queue_start + 10 <= queue_len {
+                queue_start += 10;
+            }
         }
         ComponentIds::QueuePrevious => {
             queue_start = if queue_start <= 10 {

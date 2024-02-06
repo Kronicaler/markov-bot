@@ -17,7 +17,7 @@ pub fn init_voice_data(data: &mut tokio::sync::RwLockWriteGuard<serenity::prelud
     data.insert::<QueueData>(Arc::new(RwLock::new(QueueData::default())));
 }
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct MyAuxMetadata(pub AuxMetadata);
 
 impl TypeMapKey for MyAuxMetadata {
