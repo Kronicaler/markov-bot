@@ -54,6 +54,8 @@ pub enum ComponentIds {
     PlayNowMenu,
     BringToFront,
     BringToFrontMenu,
+    QueueStart,
+    QueueEnd,
 }
 
 struct Handler {
@@ -136,7 +138,10 @@ and the users can choose themselves if they don't want their messages saved (/st
                             .await
                             .expect("couldn't create response");
                     }
-                    ComponentIds::QueueNext | ComponentIds::QueuePrevious => {
+                    ComponentIds::QueueNext
+                    | ComponentIds::QueuePrevious
+                    | ComponentIds::QueueStart
+                    | ComponentIds::QueueEnd => {
                         change_queue_page(&ctx, &mut component, button_id).await;
                     }
                     ComponentIds::Skip => {

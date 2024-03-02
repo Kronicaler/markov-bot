@@ -18,7 +18,7 @@ use serenity::{
     },
 };
 use songbird::tracks::TrackQueue;
-use std::{cmp::min, convert::TryInto, time::Duration};
+use std::{cmp::{min, max}, convert::TryInto, time::Duration};
 use tokio::time::timeout;
 use tracing::{info_span, Instrument};
 
@@ -117,6 +117,14 @@ async fn create_queue_components(
                 .add_button(
                     CreateButton::new()
                         .emoji(serenity::model::channel::ReactionType::Unicode(
+                            "⏪".to_string(),
+                        ))
+                        .style(ButtonStyle::Primary)
+                        .custom_id(ComponentIds::QueueStart.to_string()),
+                )
+                .add_button(
+                    CreateButton::new()
+                        .emoji(serenity::model::channel::ReactionType::Unicode(
                             "◀".to_string(),
                         ))
                         .style(ButtonStyle::Primary)
@@ -129,6 +137,14 @@ async fn create_queue_components(
                         ))
                         .style(ButtonStyle::Primary)
                         .custom_id(ComponentIds::QueueNext.to_string()),
+                )
+                .add_button(
+                    CreateButton::new()
+                        .emoji(serenity::model::channel::ReactionType::Unicode(
+                            "⏩".to_string(),
+                        ))
+                        .style(ButtonStyle::Primary)
+                        .custom_id(ComponentIds::QueueEnd.to_string()),
                 ),
         )
         .add_action_row(
@@ -251,6 +267,8 @@ pub fn get_queue_start_from_button(
                 queue_start.saturating_sub(10)
             };
         }
+        ComponentIds::QueueStart => queue_start = 1,
+        ComponentIds::QueueEnd => queue_start = max(queue_len - queue_len % 10, 1),
         _ => {
             panic!("Should never happen")
         }
