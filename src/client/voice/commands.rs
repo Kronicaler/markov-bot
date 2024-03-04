@@ -19,7 +19,7 @@ pub fn create_voice_commands() -> Vec<CreateApplicationCommand> {
         CreateApplicationCommand::new(UserCommand::queue_shuffle.to_string())
             .description("shuffle all the songs in the queue"),
         CreateApplicationCommand::new(UserCommand::loop_song.to_string())
-            .description("loop the current "),
+            .description("loop the current song"),
     ]
 }
 
