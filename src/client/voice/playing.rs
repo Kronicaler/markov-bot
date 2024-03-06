@@ -1,7 +1,7 @@
 use serenity::{
+    all::{Colour, CommandInteraction},
     builder::{CreateEmbed, EditInteractionResponse},
     client::Context,
-    model::prelude::{interaction::application_command::ApplicationCommandInteraction, Colour},
 };
 use tracing::{info_span, Instrument};
 
@@ -9,7 +9,7 @@ use super::MyAuxMetadata;
 
 ///current song
 #[tracing::instrument(skip(ctx))]
-pub async fn playing(ctx: &Context, command: &ApplicationCommandInteraction) {
+pub async fn playing(ctx: &Context, command: &CommandInteraction) {
     let Some(guild_id) = command.guild_id else {
         nothing_playing_response(command, ctx).await;
         return;
@@ -33,7 +33,7 @@ pub async fn playing(ctx: &Context, command: &ApplicationCommandInteraction) {
         }
 
         command
-            .edit_original_interaction_response(
+            .edit_response(
                 &ctx.http,
                 EditInteractionResponse::new().embed(create_playing_embed(queue).await),
             )
@@ -45,9 +45,9 @@ pub async fn playing(ctx: &Context, command: &ApplicationCommandInteraction) {
     }
 }
 
-async fn nothing_playing_response(command: &ApplicationCommandInteraction, ctx: &Context) {
+async fn nothing_playing_response(command: &CommandInteraction, ctx: &Context) {
     command
-        .edit_original_interaction_response(
+        .edit_response(
             &ctx.http,
             EditInteractionResponse::new().content("Nothing is currently playing."),
         )

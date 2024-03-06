@@ -23,16 +23,14 @@ use self::{
 };
 use super::tags::check_for_tag_listeners;
 use serenity::{
-    async_trait,
-    builder::{CreateInteractionResponse, CreateInteractionResponseData, CreateMessage},
-    client::{Context, EventHandler},
-    model::{
-        channel::Message,
-        gateway::Ready,
-        id::UserId,
-        prelude::{interaction::Interaction, Guild, MessageFlags},
-        voice::VoiceState,
+    all::{
+        ApplicationId, CreateInteractionResponseMessage, Guild, Interaction,
+        InteractionResponseFlags,
     },
+    async_trait,
+    builder::{CreateInteractionResponse, CreateMessage},
+    client::{Context, EventHandler},
+    model::{channel::Message, gateway::Ready, voice::VoiceState},
     prelude::GatewayIntents,
     Client,
 };
@@ -79,7 +77,7 @@ impl EventHandler for Handler {
     }
     // Is called when the bot gets data for a guild
     // if is_new is true then the bot just joined a new guild
-    async fn guild_create(&self, ctx: Context, guild: Guild, is_new: bool) {
+    async fn guild_create(&self, ctx: Context, guild: Guild, is_new: std::option::Option<bool>) {
         let owner = guild
             .member(&ctx.http, guild.owner_id)
             .await
@@ -87,7 +85,7 @@ impl EventHandler for Handler {
             .user
             .clone();
 
-        if is_new {
+        if is_new.unwrap_or(false) {
             println!(
                 "Joined guild {} owned by {} with {} members",
                 guild.name,
@@ -115,10 +113,10 @@ and the users can choose themselves if they don't want their messages saved (/st
     async fn interaction_create(&self, ctx: Context, interaction: Interaction) {
         match interaction {
             Interaction::Ping(_) => todo!(),
-            Interaction::ApplicationCommand(command) => {
+            Interaction::Command(command) => {
                 command_responses(&command, ctx, &self.pool).await;
             }
-            Interaction::MessageComponent(mut component) => {
+            Interaction::Component(mut component) => {
                 let button_id = ComponentIds::from_str(&component.data.custom_id)
                     .expect("unexpected button ID");
 
@@ -126,12 +124,12 @@ and the users can choose themselves if they don't want their messages saved (/st
                     ComponentIds::BlacklistMeFromTags => {
                         let response = blacklist_user(&component.user, &__self.pool).await;
                         component
-                            .create_interaction_response(
+                            .create_response(
                                 &ctx.http,
-                                CreateInteractionResponse::new().interaction_response_data(
-                                    CreateInteractionResponseData::new()
+                                CreateInteractionResponse::Message(
+                                    CreateInteractionResponseMessage::new()
                                         .content(response)
-                                        .flags(MessageFlags::EPHEMERAL),
+                                        .flags(InteractionResponseFlags::EPHEMERAL),
                                 ),
                             )
                             .instrument(info_span!("Sending message"))
@@ -236,7 +234,7 @@ and the users can choose themselves if they don't want their messages saved (/st
 
 pub async fn start() {
     let token = env::var("DISCORD_TOKEN").expect("Expected a DISCORD_TOKEN in the environment");
-    let application_id: UserId = env::var("APPLICATION_ID")
+    let application_id: ApplicationId = env::var("APPLICATION_ID")
         .expect("Expected an APPLICATION_ID in the environment")
         .parse()
         .expect("Couldn't parse the APPLICATION_ID");
@@ -260,7 +258,7 @@ pub async fn start() {
     sqlx::migrate!("./migrations").run(&pool).await.unwrap();
 
     let mut client = Client::builder(token, intents)
-        .application_id(application_id.get())
+        .application_id(application_id)
         .event_handler(Handler { pool })
         .register_songbird_from_config(songbird_config)
         .await

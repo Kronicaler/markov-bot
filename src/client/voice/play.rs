@@ -15,12 +15,9 @@ use super::{
 use futures::future::join_all;
 use reqwest::Client;
 use serenity::{
-    builder::{CreateActionRow, CreateComponents, CreateEmbed, EditInteractionResponse},
+    all::{Colour, CommandDataOptionValue, CommandInteraction, GuildId},
+    builder::{CreateActionRow, CreateEmbed, EditInteractionResponse},
     client::Context,
-    model::prelude::{
-        interaction::application_command::{ApplicationCommandInteraction, CommandDataOptionValue},
-        Colour, GuildId,
-    },
     prelude::{Mutex, RwLock},
 };
 use songbird::{
@@ -34,7 +31,7 @@ use tracing::{info, info_span, warn, Instrument};
 
 ///play song from youtube
 #[tracing::instrument(skip(ctx))]
-pub async fn play(ctx: &Context, command: &ApplicationCommandInteraction) {
+pub async fn play(ctx: &Context, command: &CommandInteraction) {
     let guild_id = command.guild_id.expect("Couldn't get guild ID");
     let query = get_query(command);
 
@@ -67,15 +64,14 @@ pub async fn play(ctx: &Context, command: &ApplicationCommandInteraction) {
     }
 
     //join voice channel
-    let (call_lock, success) = manager
+    let Ok(call_lock) = manager
         .join(guild_id, voice_channel_id)
         .instrument(info_span!("Joining channel"))
-        .await;
-
-    if success.is_err() {
+        .await
+    else {
         voice_channel_not_found_response(command, ctx).await;
         return;
-    }
+    };
 
     {
         let mut call = timeout(Duration::from_secs(30), call_lock.lock())
@@ -100,7 +96,7 @@ pub async fn play(ctx: &Context, command: &ApplicationCommandInteraction) {
 #[tracing::instrument(skip(ctx, call_lock))]
 async fn handle_video(
     source: YoutubeDl,
-    command: &ApplicationCommandInteraction,
+    command: &CommandInteraction,
     ctx: &Context,
     call_lock: &Arc<Mutex<songbird::Call>>,
 ) -> ControlFlow<()> {
@@ -130,7 +126,7 @@ async fn handle_video(
 #[tracing::instrument(skip(sources,ctx,call_lock), fields(sources.length=sources.len()))]
 async fn handle_playlist(
     mut sources: VecDeque<YoutubeDl>,
-    command: &ApplicationCommandInteraction,
+    command: &CommandInteraction,
     ctx: &Context,
     call_lock: Arc<Mutex<songbird::Call>>,
 ) {
@@ -285,9 +281,9 @@ async fn fill_queue(
     }
 }
 
-async fn invalid_link_response(command: &ApplicationCommandInteraction, ctx: &Context) {
+async fn invalid_link_response(command: &CommandInteraction, ctx: &Context) {
     command
-        .edit_original_interaction_response(
+        .edit_response(
             &ctx.http,
             EditInteractionResponse::new().content("Invalid link"),
         )
@@ -298,7 +294,7 @@ async fn invalid_link_response(command: &ApplicationCommandInteraction, ctx: &Co
 
 fn add_track_start_event(
     call: &mut tokio::sync::MutexGuard<songbird::Call>,
-    command: &ApplicationCommandInteraction,
+    command: &CommandInteraction,
     ctx: &Context,
 ) {
     if call.queue().is_empty() {
@@ -322,7 +318,7 @@ fn add_track_start_event(
     }
 }
 
-fn get_query(command: &ApplicationCommandInteraction) -> String {
+fn get_query(command: &CommandInteraction) -> String {
     let query = command
         .data
         .options
@@ -336,9 +332,9 @@ fn get_query(command: &ApplicationCommandInteraction) -> String {
     }
 }
 
-async fn voice_channel_not_found_response(command: &ApplicationCommandInteraction, ctx: &Context) {
+async fn voice_channel_not_found_response(command: &CommandInteraction, ctx: &Context) {
     command
-        .edit_original_interaction_response(
+        .edit_response(
             &ctx.http,
             EditInteractionResponse::new()
                 .content("You must be in a voice channel to use this command!"),
@@ -404,7 +400,7 @@ async fn get_source(query: String) -> SourceType {
 async fn return_response(
     metadata: &AuxMetadata,
     queue: &TrackQueue,
-    command: &ApplicationCommandInteraction,
+    command: &CommandInteraction,
     ctx: &Context,
 ) {
     let mut embed = create_track_embed(metadata);
@@ -425,35 +421,27 @@ async fn return_response(
         time_before_song.as_secs() - (time_before_song.as_secs() / 60) * 60
     );
 
-    let mut components = CreateComponents::new().add_action_row(CreateActionRow::new());
+    let mut buttons = vec![];
     let content = if queue.len() == 1 {
-        let mut action_row = components.0.pop().unwrap();
-
-        action_row = action_row.add_button(create_skip_button());
-
-        components = components.set_action_row(action_row);
+        buttons.push(create_skip_button());
 
         "Playing".to_owned()
     } else {
         embed = embed.field("Estimated time until playing: ", time_before_song, true);
 
-        let mut action_row = components.0.pop().unwrap();
-
-        action_row = action_row
-            .add_button(create_bring_to_front_button())
-            .add_button(create_play_now_button());
-
-        components = components.set_action_row(action_row);
+        buttons.push(create_bring_to_front_button());
+        buttons.push(create_play_now_button());
 
         format!("Position in queue: {}", queue.len())
     };
+    let action_row = CreateActionRow::Buttons(buttons);
 
     let message = command
-        .edit_original_interaction_response(
+        .edit_response(
             &ctx.http,
             EditInteractionResponse::new()
                 .embed(embed)
-                .components(components)
+                .components(vec![action_row])
                 .content(content),
         )
         .instrument(info_span!("Sending message"))

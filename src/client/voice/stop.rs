@@ -1,7 +1,7 @@
 use serenity::{
+    all::{Colour, CommandInteraction},
     builder::{CreateEmbed, EditInteractionResponse},
     client::Context,
-    model::prelude::{interaction::application_command::ApplicationCommandInteraction, Colour},
 };
 use tracing::{info_span, Instrument};
 
@@ -12,7 +12,7 @@ use super::{
 
 ///stop playing
 #[tracing::instrument(skip(ctx))]
-pub async fn stop(ctx: &Context, command: &ApplicationCommandInteraction) {
+pub async fn stop(ctx: &Context, command: &CommandInteraction) {
     let guild_id = command.guild_id.expect("Couldn't get guild ID");
     let guild = guild_id.to_guild_cached(&ctx.cache).map(|g| g.to_owned());
 
@@ -42,7 +42,7 @@ pub async fn stop(ctx: &Context, command: &ApplicationCommandInteraction) {
             .and_modify(|f| *f = false);
     } else {
         command
-            .edit_original_interaction_response(
+            .edit_response(
                 &ctx.http,
                 EditInteractionResponse::new()
                     .content("Must be in a voice channel to use that command!"),
@@ -56,7 +56,7 @@ pub async fn stop(ctx: &Context, command: &ApplicationCommandInteraction) {
     let colour = Colour::from_rgb(149, 8, 2);
     //embed
     command
-        .edit_original_interaction_response(
+        .edit_response(
             &ctx.http,
             EditInteractionResponse::new().embed(
                 CreateEmbed::new()

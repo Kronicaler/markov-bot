@@ -1,10 +1,10 @@
 use serenity::{
+    all::{CommandInteraction, VoiceState},
     builder::EditInteractionResponse,
     client::Context,
     model::{
         guild::Guild,
         id::{ChannelId, UserId},
-        prelude::{interaction::application_command::ApplicationCommandInteraction, VoiceState},
     },
 };
 use tracing::{info_span, Instrument};
@@ -21,7 +21,7 @@ pub fn get_voice_channel_of_user(guild: &Guild, user_id: UserId) -> Option<Chann
 pub fn get_voice_channel_of_bot(ctx: &Context, guild: &Guild) -> Option<ChannelId> {
     guild
         .voice_states
-        .get(&ctx.http.application_id().unwrap().into())
+        .get(&UserId::new(ctx.http.application_id().unwrap().get()))
         .and_then(|voice_state| voice_state.channel_id)
 }
 
@@ -45,12 +45,9 @@ pub fn is_bot_in_another_voice_channel(ctx: &Context, guild: &Guild, user_id: Us
     false
 }
 
-pub async fn voice_channel_not_same_response(
-    command: &ApplicationCommandInteraction,
-    ctx: &Context,
-) {
+pub async fn voice_channel_not_same_response(command: &CommandInteraction, ctx: &Context) {
     command
-        .edit_original_interaction_response(
+        .edit_response(
             &ctx.http,
             EditInteractionResponse::new()
                 .content("You must be in the same voice channel to use this command!"),
@@ -63,7 +60,7 @@ pub async fn voice_channel_not_same_response(
 pub async fn get_call_lock(
     ctx: &Context,
     guild_id: serenity::model::id::GuildId,
-    command: &ApplicationCommandInteraction,
+    command: &CommandInteraction,
 ) -> Option<std::sync::Arc<serenity::prelude::Mutex<songbird::Call>>> {
     let manager = songbird::get(ctx)
         .await
@@ -72,7 +69,7 @@ pub async fn get_call_lock(
 
     let Some(call_lock) = manager.get(guild_id) else {
         command
-            .edit_original_interaction_response(
+            .edit_response(
                 &ctx.http,
                 EditInteractionResponse::new()
                     .content("Must be in a voice channel to use that command!"),
@@ -116,7 +113,7 @@ pub async fn leave_vc_if_alone(old: Option<VoiceState>, ctx: &Context) {
 
     let changed_voice_channel = get_guild_channel(guild_id, ctx, channel_id).await.unwrap();
 
-    if changed_voice_channel.id.0 != bot_voice_channel.0 {
+    if changed_voice_channel.id.get() != bot_voice_channel.0.get() {
         return;
     }
 

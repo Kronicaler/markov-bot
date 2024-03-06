@@ -1,20 +1,14 @@
 use regex::Regex;
 use serenity::{
-    builder::{CreateInteractionResponse, CreateInteractionResponseData},
-    model::prelude::interaction::application_command::{
-        ApplicationCommandInteraction, CommandDataOptionValue,
-    },
+    all::{CommandDataOptionValue, CommandInteraction, CreateInteractionResponseMessage},
+    builder::CreateInteractionResponse,
     prelude::Context,
 };
 use sqlx::{MySql, Pool};
 use tracing::{info_span, Instrument};
 
 #[tracing::instrument(skip(ctx))]
-pub async fn create_tag(
-    ctx: &Context,
-    command: &ApplicationCommandInteraction,
-    pool: &Pool<MySql>,
-) {
+pub async fn create_tag(ctx: &Context, command: &CommandInteraction, pool: &Pool<MySql>) {
     let Some(guild_id) = command.guild_id else {
         tag_outside_server_response(command, ctx).await;
         return;
@@ -48,16 +42,12 @@ pub async fn create_tag(
     };
 }
 
-async fn tag_exists_response(
-    command: &ApplicationCommandInteraction,
-    listener: &str,
-    ctx: &Context,
-) {
+async fn tag_exists_response(command: &CommandInteraction, listener: &str, ctx: &Context) {
     command
-        .create_interaction_response(
+        .create_response(
             &ctx.http,
-            CreateInteractionResponse::new().interaction_response_data(
-                CreateInteractionResponseData::new()
+            CreateInteractionResponse::Message(
+                CreateInteractionResponseMessage::new()
                     .content(format!("The tag \"{listener}\" already exists")),
             ),
         )
@@ -66,16 +56,12 @@ async fn tag_exists_response(
         .expect("Error creating interaction response");
 }
 
-async fn tag_created_response(
-    command: &ApplicationCommandInteraction,
-    listener: &str,
-    ctx: &Context,
-) {
+async fn tag_created_response(command: &CommandInteraction, listener: &str, ctx: &Context) {
     command
-        .create_interaction_response(
+        .create_response(
             &ctx.http,
-            CreateInteractionResponse::new().interaction_response_data(
-                CreateInteractionResponseData::new().content(format!("Created tag {listener}")),
+            CreateInteractionResponse::Message(
+                CreateInteractionResponseMessage::new().content(format!("Created tag {listener}")),
             ),
         )
         .instrument(info_span!("Sending message"))
@@ -83,12 +69,12 @@ async fn tag_created_response(
         .expect("Error creating interaction response");
 }
 
-async fn invalid_tag_response(command: &ApplicationCommandInteraction, ctx: &Context) {
+async fn invalid_tag_response(command: &CommandInteraction, ctx: &Context) {
     command
-        .create_interaction_response(
+        .create_response(
             &ctx.http,
-            CreateInteractionResponse::new().interaction_response_data(
-                CreateInteractionResponseData::new()
+            CreateInteractionResponse::Message(
+                CreateInteractionResponseMessage::new()
                     .content("Tags can't contain mentions or non alphanumeric characters"),
             ),
         )
@@ -97,12 +83,12 @@ async fn invalid_tag_response(command: &ApplicationCommandInteraction, ctx: &Con
         .expect("Error creating interaction response");
 }
 
-async fn tag_outside_server_response(command: &ApplicationCommandInteraction, ctx: &Context) {
+async fn tag_outside_server_response(command: &CommandInteraction, ctx: &Context) {
     command
-        .create_interaction_response(
+        .create_response(
             &ctx.http,
-            CreateInteractionResponse::new().interaction_response_data(
-                CreateInteractionResponseData::new()
+            CreateInteractionResponse::Message(
+                CreateInteractionResponseMessage::new()
                     .content("Can't create a tag outside of a server"),
             ),
         )
@@ -111,7 +97,7 @@ async fn tag_outside_server_response(command: &ApplicationCommandInteraction, ct
         .expect("Error creating interaction response");
 }
 
-fn get_listener_and_response(command: &ApplicationCommandInteraction) -> (String, String) {
+fn get_listener_and_response(command: &CommandInteraction) -> (String, String) {
     let (listener, response) = if let CommandDataOptionValue::SubCommand(sub_command) =
         command.data.options.get(0).unwrap().value.clone()
     {

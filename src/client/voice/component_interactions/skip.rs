@@ -1,14 +1,14 @@
 use std::time::Duration;
 
 use super::super::helper_funcs::is_bot_in_another_voice_channel;
-use serenity::model::prelude::interaction::message_component::MessageComponentInteraction;
+use serenity::all::ComponentInteraction;
 use serenity::prelude::Context;
 use tokio::time::timeout;
 use tracing::info_span;
 use tracing::{self, Instrument};
 
 #[tracing::instrument(skip(ctx))]
-pub async fn skip_button_press(ctx: &Context, button: &MessageComponentInteraction) {
+pub async fn skip_button_press(ctx: &Context, button: &ComponentInteraction) {
     button
         .defer(&ctx.http)
         .instrument(info_span!("deferring response"))

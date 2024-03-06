@@ -14,15 +14,9 @@ use crate::{
     global_data, markov, voice, GuildId,
 };
 use serenity::{
-    builder::{
-        CreateApplicationCommand, CreateApplicationCommandOption, CreateInteractionResponse,
-        CreateInteractionResponseData,
-    },
+    all::{Command, CommandInteraction, CommandOptionType, CreateInteractionResponseMessage},
+    builder::{CreateCommand, CreateCommandOption, CreateInteractionResponse},
     client::Context,
-    model::application::command::CommandOptionType,
-    model::prelude::{
-        command::Command, interaction::application_command::ApplicationCommandInteraction,
-    },
 };
 use sqlx::{MySql, Pool};
 use strum_macros::{Display, EnumProperty, EnumString};
@@ -80,11 +74,7 @@ pub enum UserCommand {
 /// Check which slash command was triggered, call the appropriate function and return a response to the user
 #[allow(clippy::too_many_lines)]
 #[tracing::instrument(name = "Command", skip(ctx, pool))]
-pub async fn command_responses(
-    command: &ApplicationCommandInteraction,
-    ctx: Context,
-    pool: &Pool<MySql>,
-) {
+pub async fn command_responses(command: &CommandInteraction, ctx: Context, pool: &Pool<MySql>) {
     let user = &command.user;
 
     let full_command_name = get_full_command_name(command);
@@ -112,20 +102,20 @@ pub async fn command_responses(
                 set_tag_response_channel(&ctx, command, pool).await;
             }
             UserCommand::help => command
-                .create_interaction_response(
+                .create_response(
                     ctx.http,
-                    CreateInteractionResponse::new().interaction_response_data(
-                        CreateInteractionResponseData::new().content(global_data::HELP_MESSAGE),
+                    CreateInteractionResponse::Message(
+                        CreateInteractionResponseMessage::new().content(global_data::HELP_MESSAGE),
                     ),
                 )
                 .instrument(info_span!("Sending message"))
                 .await
                 .expect("Error creating interaction response"),
             UserCommand::version => command
-                .create_interaction_response(
+                .create_response(
                     ctx.http,
-                    CreateInteractionResponse::new().interaction_response_data(
-                        CreateInteractionResponseData::new().content(
+                    CreateInteractionResponse::Message(
+                        CreateInteractionResponseMessage::new().content(
                             "My current version is ".to_owned() + env!("CARGO_PKG_VERSION"),
                         ),
                     ),
@@ -162,27 +152,22 @@ pub async fn command_responses(
 /// Create the slash commands
 pub async fn create_global_commands(ctx: &Context) {
     let mut commands = vec![
-        CreateApplicationCommand::new(UserCommand::ping.to_string()).description("A ping command"),
-        CreateApplicationCommand::new(UserCommand::id.to_string())
+        CreateCommand::new(UserCommand::ping.to_string()).description("A ping command"),
+        CreateCommand::new(UserCommand::id.to_string())
             .description("The user to lookup")
             .add_option(
-                CreateApplicationCommandOption::new(
-                    CommandOptionType::User,
-                    "id",
-                    "The user to lookup",
-                )
-                .required(true),
+                CreateCommandOption::new(CommandOptionType::User, "id", "The user to lookup")
+                    .required(true),
             ),
-        CreateApplicationCommand::new(UserCommand::help.to_string())
+        CreateCommand::new(UserCommand::help.to_string())
             .description("Information about my commands"),
-        CreateApplicationCommand::new(UserCommand::version.to_string())
-            .description("My current version"),
+        CreateCommand::new(UserCommand::version.to_string()).description("My current version"),
     ];
     commands.append(&mut create_markov_commands());
     commands.append(&mut create_voice_commands());
     commands.push(create_tag_commands());
 
-    Command::set_global_application_commands(&ctx.http, commands)
+    Command::set_global_commands(&ctx.http, commands)
         .await
         .expect("Couldn't create global slash commands");
 }
@@ -194,10 +179,10 @@ pub async fn create_test_commands(ctx: &Context) {
         .parse()
         .expect("Couldn't parse the TESTING_GUILD_ID");
 
-    let test_commands: Vec<CreateApplicationCommand> = vec![];
+    let test_commands: Vec<CreateCommand> = vec![];
 
-    GuildId(testing_guild)
-        .set_application_commands(&ctx.http, test_commands)
+    GuildId::new(testing_guild)
+        .set_commands(&ctx.http, test_commands)
         .await
         .expect("Couldn't create guild test commands");
 }

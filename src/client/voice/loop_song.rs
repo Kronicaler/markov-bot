@@ -1,9 +1,6 @@
 use std::time::Duration;
 
-use serenity::{
-    builder::EditInteractionResponse, client::Context,
-    model::prelude::interaction::application_command::ApplicationCommandInteraction,
-};
+use serenity::{all::CommandInteraction, builder::EditInteractionResponse, client::Context};
 use songbird::tracks::LoopState;
 use tokio::time::timeout;
 use tracing::{info_span, Instrument};
@@ -12,7 +9,7 @@ use super::helper_funcs::{is_bot_in_another_voice_channel, voice_channel_not_sam
 
 /// Loop the current track
 #[tracing::instrument(skip(ctx))]
-pub async fn loop_song(ctx: &Context, command: &ApplicationCommandInteraction) {
+pub async fn loop_song(ctx: &Context, command: &CommandInteraction) {
     let guild_id = command.guild_id.expect("Couldn't get guild ID");
 
     command.defer(&ctx.http).await.unwrap();
@@ -59,9 +56,9 @@ pub async fn loop_song(ctx: &Context, command: &ApplicationCommandInteraction) {
     }
 }
 
-async fn not_in_vc_response(command: &ApplicationCommandInteraction, ctx: &Context) {
+async fn not_in_vc_response(command: &CommandInteraction, ctx: &Context) {
     command
-        .edit_original_interaction_response(
+        .edit_response(
             &ctx.http,
             EditInteractionResponse::new()
                 .content("Must be in a voice channel to use that command!"),
@@ -71,9 +68,9 @@ async fn not_in_vc_response(command: &ApplicationCommandInteraction, ctx: &Conte
         .expect("Error creating interaction response");
 }
 
-async fn nothing_playing_response(command: &ApplicationCommandInteraction, ctx: &Context) {
+async fn nothing_playing_response(command: &CommandInteraction, ctx: &Context) {
     command
-        .edit_original_interaction_response(
+        .edit_response(
             &ctx.http,
             EditInteractionResponse::new().content("Nothing is playing."),
         )
@@ -84,12 +81,12 @@ async fn nothing_playing_response(command: &ApplicationCommandInteraction, ctx: 
 
 async fn enable_looping(
     track: &songbird::tracks::TrackHandle,
-    command: &ApplicationCommandInteraction,
+    command: &CommandInteraction,
     ctx: &Context,
 ) {
     track.enable_loop().unwrap();
     command
-        .edit_original_interaction_response(
+        .edit_response(
             &ctx.http,
             EditInteractionResponse::new().content("Looping the current song."),
         )
@@ -100,12 +97,12 @@ async fn enable_looping(
 
 async fn disable_looping(
     track: &songbird::tracks::TrackHandle,
-    command: &ApplicationCommandInteraction,
+    command: &CommandInteraction,
     ctx: &Context,
 ) {
     track.disable_loop().unwrap();
     command
-        .edit_original_interaction_response(
+        .edit_response(
             &ctx.http,
             EditInteractionResponse::new().content("No longer looping the current song."),
         )

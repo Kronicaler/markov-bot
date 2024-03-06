@@ -17,20 +17,16 @@ use self::data_access::{
 use super::ComponentIds;
 pub use model::Tag;
 use serenity::{
+    all::{ButtonStyle, CommandInteraction, CreateInteractionResponseMessage, GuildChannel, User},
     builder::{
-        CreateActionRow, CreateAllowedMentions, CreateButton, CreateComponents,
-        CreateInteractionResponse, CreateInteractionResponseData, CreateMessage, EditMessage,
-        ParseValue,
+        CreateActionRow, CreateAllowedMentions, CreateButton, CreateInteractionResponse,
+        CreateMessage, EditMessage,
     },
     client::Context,
     model::{
-        channel::{Channel, Message},
+        channel::Message,
         guild::Guild,
         id::{ChannelId, UserId},
-        prelude::{
-            component::ButtonStyle,
-            interaction::application_command::ApplicationCommandInteraction, User,
-        },
     },
     prelude::Mentionable,
 };
@@ -38,7 +34,7 @@ use sqlx::{MySql, MySqlPool, Pool};
 use std::{fmt::Write, time::Duration};
 
 #[tracing::instrument(skip(ctx))]
-pub async fn list_tags(ctx: &Context, command: &ApplicationCommandInteraction, pool: &Pool<MySql>) {
+pub async fn list_tags(ctx: &Context, command: &CommandInteraction, pool: &Pool<MySql>) {
     let tags = data_access::get_tags_by_server_id(command.guild_id.unwrap().get(), pool).await;
 
     let mut message = String::new();
@@ -54,10 +50,11 @@ pub async fn list_tags(ctx: &Context, command: &ApplicationCommandInteraction, p
     }
 
     command
-        .create_interaction_response(
+        .create_response(
             &ctx.http,
-            CreateInteractionResponse::new()
-                .interaction_response_data(CreateInteractionResponseData::new().content(message)),
+            CreateInteractionResponse::Message(
+                CreateInteractionResponseMessage::new().content(message),
+            ),
         )
         .instrument(info_span!("Sending message"))
         .await
@@ -68,16 +65,17 @@ pub async fn list_tags(ctx: &Context, command: &ApplicationCommandInteraction, p
 pub async fn blacklist_user_from_tags_command(
     ctx: &Context,
     user: &User,
-    command: &ApplicationCommandInteraction,
+    command: &CommandInteraction,
     pool: &MySqlPool,
 ) {
     let response = blacklist_user(user, pool).await;
 
     command
-        .create_interaction_response(
+        .create_response(
             &ctx.http,
-            CreateInteractionResponse::new()
-                .interaction_response_data(CreateInteractionResponseData::new().content(response)),
+            CreateInteractionResponse::Message(
+                CreateInteractionResponseMessage::new().content(response),
+            ),
         )
         .instrument(info_span!("Sending message"))
         .await
@@ -172,15 +170,15 @@ pub async fn check_for_tag_listeners(
 #[tracing::instrument(skip(ctx))]
 pub async fn set_tag_response_channel(
     ctx: &Context,
-    command: &ApplicationCommandInteraction,
+    command: &CommandInteraction,
     pool: &MySqlPool,
 ) {
     let Some(guild_id) = command.guild_id else {
         command
-            .create_interaction_response(
+            .create_response(
                 &ctx.http,
-                CreateInteractionResponse::new().interaction_response_data(
-                    CreateInteractionResponseData::new()
+                CreateInteractionResponse::Message(
+                    CreateInteractionResponseMessage::new()
                         .content("You can only use this command in a server"),
                 ),
             )
@@ -202,10 +200,10 @@ pub async fn set_tag_response_channel(
     }
 
     command
-        .create_interaction_response(
+        .create_response(
             &ctx.http,
-            CreateInteractionResponse::new().interaction_response_data(
-                CreateInteractionResponseData::new()
+            CreateInteractionResponse::Message(
+                CreateInteractionResponseMessage::new()
                     .content("Successfully set this channel as the tag response channel"),
             ),
         )
@@ -240,7 +238,7 @@ pub async fn respond_to_tag(ctx: &Context, msg: &Message, message: &str, pool: &
         .is_err()
     {
         //If sending a message fails iterate through the guild channels until it manages to send a message
-        let channels: Vec<Channel> = msg
+        let channels: Vec<GuildChannel> = msg
             .guild(&ctx.cache)
             .expect("Couldn't retrieve guild from cache")
             .channels
@@ -254,12 +252,9 @@ pub async fn respond_to_tag(ctx: &Context, msg: &Message, message: &str, pool: &
                     let http = ctx.http.clone();
                     task::spawn(async move {
                         tokio::time::sleep(Duration::from_secs(10)).await;
-                        msg.edit(
-                            &http,
-                            EditMessage::new().components(CreateComponents::default()),
-                        )
-                        .await
-                        .unwrap();
+                        msg.edit(&http, EditMessage::new().components(vec![]))
+                            .await
+                            .unwrap();
                     });
 
                     break;
@@ -271,27 +266,22 @@ pub async fn respond_to_tag(ctx: &Context, msg: &Message, message: &str, pool: &
 }
 
 async fn tag_response(
-    channel: Channel,
+    channel: GuildChannel,
     ctx: &Context,
     msg: &Message,
     message: &str,
 ) -> Result<Message, serenity::Error> {
     channel
-        .id()
+        .id
         .send_message(
             &ctx.http,
             CreateMessage::new()
-                .components(
-                    CreateComponents::new().set_action_row(
-                        CreateActionRow::new().add_button(
-                            CreateButton::new()
-                                .label("Stop pinging me")
-                                .style(ButtonStyle::Primary)
-                                .custom_id(ComponentIds::BlacklistMeFromTags.to_string()),
-                        ),
-                    ),
+                .components(vec![CreateActionRow::Buttons(vec![CreateButton::new(
+                    ComponentIds::BlacklistMeFromTags.to_string(),
                 )
-                .allowed_mentions(CreateAllowedMentions::new().parse(ParseValue::Users))
+                .label("Stop pinging me")
+                .style(ButtonStyle::Primary)])])
+                .allowed_mentions(CreateAllowedMentions::new().all_users(true))
                 .content(msg.author.mention().to_string() + " " + message),
         )
         .instrument(info_span!("Sending message"))
@@ -304,7 +294,7 @@ async fn send_response_in_tag_channel(
     msg: &Message,
     message: &str,
 ) {
-    let mut tag_response_channel = ctx.cache.guild_channel(channel_id).map(|c| c.to_owned());
+    let mut tag_response_channel = ctx.cache.channel(channel_id).map(|c| c.to_owned());
 
     if tag_response_channel.is_none() {
         let guild_channels = Guild::get(&&ctx.http, msg.guild_id.unwrap())
@@ -335,7 +325,7 @@ async fn send_response_in_tag_channel(
     };
 
     tag_response = tag_response
-        .allowed_mentions(CreateAllowedMentions::new().parse(ParseValue::Users))
+        .allowed_mentions(CreateAllowedMentions::new().all_users(true))
         .content(response_content);
 
     match tag_response_channel
@@ -347,12 +337,9 @@ async fn send_response_in_tag_channel(
             let http = ctx.http.clone();
             task::spawn(async move {
                 tokio::time::sleep(Duration::from_secs(10)).await;
-                msg.edit(
-                    &http,
-                    EditMessage::new().components(CreateComponents::default()),
-                )
-                .await
-                .unwrap();
+                msg.edit(&http, EditMessage::new().components(vec![]))
+                    .await
+                    .unwrap();
             });
         }
         Err(err) => eprintln!("{err}"),
@@ -360,14 +347,9 @@ async fn send_response_in_tag_channel(
 }
 
 fn stop_pinging_me_button(tag_response: CreateMessage) -> CreateMessage {
-    tag_response.components(
-        CreateComponents::new().set_action_row(
-            CreateActionRow::new().add_button(
-                CreateButton::new()
-                    .label("Stop pinging me")
-                    .style(ButtonStyle::Primary)
-                    .custom_id(ComponentIds::BlacklistMeFromTags.to_string()),
-            ),
-        ),
+    tag_response.components(vec![CreateActionRow::Buttons(vec![CreateButton::new(
+        ComponentIds::BlacklistMeFromTags.to_string(),
     )
+    .label("Stop pinging me")
+    .style(ButtonStyle::Primary)])])
 }

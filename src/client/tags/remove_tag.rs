@@ -1,8 +1,6 @@
 use serenity::{
-    builder::{CreateInteractionResponse, CreateInteractionResponseData},
-    model::prelude::interaction::application_command::{
-        ApplicationCommandInteraction, CommandDataOptionValue,
-    },
+    all::{CommandDataOptionValue, CommandInteraction, CreateInteractionResponseMessage},
+    builder::CreateInteractionResponse,
     prelude::Context,
 };
 use sqlx::{MySql, Pool};
@@ -11,11 +9,7 @@ use tracing::{info_span, Instrument};
 use super::data_access;
 
 #[tracing::instrument(skip(ctx))]
-pub async fn remove_tag(
-    ctx: &Context,
-    command: &ApplicationCommandInteraction,
-    pool: &Pool<MySql>,
-) {
+pub async fn remove_tag(ctx: &Context, command: &CommandInteraction, pool: &Pool<MySql>) {
     let listener = get_listener(command);
 
     let tag = data_access::get_tag_by_listener(
@@ -44,16 +38,12 @@ pub async fn remove_tag(
     }
 }
 
-async fn tag_not_found_response(
-    command: &ApplicationCommandInteraction,
-    listener: &str,
-    ctx: &Context,
-) {
+async fn tag_not_found_response(command: &CommandInteraction, listener: &str, ctx: &Context) {
     command
-        .create_interaction_response(
+        .create_response(
             &ctx.http,
-            CreateInteractionResponse::new().interaction_response_data(
-                CreateInteractionResponseData::new()
+            CreateInteractionResponse::Message(
+                CreateInteractionResponseMessage::new()
                     .content(format!("Couldn't find the tag {listener}")),
             ),
         )
@@ -62,16 +52,13 @@ async fn tag_not_found_response(
         .expect("Error creating interaction response");
 }
 
-async fn tag_removed_response(
-    command: &ApplicationCommandInteraction,
-    listener: &str,
-    ctx: &Context,
-) {
+async fn tag_removed_response(command: &CommandInteraction, listener: &str, ctx: &Context) {
     command
-        .create_interaction_response(
+        .create_response(
             &ctx.http,
-            CreateInteractionResponse::new().interaction_response_data(
-                CreateInteractionResponseData::new().content(format!("Removed the tag {listener}")),
+            CreateInteractionResponse::Message(
+                CreateInteractionResponseMessage::new()
+                    .content(format!("Removed the tag {listener}")),
             ),
         )
         .instrument(info_span!("Sending message"))
@@ -79,7 +66,7 @@ async fn tag_removed_response(
         .expect("Error creating interaction response");
 }
 
-fn get_listener(command: &ApplicationCommandInteraction) -> String {
+fn get_listener(command: &CommandInteraction) -> String {
     let listener = if let CommandDataOptionValue::SubCommand(sub_command) =
         command.data.options.get(0).unwrap().value.clone()
     {

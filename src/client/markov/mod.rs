@@ -17,12 +17,10 @@ use self::{
 };
 use markov_strings::{ImportExport, Markov};
 use serenity::{
-    builder::{CreateInteractionResponse, CreateInteractionResponseData},
+    all::{CommandInteraction, CreateInteractionResponseMessage, User},
+    builder::CreateInteractionResponse,
     client::Context,
-    model::{
-        channel::Message,
-        prelude::{interaction::application_command::ApplicationCommandInteraction, User},
-    },
+    model::channel::Message,
     prelude::{RwLock, TypeMap},
 };
 use sqlx::{MySql, MySqlPool, Pool};
@@ -147,17 +145,17 @@ fn markov_filter(r: &markov_strings::MarkovResult) -> bool {
 pub async fn add_user_to_blacklist(
     user: &User,
     ctx: &Context,
-    command: &ApplicationCommandInteraction,
+    command: &CommandInteraction,
     pool: &MySqlPool,
 ) {
     let markov_blacklisted_user = get_markov_blacklisted_user(user.id.get(), pool).await;
 
     if markov_blacklisted_user.is_some() {
         command
-            .create_interaction_response(
+            .create_response(
                 &ctx.http,
-                CreateInteractionResponse::new().interaction_response_data(
-                    CreateInteractionResponseData::new()
+                CreateInteractionResponse::Message(
+                    CreateInteractionResponseMessage::new()
                         .content("I'm already not saving your messages"),
                 ),
             )
@@ -183,10 +181,11 @@ pub async fn add_user_to_blacklist(
     };
 
     command
-        .create_interaction_response(
+        .create_response(
             &ctx.http,
-            CreateInteractionResponse::new()
-                .interaction_response_data(CreateInteractionResponseData::new().content(response)),
+            CreateInteractionResponse::Message(
+                CreateInteractionResponseMessage::new().content(response),
+            ),
         )
         .instrument(info_span!("Sending message"))
         .await
@@ -197,7 +196,7 @@ pub async fn add_user_to_blacklist(
 pub async fn remove_user_from_blacklist(
     user: &User,
     ctx: &Context,
-    command: &ApplicationCommandInteraction,
+    command: &CommandInteraction,
     pool: &MySqlPool,
 ) {
     let response = match delete_markov_blacklisted_user(user.id.get(), pool).await {
@@ -216,10 +215,11 @@ pub async fn remove_user_from_blacklist(
     };
 
     command
-        .create_interaction_response(
+        .create_response(
             &ctx.http,
-            CreateInteractionResponse::new()
-                .interaction_response_data(CreateInteractionResponseData::new().content(response)),
+            CreateInteractionResponse::Message(
+                CreateInteractionResponseMessage::new().content(response),
+            ),
         )
         .instrument(info_span!("Sending message"))
         .await
@@ -229,7 +229,7 @@ pub async fn remove_user_from_blacklist(
 #[tracing::instrument(skip(ctx))]
 pub async fn stop_saving_messages_channel(
     ctx: &Context,
-    command: &ApplicationCommandInteraction,
+    command: &CommandInteraction,
     pool: &Pool<MySql>,
 ) {
     let markov_blacklisted_channel =
@@ -240,10 +240,10 @@ pub async fn stop_saving_messages_channel(
             .await
             .unwrap();
         command
-            .create_interaction_response(
+            .create_response(
                 &ctx.http,
-                CreateInteractionResponse::new().interaction_response_data(
-                    CreateInteractionResponseData::new()
+                CreateInteractionResponse::Message(
+                    CreateInteractionResponseMessage::new()
                         .content("Continuing message saving in this channel"),
                 ),
             )
@@ -255,10 +255,10 @@ pub async fn stop_saving_messages_channel(
             .await
             .unwrap();
         command
-            .create_interaction_response(
+            .create_response(
                 &ctx.http,
-                CreateInteractionResponse::new().interaction_response_data(
-                    CreateInteractionResponseData::new()
+                CreateInteractionResponse::Message(
+                    CreateInteractionResponseMessage::new()
                         .content("Stopping message saving in this channel"),
                 ),
             )
@@ -271,15 +271,15 @@ pub async fn stop_saving_messages_channel(
 #[tracing::instrument(skip(ctx))]
 pub async fn stop_saving_messages_server(
     ctx: &Context,
-    command: &ApplicationCommandInteraction,
+    command: &CommandInteraction,
     pool: &Pool<MySql>,
 ) {
     let Some(guild_id) = command.guild_id else {
         command
-            .create_interaction_response(
+            .create_response(
                 &ctx.http,
-                CreateInteractionResponse::new().interaction_response_data(
-                    CreateInteractionResponseData::new()
+                CreateInteractionResponse::Message(
+                    CreateInteractionResponseMessage::new()
                         .content("This command can only be used in a server"),
                 ),
             )
@@ -296,10 +296,10 @@ pub async fn stop_saving_messages_server(
             .await
             .unwrap();
         command
-            .create_interaction_response(
+            .create_response(
                 &ctx.http,
-                CreateInteractionResponse::new().interaction_response_data(
-                    CreateInteractionResponseData::new()
+                CreateInteractionResponse::Message(
+                    CreateInteractionResponseMessage::new()
                         .content("Continuing message saving in this server"),
                 ),
             )
@@ -311,10 +311,10 @@ pub async fn stop_saving_messages_server(
             .await
             .unwrap();
         command
-            .create_interaction_response(
+            .create_response(
                 &ctx.http,
-                CreateInteractionResponse::new().interaction_response_data(
-                    CreateInteractionResponseData::new()
+                CreateInteractionResponse::Message(
+                    CreateInteractionResponseMessage::new()
                         .content("Stopping message saving in this server"),
                 ),
             )

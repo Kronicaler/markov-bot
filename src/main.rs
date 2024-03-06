@@ -8,8 +8,9 @@ use std::time::Duration;
 
 use client::{file_operations, global_data, markov, start, tags, voice};
 use opentelemetry::{trace::TracerProvider as _, KeyValue};
-use opentelemetry_otlp::{ExportConfig, TonicConfig};
+use opentelemetry_otlp::{SpanExporterBuilder, TonicExporterBuilder, WithExportConfig};
 use opentelemetry_sdk::{
+    runtime::Tokio,
     trace::{Config, TracerProvider},
     Resource,
 };
@@ -25,22 +26,25 @@ async fn main() {
 
     _ = dotenvy::dotenv();
 
-    let exporter_config = ExportConfig {
-        endpoint: dotenvy::var("OTLP_ENDPOINT").unwrap_or("http://localhost:4317".to_string()),
-        protocol: opentelemetry_otlp::Protocol::Grpc,
-        timeout: Duration::from_millis(500),
-    };
-
     let provider = TracerProvider::builder()
         .with_batch_exporter(
-            opentelemetry_otlp::SpanExporter::new_tonic(exporter_config, TonicConfig::default())
-                .unwrap(),
-            opentelemetry::runtime::Tokio,
+            SpanExporterBuilder::Tonic(
+                TonicExporterBuilder::default()
+                    .with_timeout(Duration::from_millis(1000))
+                    .with_endpoint(
+                        dotenvy::var("OTLP_ENDPOINT")
+                            .unwrap_or("http://localhost:4317".to_string()),
+                    )
+                    .with_protocol(opentelemetry_otlp::Protocol::Grpc),
+            )
+            .build_span_exporter()
+            .unwrap(),
+            Tokio,
         )
         .with_config(
             Config::default().with_resource(Resource::new(vec![KeyValue::new(
                 "service.name",
-                "markov-bot",
+                "HZPP_delay_stats",
             )])),
         )
         .build();

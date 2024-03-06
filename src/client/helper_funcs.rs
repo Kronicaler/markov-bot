@@ -1,22 +1,20 @@
 use serenity::{
-    builder::{CreateInteractionResponse, CreateInteractionResponseData},
+    all::{
+        CommandDataOptionValue, CommandInteraction, CommandOptionType,
+        CreateInteractionResponseMessage,
+    },
+    builder::CreateInteractionResponse,
     client::Context,
     model::{
         channel::GuildChannel,
         guild::Guild,
         id::{ChannelId, GuildId},
-        prelude::{
-            command::CommandOptionType,
-            interaction::application_command::{
-                ApplicationCommandInteraction, CommandDataOptionValue,
-            },
-        },
     },
 };
 use tracing::{info_span, Instrument};
 
 #[tracing::instrument(skip(ctx))]
-pub async fn user_id_command(ctx: Context, command: &ApplicationCommandInteraction) {
+pub async fn user_id_command(ctx: Context, command: &CommandInteraction) {
     let options = &command
         .data
         .options
@@ -35,10 +33,11 @@ pub async fn user_id_command(ctx: Context, command: &ApplicationCommandInteracti
     };
 
     command
-        .create_interaction_response(
+        .create_response(
             ctx.http,
-            CreateInteractionResponse::new()
-                .interaction_response_data(CreateInteractionResponseData::new().content(response)),
+            CreateInteractionResponse::Message(
+                CreateInteractionResponseMessage::new().content(response),
+            ),
         )
         .instrument(info_span!("Sending message"))
         .await
@@ -46,12 +45,13 @@ pub async fn user_id_command(ctx: Context, command: &ApplicationCommandInteracti
 }
 
 #[tracing::instrument(skip(ctx))]
-pub async fn ping_command(ctx: Context, command: &ApplicationCommandInteraction) {
+pub async fn ping_command(ctx: Context, command: &CommandInteraction) {
     command
-        .create_interaction_response(
+        .create_response(
             ctx.http,
-            CreateInteractionResponse::new()
-                .interaction_response_data(CreateInteractionResponseData::new().content("Pong!")),
+            CreateInteractionResponse::Message(
+                CreateInteractionResponseMessage::new().content("Pong!"),
+            ),
         )
         .instrument(info_span!("Sending message"))
         .await
@@ -93,20 +93,16 @@ fn get_guild_channel_from_cache(
         .channels
         .get(&channel_id)
         .ok_or(GetGuildChannelError::ChannelNotInGuild)?
-        .clone()
-        .guild()
-        .ok_or(GetGuildChannelError::NotGuildChannel)?)
+        .clone())
 }
 
 #[derive(Debug, thiserror::Error)]
 pub enum GetGuildChannelError {
     #[error("The requested channel doesn't exist in the guild")]
     ChannelNotInGuild,
-    #[error("The requested channel isn't a GuildChannel")]
-    NotGuildChannel,
 }
 
-pub fn get_full_command_name(command: &ApplicationCommandInteraction) -> String {
+pub fn get_full_command_name(command: &CommandInteraction) -> String {
     let mut sub_command_group = None;
     let mut sub_command = None;
 

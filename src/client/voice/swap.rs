@@ -4,11 +4,9 @@ use std::{
 };
 
 use serenity::{
+    all::{CommandDataOptionValue, CommandInteraction},
     builder::EditInteractionResponse,
     client::Context,
-    model::prelude::interaction::application_command::{
-        ApplicationCommandInteraction, CommandDataOptionValue,
-    },
 };
 use songbird::tracks::TrackQueue;
 use thiserror::Error;
@@ -78,7 +76,7 @@ impl Swapable for TrackQueue {
 }
 
 #[tracing::instrument(skip(ctx))]
-pub async fn swap(ctx: &Context, command: &ApplicationCommandInteraction) {
+pub async fn swap(ctx: &Context, command: &CommandInteraction) {
     let guild_id = command.guild_id.expect("Couldn't get guild ID");
     let guild = guild_id.to_guild_cached(&ctx.cache).map(|g| g.to_owned());
 
@@ -131,7 +129,7 @@ pub async fn swap(ctx: &Context, command: &ApplicationCommandInteraction) {
 }
 
 async fn swapping_success_response(
-    command: &ApplicationCommandInteraction,
+    command: &CommandInteraction,
     ctx: &Context,
     first_track_idx: usize,
     first_track: MyAuxMetadata,
@@ -139,7 +137,7 @@ async fn swapping_success_response(
     second_track: MyAuxMetadata,
 ) {
     command
-        .edit_original_interaction_response(
+        .edit_response(
             &ctx.http,
             EditInteractionResponse::new().content(format!(
                 "
@@ -180,9 +178,9 @@ async fn get_track_from_queue(queue: &TrackQueue, track_number: usize) -> Option
     Some(second_track)
 }
 
-async fn invalid_number_response(command: &ApplicationCommandInteraction, ctx: &Context) {
+async fn invalid_number_response(command: &CommandInteraction, ctx: &Context) {
     command
-        .edit_original_interaction_response(
+        .edit_response(
             &ctx.http,
             EditInteractionResponse::new().content("Invalid number!"),
         )
@@ -191,18 +189,14 @@ async fn invalid_number_response(command: &ApplicationCommandInteraction, ctx: &
         .expect("Error creating interaction response");
 }
 
-async fn swapping_error_response(
-    e: SwapableError,
-    command: &ApplicationCommandInteraction,
-    ctx: &Context,
-) {
+async fn swapping_error_response(e: SwapableError, command: &CommandInteraction, ctx: &Context) {
     match e {
         SwapableError::IndexOutOfBounds => {
             track_not_in_queue_response(command, ctx).await;
         }
         SwapableError::NothingIsPlaying => {
             command
-                .edit_original_interaction_response(
+                .edit_response(
                     &ctx.http,
                     EditInteractionResponse::new().content("Nothing is playing!"),
                 )
@@ -212,7 +206,7 @@ async fn swapping_error_response(
         }
         SwapableError::CannotSwapSameSong => {
             command
-                .edit_original_interaction_response(
+                .edit_response(
                     &ctx.http,
                     EditInteractionResponse::new().content("Can't swap the same song!"),
                 )
@@ -223,9 +217,9 @@ async fn swapping_error_response(
     }
 }
 
-async fn track_not_in_queue_response(command: &ApplicationCommandInteraction, ctx: &Context) {
+async fn track_not_in_queue_response(command: &CommandInteraction, ctx: &Context) {
     command
-        .edit_original_interaction_response(
+        .edit_response(
             &ctx.http,
             EditInteractionResponse::new().content("That track isn't in the queue!"),
         )
@@ -234,7 +228,7 @@ async fn track_not_in_queue_response(command: &ApplicationCommandInteraction, ct
         .expect("Error creating interaction response");
 }
 
-fn get_track_numbers(command: &ApplicationCommandInteraction) -> Option<(usize, usize)> {
+fn get_track_numbers(command: &CommandInteraction) -> Option<(usize, usize)> {
     let CommandDataOptionValue::Integer(first_track_idx) =
         command.data.options.get(0).unwrap().value
     else {

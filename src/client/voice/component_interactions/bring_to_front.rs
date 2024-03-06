@@ -1,8 +1,7 @@
 use super::super::helper_funcs::is_bot_in_another_voice_channel;
 use crate::client::voice::model::HasAuxMetadata;
 use crate::client::voice::queue::update_queue_message::update_queue_message;
-use serenity::model::prelude::component::ComponentType;
-use serenity::model::prelude::interaction::message_component::MessageComponentInteraction;
+use serenity::all::{ComponentInteraction, ComponentInteractionDataKind};
 use serenity::prelude::Context;
 use songbird::Call;
 use std::sync::Arc;
@@ -13,7 +12,7 @@ use tracing::{self, info, Instrument};
 use tracing::{info_span, warn};
 
 #[tracing::instrument(skip(ctx))]
-pub async fn bring_to_front(ctx: &Context, component: &MessageComponentInteraction) {
+pub async fn bring_to_front(ctx: &Context, component: &ComponentInteraction) {
     component
         .defer(&ctx.http)
         .instrument(info_span!("deferring response"))
@@ -51,16 +50,20 @@ pub async fn bring_to_front(ctx: &Context, component: &MessageComponentInteracti
         return;
     }
 
-    match component.data.component_type {
-        ComponentType::Button => bring_to_front_button(component, call_lock.clone()).await,
-        ComponentType::SelectMenu => bring_to_front_select_menu(component, call_lock.clone()).await,
+    match &component.data.kind {
+        ComponentInteractionDataKind::Button => {
+            bring_to_front_button(component, call_lock.clone()).await
+        }
+        ComponentInteractionDataKind::StringSelect { values: _ } => {
+            bring_to_front_select_menu(component, call_lock.clone()).await
+        }
         _ => panic!("Unexpected component type"),
     }
 
     update_queue_message(ctx, component.guild_id.unwrap(), call_lock).await;
 }
 
-async fn bring_to_front_button(button: &MessageComponentInteraction, call_lock: Arc<Mutex<Call>>) {
+async fn bring_to_front_button(button: &ComponentInteraction, call_lock: Arc<Mutex<Call>>) {
     let song_title = button
         .message
         .embeds
@@ -99,10 +102,15 @@ async fn bring_to_front_button(button: &MessageComponentInteraction, call_lock: 
 
 #[tracing::instrument]
 async fn bring_to_front_select_menu(
-    select_menu: &MessageComponentInteraction,
+    select_menu: &ComponentInteraction,
     call_lock: Arc<Mutex<Call>>,
 ) {
-    let index: usize = select_menu.data.values[0].parse().unwrap();
+    let index: usize = match &select_menu.data.kind {
+        ComponentInteractionDataKind::StringSelect { values } => values[0].clone(),
+        _ => panic!("unknown select menu kind"),
+    }
+    .parse()
+    .unwrap();
 
     call_lock
         .lock()

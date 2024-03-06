@@ -2,8 +2,8 @@ use std::time::Duration;
 
 use rand::{seq::SliceRandom, thread_rng};
 use serenity::{
+    all::{CommandInteraction, Context},
     builder::EditInteractionResponse,
-    model::prelude::interaction::application_command::ApplicationCommandInteraction, prelude::*,
 };
 use songbird::tracks::Queued;
 use tokio::time::timeout;
@@ -12,7 +12,7 @@ use tracing::{info_span, Instrument};
 use super::update_queue_message::update_queue_message;
 
 #[tracing::instrument(skip(ctx))]
-pub async fn shuffle_queue(ctx: &Context, command: &ApplicationCommandInteraction) {
+pub async fn shuffle_queue(ctx: &Context, command: &CommandInteraction) {
     let manager = songbird::get(ctx)
         .await
         .expect("Songbird Voice client placed in at initialization.")
@@ -62,7 +62,7 @@ pub async fn shuffle_queue(ctx: &Context, command: &ApplicationCommandInteractio
         });
 
         command
-            .edit_original_interaction_response(
+            .edit_response(
                 &ctx.http,
                 EditInteractionResponse::new().content("Shuffled the queue"),
             )
@@ -71,7 +71,7 @@ pub async fn shuffle_queue(ctx: &Context, command: &ApplicationCommandInteractio
             .expect("Error creating interaction response");
     } else {
         command
-            .edit_original_interaction_response(
+            .edit_response(
                 &ctx.http,
                 EditInteractionResponse::new()
                     .content("You must be in a voice channel to use that command!"),
@@ -82,9 +82,9 @@ pub async fn shuffle_queue(ctx: &Context, command: &ApplicationCommandInteractio
     }
 }
 
-async fn empty_queue_response(command: &ApplicationCommandInteraction, ctx: &Context) {
+async fn empty_queue_response(command: &CommandInteraction, ctx: &Context) {
     command
-        .edit_original_interaction_response(
+        .edit_response(
             &ctx.http,
             EditInteractionResponse::new().content("The queue is empty!"),
         )

@@ -21,10 +21,11 @@ use itertools::Itertools;
 pub use loop_song::loop_song;
 pub use play::play;
 pub use playing::playing;
+use serenity::all::ButtonStyle;
+use serenity::all::CreateSelectMenuKind;
 use serenity::async_trait;
 use serenity::builder::CreateActionRow;
 use serenity::builder::CreateButton;
-use serenity::builder::CreateComponents;
 use serenity::builder::CreateMessage;
 use serenity::builder::CreateSelectMenu;
 use serenity::builder::CreateSelectMenuOption;
@@ -32,7 +33,6 @@ use serenity::builder::EditMessage;
 use serenity::client::Context;
 use serenity::model::id::ChannelId;
 use serenity::model::id::GuildId;
-use serenity::model::prelude::component::ButtonStyle;
 use serenity::model::prelude::Message;
 pub use skip::skip;
 use songbird::tracks::TrackQueue;
@@ -87,7 +87,7 @@ impl PeriodicHandler {
     ) -> bool {
         let channel_id = call.current_channel().unwrap();
 
-        let voice_channel = self.ctx.cache.guild_channel(channel_id.0).unwrap();
+        let voice_channel = self.ctx.cache.channel(channel_id.0).unwrap();
 
         if voice_channel.members(&self.ctx.cache).unwrap().len() == 1 {
             return true;
@@ -150,7 +150,7 @@ impl TrackStartHandler {
                 CreateMessage::new()
                     .content("Now playing")
                     .embed(embed)
-                    .components(set_skip_button_row()),
+                    .components(vec![set_skip_button_row()]),
             )
             .instrument(info_span!("Sending message"))
             .await
@@ -203,7 +203,7 @@ impl TrackStartHandler {
                         &self.ctx.http,
                         EditMessage::new()
                             .embed(embed)
-                            .components(set_skip_button_row()),
+                            .components(vec![set_skip_button_row()]),
                     )
                     .instrument(info_span!("Sending message"))
                     .await
@@ -226,7 +226,7 @@ impl TrackStartHandler {
                             EditMessage::new()
                                 .embed(embed)
                                 .content("Now playing")
-                                .components(set_skip_button_row()),
+                                .components(vec![set_skip_button_row()]),
                         )
                         .instrument(info_span!("Sending message"))
                         .await
@@ -271,29 +271,26 @@ impl TrackStartHandler {
     }
 }
 
-fn set_skip_button_row() -> serenity::builder::CreateComponents {
-    CreateComponents::new().set_action_row(CreateActionRow::new().add_button(create_skip_button()))
+fn set_skip_button_row() -> CreateActionRow {
+    CreateActionRow::Buttons(vec![create_skip_button()])
 }
 
 pub fn create_skip_button() -> CreateButton {
-    CreateButton::new()
+    CreateButton::new(ComponentIds::Skip.to_string())
         .label("Skip")
         .style(ButtonStyle::Primary)
-        .custom_id(ComponentIds::Skip.to_string())
 }
 
 pub fn create_play_now_button() -> CreateButton {
-    CreateButton::new()
+    CreateButton::new(ComponentIds::PlayNow.to_string())
         .label("Play now")
         .style(ButtonStyle::Primary)
-        .custom_id(ComponentIds::PlayNow.to_string())
 }
 
 pub fn create_bring_to_front_button() -> CreateButton {
-    CreateButton::new()
+    CreateButton::new(ComponentIds::BringToFront.to_string())
         .label("Bring to front")
         .style(ButtonStyle::Primary)
-        .custom_id(ComponentIds::BringToFront.to_string())
 }
 
 pub async fn create_bring_to_front_select_menu(
@@ -323,8 +320,11 @@ pub async fn create_bring_to_front_select_menu(
         options.push(CreateSelectMenuOption::new("Queue isn't big enough", "-1"));
     }
 
-    CreateSelectMenu::new(ComponentIds::BringToFrontMenu.to_string(), options)
-        .placeholder("Bring a song to the front of the queue")
+    CreateSelectMenu::new(
+        ComponentIds::BringToFrontMenu.to_string(),
+        CreateSelectMenuKind::String { options },
+    )
+    .placeholder("Bring a song to the front of the queue")
 }
 
 pub async fn create_play_now_select_menu(
@@ -354,6 +354,9 @@ pub async fn create_play_now_select_menu(
         options.push(CreateSelectMenuOption::new("Queue isn't big enough", "-1"));
     }
 
-    CreateSelectMenu::new(ComponentIds::PlayNowMenu.to_string(), options)
-        .placeholder("Play a song now")
+    CreateSelectMenu::new(
+        ComponentIds::PlayNowMenu.to_string(),
+        CreateSelectMenuKind::String { options },
+    )
+    .placeholder("Play a song now")
 }

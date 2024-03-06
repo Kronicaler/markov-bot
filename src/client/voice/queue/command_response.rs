@@ -7,23 +7,22 @@ use crate::client::{
 };
 use itertools::Itertools;
 use serenity::{
-    builder::{
-        CreateActionRow, CreateButton, CreateComponents, CreateEmbed, EditInteractionResponse,
-        EditMessage,
-    },
+    all::{ButtonStyle, CommandInteraction},
+    builder::{CreateActionRow, CreateButton, CreateEmbed, EditInteractionResponse, EditMessage},
     client::Context,
-    model::prelude::{
-        component::ButtonStyle, interaction::application_command::ApplicationCommandInteraction,
-        Colour,
-    },
+    model::prelude::Colour,
 };
 use songbird::tracks::TrackQueue;
-use std::{cmp::{min, max}, convert::TryInto, time::Duration};
+use std::{
+    cmp::{max, min},
+    convert::TryInto,
+    time::Duration,
+};
 use tokio::time::timeout;
 use tracing::{info_span, Instrument};
 
 #[tracing::instrument(skip(ctx))]
-pub async fn queue(ctx: &Context, command: &ApplicationCommandInteraction) {
+pub async fn queue(ctx: &Context, command: &CommandInteraction) {
     let manager = songbird::get(ctx)
         .await
         .expect("Songbird Voice client placed in at initialization.")
@@ -41,7 +40,7 @@ pub async fn queue(ctx: &Context, command: &ApplicationCommandInteraction) {
 
         if queue.is_empty() {
             command
-                .edit_original_interaction_response(
+                .edit_response(
                     &ctx.http,
                     EditInteractionResponse::new().content("The queue is empty!"),
                 )
@@ -53,7 +52,7 @@ pub async fn queue(ctx: &Context, command: &ApplicationCommandInteraction) {
 
         //embed
         let queue_message = command
-            .edit_original_interaction_response(&ctx.http, create_queue_response(1, &queue).await)
+            .edit_response(&ctx.http, create_queue_response(1, &queue).await)
             .instrument(info_span!("Sending message"))
             .await
             .expect("Error creating interaction response");
@@ -65,7 +64,7 @@ pub async fn queue(ctx: &Context, command: &ApplicationCommandInteraction) {
             .insert(command.guild_id.unwrap(), queue_message);
     } else {
         command
-            .edit_original_interaction_response(
+            .edit_response(
                 &ctx.http,
                 EditInteractionResponse::new()
                     .content("You must be in a voice channel to use that command!"),
@@ -107,54 +106,33 @@ async fn get_queue_duration(queue: &songbird::tracks::TrackQueue) -> String {
     duration
 }
 
-async fn create_queue_components(
-    queue: &TrackQueue,
-    queue_start: usize,
-) -> serenity::builder::CreateComponents {
-    CreateComponents::new()
-        .set_action_row(
-            CreateActionRow::new()
-                .add_button(
-                    CreateButton::new()
-                        .emoji(serenity::model::channel::ReactionType::Unicode(
-                            "⏪".to_string(),
-                        ))
-                        .style(ButtonStyle::Primary)
-                        .custom_id(ComponentIds::QueueStart.to_string()),
-                )
-                .add_button(
-                    CreateButton::new()
-                        .emoji(serenity::model::channel::ReactionType::Unicode(
-                            "◀".to_string(),
-                        ))
-                        .style(ButtonStyle::Primary)
-                        .custom_id(ComponentIds::QueuePrevious.to_string()),
-                )
-                .add_button(
-                    CreateButton::new()
-                        .emoji(serenity::model::channel::ReactionType::Unicode(
-                            "▶".to_string(),
-                        ))
-                        .style(ButtonStyle::Primary)
-                        .custom_id(ComponentIds::QueueNext.to_string()),
-                )
-                .add_button(
-                    CreateButton::new()
-                        .emoji(serenity::model::channel::ReactionType::Unicode(
-                            "⏩".to_string(),
-                        ))
-                        .style(ButtonStyle::Primary)
-                        .custom_id(ComponentIds::QueueEnd.to_string()),
-                ),
-        )
-        .add_action_row(
-            CreateActionRow::new()
-                .add_select_menu(create_bring_to_front_select_menu(queue, queue_start).await),
-        )
-        .add_action_row(
-            CreateActionRow::new()
-                .add_select_menu(create_play_now_select_menu(queue, queue_start).await),
-        )
+async fn create_queue_components(queue: &TrackQueue, queue_start: usize) -> Vec<CreateActionRow> {
+    vec![
+        CreateActionRow::Buttons(vec![
+            CreateButton::new(ComponentIds::QueueStart.to_string())
+                .emoji(serenity::model::channel::ReactionType::Unicode(
+                    "⏪".to_string(),
+                ))
+                .style(ButtonStyle::Primary),
+            CreateButton::new(ComponentIds::QueuePrevious.to_string())
+                .emoji(serenity::model::channel::ReactionType::Unicode(
+                    "◀".to_string(),
+                ))
+                .style(ButtonStyle::Primary),
+            CreateButton::new(ComponentIds::QueueNext.to_string())
+                .emoji(serenity::model::channel::ReactionType::Unicode(
+                    "▶".to_string(),
+                ))
+                .style(ButtonStyle::Primary),
+            CreateButton::new(ComponentIds::QueueEnd.to_string())
+                .emoji(serenity::model::channel::ReactionType::Unicode(
+                    "⏩".to_string(),
+                ))
+                .style(ButtonStyle::Primary),
+        ]),
+        CreateActionRow::SelectMenu(create_bring_to_front_select_menu(queue, queue_start).await),
+        CreateActionRow::SelectMenu(create_play_now_select_menu(queue, queue_start).await),
+    ]
 }
 
 pub async fn create_queue_response(

@@ -1,7 +1,6 @@
 use super::super::helper_funcs::is_bot_in_another_voice_channel;
 use crate::client::voice::model::HasAuxMetadata;
-use serenity::model::prelude::component::ComponentType;
-use serenity::model::prelude::interaction::message_component::MessageComponentInteraction;
+use serenity::all::{ComponentInteraction, ComponentInteractionDataKind};
 use serenity::prelude::Context;
 use songbird::Call;
 use std::sync::Arc;
@@ -12,7 +11,7 @@ use tracing::{self, Instrument};
 use tracing::{info, info_span};
 
 #[tracing::instrument(skip(ctx))]
-pub async fn play_now(ctx: &Context, component: &MessageComponentInteraction) {
+pub async fn play_now(ctx: &Context, component: &ComponentInteraction) {
     component
         .defer(&ctx.http)
         .instrument(info_span!("deferring response"))
@@ -47,14 +46,16 @@ pub async fn play_now(ctx: &Context, component: &MessageComponentInteraction) {
         return;
     }
 
-    match component.data.component_type {
-        ComponentType::Button => play_now_button(component, call_lock).await,
-        ComponentType::SelectMenu => play_now_select_menu(component, call_lock).await,
+    match &component.data.kind {
+        ComponentInteractionDataKind::Button => play_now_button(component, call_lock).await,
+        ComponentInteractionDataKind::StringSelect { values: _ } => {
+            play_now_select_menu(component, call_lock).await
+        }
         _ => panic!("Unknown interaction"),
     }
 }
 
-async fn play_now_button(button: &MessageComponentInteraction, call_lock: Arc<Mutex<Call>>) {
+async fn play_now_button(button: &ComponentInteraction, call_lock: Arc<Mutex<Call>>) {
     let song_title = button
         .message
         .embeds
@@ -96,11 +97,11 @@ async fn play_now_button(button: &MessageComponentInteraction, call_lock: Arc<Mu
     info!("The song is no longer in the queue");
 }
 
-async fn play_now_select_menu(
-    select_menu: &MessageComponentInteraction,
-    call_lock: Arc<Mutex<Call>>,
-) {
-    let index: usize = select_menu.data.values[0].parse().unwrap();
+async fn play_now_select_menu(select_menu: &ComponentInteraction, call_lock: Arc<Mutex<Call>>) {
+    let index: usize = match &select_menu.data.kind {
+        ComponentInteractionDataKind::StringSelect { values } => values[0].clone().parse().unwrap(),
+        _ => panic!("unknown play now select menu"),
+    };
 
     timeout(Duration::from_secs(30), call_lock.lock())
         .await

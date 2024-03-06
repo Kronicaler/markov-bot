@@ -2,9 +2,9 @@ use std::{str::FromStr, time::Duration};
 
 use anyhow::Context;
 use serenity::{
+    all::{Colour, CommandInteraction},
     builder::{CreateEmbed, EditInteractionResponse},
     client::Context as ClientContext,
-    model::prelude::{interaction::application_command::ApplicationCommandInteraction, Colour},
 };
 use strum_macros::EnumString;
 use tokio::time::timeout;
@@ -16,7 +16,7 @@ use super::helper_funcs::{
 
 /// Skip the track
 #[tracing::instrument(skip(ctx))]
-pub async fn skip(ctx: &ClientContext, command: &ApplicationCommandInteraction) {
+pub async fn skip(ctx: &ClientContext, command: &CommandInteraction) {
     let guild_id = command.guild_id.expect("Couldn't get guild ID");
 
     command.defer(&ctx.http).await.unwrap();
@@ -101,9 +101,9 @@ fn handle_skip_type_number(
     success
 }
 
-async fn couldnt_skip_response(command: &ApplicationCommandInteraction, ctx: &ClientContext) {
+async fn couldnt_skip_response(command: &CommandInteraction, ctx: &ClientContext) {
     command
-        .edit_original_interaction_response(
+        .edit_response(
             &ctx.http,
             EditInteractionResponse::new().embed(CreateEmbed::new().title("Couldn't skip song")),
         )
@@ -114,13 +114,13 @@ async fn couldnt_skip_response(command: &ApplicationCommandInteraction, ctx: &Cl
 
 async fn skip_embed_response(
     call: &songbird::Call,
-    command: &ApplicationCommandInteraction,
+    command: &CommandInteraction,
     ctx: &ClientContext,
 ) {
     let title = format!("Song skipped, {} left in queue.", call.queue().len() - 1);
     let colour = Colour::from_rgb(149, 8, 2);
     command
-        .edit_original_interaction_response(
+        .edit_response(
             &ctx.http,
             EditInteractionResponse::new().embed(CreateEmbed::new().title(title).colour(colour)),
         )
@@ -129,9 +129,9 @@ async fn skip_embed_response(
         .expect("Error creating interaction response");
 }
 
-async fn empty_queue_response(command: &ApplicationCommandInteraction, ctx: &ClientContext) {
+async fn empty_queue_response(command: &CommandInteraction, ctx: &ClientContext) {
     command
-        .edit_original_interaction_response(
+        .edit_response(
             &ctx.http,
             EditInteractionResponse::new().content("The queue is empty."),
         )
@@ -140,7 +140,7 @@ async fn empty_queue_response(command: &ApplicationCommandInteraction, ctx: &Cli
         .expect("Couldn't create response");
 }
 
-fn get_skip_info(command: &ApplicationCommandInteraction) -> Option<(SkipType, i64)> {
+fn get_skip_info(command: &CommandInteraction) -> Option<(SkipType, i64)> {
     let command_data_option = command.data.options.get(0)?;
 
     let skip_type = SkipType::from_str(&command_data_option.name).unwrap();

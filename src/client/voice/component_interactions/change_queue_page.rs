@@ -5,9 +5,9 @@ use crate::client::voice::queue::command_response::{
     create_queue_response, get_queue_start_from_button,
 };
 use crate::client::ComponentIds;
+use serenity::all::ComponentInteraction;
 use serenity::builder::EditInteractionResponse;
 use serenity::client::Context;
-use serenity::model::prelude::interaction::message_component::MessageComponentInteraction;
 use tokio::time::timeout;
 use tracing;
 use tracing::{info_span, Instrument};
@@ -15,7 +15,7 @@ use tracing::{info_span, Instrument};
 #[tracing::instrument(skip(ctx))]
 pub async fn change_queue_page(
     ctx: &Context,
-    button: &mut MessageComponentInteraction,
+    button: &mut ComponentInteraction,
     button_id: ComponentIds,
 ) {
     let manager = songbird::get(ctx)
@@ -36,7 +36,7 @@ pub async fn change_queue_page(
 
             if queue.is_empty() {
                 button
-                    .edit_original_interaction_response(
+                    .edit_response(
                         &ctx.http,
                         EditInteractionResponse::new().content("The queue is empty!"),
                     )
@@ -51,7 +51,7 @@ pub async fn change_queue_page(
             let queue_response = create_queue_response(queue_start, &queue).await;
 
             let queue_message = button
-                .edit_original_interaction_response(&ctx.http, queue_response)
+                .edit_response(&ctx.http, queue_response)
                 .instrument(info_span!("Sending message"))
                 .await
                 .expect("Error creating interaction response");
@@ -64,7 +64,7 @@ pub async fn change_queue_page(
         }
         None => {
             button
-                .edit_original_interaction_response(
+                .edit_response(
                     &ctx.http,
                     EditInteractionResponse::new()
                         .content("You must be in a voice channel to use that command!"),
