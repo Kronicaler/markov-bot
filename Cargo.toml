@@ -47,5 +47,9 @@ serenity = { version = "0.12", features = [
 # requires yt-dlp and opus in order for voice commands to work
 songbird = { version = "0.4", features = ["builtin-queue", "serenity"] }
 
+[dependencies.symphonia]
+version = "0.5"
+features = ["default", "aac", "mp3", "isomp4", "alac"]
+
 [profile.dev.package.sqlx-macros]
 opt-level = 3
