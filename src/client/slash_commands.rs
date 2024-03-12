@@ -59,6 +59,8 @@ pub enum UserCommand {
 
     // =====VOICE=====
     play,
+    #[strum(serialize = "Play Now")]
+    play_from_attachment,
     skip,
     stop,
     playing,
@@ -135,6 +137,7 @@ pub async fn command_responses(command: &CommandInteraction, ctx: Context, pool:
 
             // ===== VOICE =====
             UserCommand::play => voice::play(&ctx, command).await,
+            UserCommand::play_from_attachment => voice::play_from_attachment(&ctx, command).await,
             UserCommand::skip => voice::skip(&ctx, command).await,
             UserCommand::stop => voice::stop(&ctx, command).await,
             UserCommand::playing => voice::playing(&ctx, command).await,

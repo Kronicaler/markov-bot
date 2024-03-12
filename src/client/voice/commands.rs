@@ -1,5 +1,5 @@
 use serenity::{
-    all::CommandOptionType,
+    all::{CommandOptionType, CommandType},
     builder::{CreateCommand, CreateCommandOption},
 };
 
@@ -8,6 +8,7 @@ use crate::client::slash_commands::UserCommand;
 pub fn create_voice_commands() -> Vec<CreateCommand> {
     vec![
         create_play_command(),
+        create_play_video_command(),
         create_skip_command(),
         create_swap_command(),
         CreateCommand::new(UserCommand::stop.to_string())
@@ -32,6 +33,11 @@ fn create_play_command() -> CreateCommand {
             )
             .required(true),
         )
+}
+
+fn create_play_video_command() -> CreateCommand {
+    CreateCommand::new(UserCommand::play_from_attachment.to_string())
+        .kind(CommandType::Message)
 }
 
 fn create_skip_command() -> CreateCommand {

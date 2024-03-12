@@ -85,7 +85,7 @@ pub async fn play(ctx: &Context, command: &CommandInteraction) {
 
     match source {
         SourceType::Video(source) => {
-            handle_video(source, command, ctx, &call_lock).await;
+            handle_video(source.into(), command, ctx, &call_lock).await;
         }
         SourceType::Playlist(sources) => {
             handle_playlist(sources, command, ctx, call_lock).await;
@@ -93,15 +93,13 @@ pub async fn play(ctx: &Context, command: &CommandInteraction) {
     }
 }
 
-#[tracing::instrument(skip(ctx, call_lock))]
-async fn handle_video(
-    source: YoutubeDl,
+#[tracing::instrument(skip(input, ctx, call_lock))]
+pub async fn handle_video(
+    mut input: Input,
     command: &CommandInteraction,
     ctx: &Context,
     call_lock: &Arc<Mutex<songbird::Call>>,
 ) -> ControlFlow<()> {
-    let mut input: Input = source.into();
-
     let Ok(metadata) = input.aux_metadata().await else {
         invalid_link_response(command, ctx).await;
         return ControlFlow::Break(());
@@ -292,7 +290,7 @@ async fn invalid_link_response(command: &CommandInteraction, ctx: &Context) {
         .expect("Error creating interaction response");
 }
 
-fn add_track_start_event(
+pub fn add_track_start_event(
     call: &mut tokio::sync::MutexGuard<songbird::Call>,
     command: &CommandInteraction,
     ctx: &Context,
@@ -332,7 +330,7 @@ fn get_query(command: &CommandInteraction) -> String {
     }
 }
 
-async fn voice_channel_not_found_response(command: &CommandInteraction, ctx: &Context) {
+pub async fn voice_channel_not_found_response(command: &CommandInteraction, ctx: &Context) {
     command
         .edit_response(
             &ctx.http,
