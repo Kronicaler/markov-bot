@@ -43,6 +43,3 @@ services:
     restart: unless-stopped
     volumes:
       - ./data:/app/data:Z
-
-volumes:
-  markovbot:
