@@ -34,7 +34,7 @@ services:
     environment:
       - DISCORD_TOKEN
       - APPLICATION_ID
-      - OTLP_ENDPOINT
+      - OTLP_ENDPOINT=http://jaeger:4317
       - DATABASE_URL=mysql://root:${DB_PASS}@mariadb/markov_bot
       - RUST_LOG=error,markov_bot=info
     build:

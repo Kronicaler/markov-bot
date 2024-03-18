@@ -44,7 +44,7 @@ async fn main() {
         .with_config(
             Config::default().with_resource(Resource::new(vec![KeyValue::new(
                 "service.name",
-                "HZPP_delay_stats",
+                "markov_bot",
             )])),
         )
         .build();
