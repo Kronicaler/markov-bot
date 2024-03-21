@@ -27,7 +27,6 @@ use serenity::all::ActionRowComponent;
 use serenity::all::ButtonKind;
 use serenity::all::ButtonStyle;
 use serenity::all::CreateSelectMenuKind;
-use serenity::all::Reaction;
 use serenity::all::ReactionType;
 use serenity::async_trait;
 use serenity::builder::CreateActionRow;
@@ -303,7 +302,7 @@ fn set_skip_button_row() -> CreateActionRow {
 
 pub fn create_skip_button() -> CreateButton {
     CreateButton::new(ComponentIds::Skip.to_string())
-        .emoji(ReactionType::Unicode("⏭️".to_string()))
+        .label("Skip")
         .style(ButtonStyle::Primary)
 }
 
@@ -320,6 +319,12 @@ pub fn create_bring_to_front_button() -> CreateButton {
 }
 
 pub fn create_shuffle_button() -> CreateButton {
+    CreateButton::new(ComponentIds::Shuffle.to_string())
+        .label("Shuffle")
+        .style(ButtonStyle::Primary)
+}
+
+pub fn create_emoji_shuffle_button() -> CreateButton {
     CreateButton::new(ComponentIds::Shuffle.to_string())
         .emoji(ReactionType::Unicode("🔀".to_string()))
         .style(ButtonStyle::Primary)

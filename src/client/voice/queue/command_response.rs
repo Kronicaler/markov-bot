@@ -1,6 +1,7 @@
 use crate::client::{
     voice::{
-        create_bring_to_front_select_menu, create_play_now_select_menu, create_shuffle_button,
+        create_bring_to_front_select_menu, create_emoji_shuffle_button,
+        create_play_now_select_menu,
         model::{get_voice_messages_lock, MyAuxMetadata},
     },
     ComponentIds,
@@ -121,7 +122,7 @@ async fn create_queue_components(queue: &TrackQueue, queue_start: usize) -> Vec<
             CreateButton::new(ComponentIds::QueueEnd.to_string())
                 .emoji(ReactionType::Unicode("⏩".to_string()))
                 .style(ButtonStyle::Primary),
-            create_shuffle_button(),
+            create_emoji_shuffle_button(),
         ]),
         CreateActionRow::SelectMenu(create_bring_to_front_select_menu(queue, queue_start).await),
         CreateActionRow::SelectMenu(create_play_now_select_menu(queue, queue_start).await),
