@@ -36,8 +36,7 @@ fn create_play_command() -> CreateCommand {
 }
 
 fn create_play_video_command() -> CreateCommand {
-    CreateCommand::new(UserCommand::play_from_attachment.to_string())
-        .kind(CommandType::Message)
+    CreateCommand::new(UserCommand::play_from_attachment.to_string()).kind(CommandType::Message)
 }
 
 fn create_skip_command() -> CreateCommand {

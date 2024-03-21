@@ -23,8 +23,11 @@ pub use loop_song::loop_song;
 pub use play::play;
 pub use play_from_attachment::play_from_attachment;
 pub use playing::playing;
+use serenity::all::ActionRowComponent;
+use serenity::all::ButtonKind;
 use serenity::all::ButtonStyle;
 use serenity::all::CreateSelectMenuKind;
+use serenity::all::ReactionType;
 use serenity::async_trait;
 use serenity::builder::CreateActionRow;
 use serenity::builder::CreateButton;
@@ -200,12 +203,32 @@ impl TrackStartHandler {
 
         match last_message {
             model::LastMessageType::NowPlaying(mut message) => {
+                let mut buttons = vec![create_skip_button()];
+                if message.components.iter().any(|c| {
+                    c.components.iter().any(|c| {
+                        if let ActionRowComponent::Button(b) = c {
+                            if let ButtonKind::NonLink {
+                                custom_id,
+                                style: _,
+                            } = &b.data
+                            {
+                                if custom_id == &ComponentIds::Shuffle.to_string() {
+                                    return true;
+                                }
+                            }
+                        }
+                        false
+                    })
+                }) {
+                    buttons.push(create_shuffle_button());
+                }
+
                 message
                     .edit(
                         &self.ctx.http,
                         EditMessage::new()
                             .embed(embed)
-                            .components(vec![set_skip_button_row()]),
+                            .components(vec![CreateActionRow::Buttons(buttons)]),
                     )
                     .instrument(info_span!("Sending message"))
                     .await
@@ -292,6 +315,12 @@ pub fn create_play_now_button() -> CreateButton {
 pub fn create_bring_to_front_button() -> CreateButton {
     CreateButton::new(ComponentIds::BringToFront.to_string())
         .label("Bring to front")
+        .style(ButtonStyle::Primary)
+}
+
+pub fn create_shuffle_button() -> CreateButton {
+    CreateButton::new(ComponentIds::Shuffle.to_string())
+        .emoji(ReactionType::Unicode("🔀".to_string()))
         .style(ButtonStyle::Primary)
 }
 

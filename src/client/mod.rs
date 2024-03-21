@@ -19,13 +19,14 @@ use self::{
             play_now::play_now, skip::skip_button_press,
         },
         helper_funcs::leave_vc_if_alone,
+        queue::shuffle::shuffle_queue,
     },
 };
 use super::tags::check_for_tag_listeners;
 use serenity::{
     all::{
-        ApplicationId, CreateInteractionResponseMessage, Guild, Interaction,
-        InteractionResponseFlags,
+        ApplicationId, CreateInteractionResponseFollowup, CreateInteractionResponseMessage, Guild,
+        Interaction, InteractionResponseFlags,
     },
     async_trait,
     builder::{CreateInteractionResponse, CreateMessage},
@@ -54,6 +55,7 @@ pub enum ComponentIds {
     BringToFrontMenu,
     QueueStart,
     QueueEnd,
+    Shuffle,
 }
 
 struct Handler {
@@ -150,6 +152,17 @@ and the users can choose themselves if they don't want their messages saved (/st
                     }
                     ComponentIds::BringToFront | ComponentIds::BringToFrontMenu => {
                         bring_to_front(&ctx, &component).await;
+                    }
+                    ComponentIds::Shuffle => {
+                        component.defer(&ctx.http).await.unwrap();
+                        let response = shuffle_queue(&ctx, component.guild_id.unwrap()).await;
+                        component
+                            .create_followup(
+                                &ctx.http,
+                                CreateInteractionResponseFollowup::new().content(response),
+                            )
+                            .await
+                            .unwrap();
                     }
                 };
             }

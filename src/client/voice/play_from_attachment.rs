@@ -60,7 +60,7 @@ pub async fn play_from_attachment(ctx: &Context, command: &CommandInteraction) {
             .unwrap();
         return;
     };
-    
+
     // TODO get attachments that were posted as links
     if !attachment
         .content_type

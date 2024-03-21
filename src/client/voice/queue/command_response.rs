@@ -1,13 +1,13 @@
 use crate::client::{
     voice::{
-        create_bring_to_front_select_menu, create_play_now_select_menu,
+        create_bring_to_front_select_menu, create_play_now_select_menu, create_shuffle_button,
         model::{get_voice_messages_lock, MyAuxMetadata},
     },
     ComponentIds,
 };
 use itertools::Itertools;
 use serenity::{
-    all::{ButtonStyle, CommandInteraction},
+    all::{ButtonStyle, CommandInteraction, ReactionType},
     builder::{CreateActionRow, CreateButton, CreateEmbed, EditInteractionResponse, EditMessage},
     client::Context,
     model::prelude::Colour,
@@ -110,25 +110,18 @@ async fn create_queue_components(queue: &TrackQueue, queue_start: usize) -> Vec<
     vec![
         CreateActionRow::Buttons(vec![
             CreateButton::new(ComponentIds::QueueStart.to_string())
-                .emoji(serenity::model::channel::ReactionType::Unicode(
-                    "⏪".to_string(),
-                ))
+                .emoji(ReactionType::Unicode("⏪".to_string()))
                 .style(ButtonStyle::Primary),
             CreateButton::new(ComponentIds::QueuePrevious.to_string())
-                .emoji(serenity::model::channel::ReactionType::Unicode(
-                    "◀".to_string(),
-                ))
+                .emoji(ReactionType::Unicode("◀".to_string()))
                 .style(ButtonStyle::Primary),
             CreateButton::new(ComponentIds::QueueNext.to_string())
-                .emoji(serenity::model::channel::ReactionType::Unicode(
-                    "▶".to_string(),
-                ))
+                .emoji(ReactionType::Unicode("▶".to_string()))
                 .style(ButtonStyle::Primary),
             CreateButton::new(ComponentIds::QueueEnd.to_string())
-                .emoji(serenity::model::channel::ReactionType::Unicode(
-                    "⏩".to_string(),
-                ))
+                .emoji(ReactionType::Unicode("⏩".to_string()))
                 .style(ButtonStyle::Primary),
+            create_shuffle_button(),
         ]),
         CreateActionRow::SelectMenu(create_bring_to_front_select_menu(queue, queue_start).await),
         CreateActionRow::SelectMenu(create_play_now_select_menu(queue, queue_start).await),

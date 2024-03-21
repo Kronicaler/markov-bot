@@ -4,7 +4,7 @@ use crate::client::{
 };
 
 use super::{
-    create_skip_button,
+    create_shuffle_button, create_skip_button,
     helper_funcs::{
         get_voice_channel_of_user, is_bot_in_another_voice_channel, voice_channel_not_same_response,
     },
@@ -25,7 +25,7 @@ use songbird::{
     tracks::TrackQueue,
     TrackEvent,
 };
-use std::{collections::VecDeque, ops::ControlFlow, sync::Arc, time::Duration};
+use std::{collections::VecDeque, sync::Arc, time::Duration};
 use tokio::time::timeout;
 use tracing::{info, info_span, warn, Instrument};
 
@@ -99,10 +99,10 @@ pub async fn handle_video(
     command: &CommandInteraction,
     ctx: &Context,
     call_lock: &Arc<Mutex<songbird::Call>>,
-) -> ControlFlow<()> {
+) {
     let Ok(metadata) = input.aux_metadata().await else {
         invalid_link_response(command, ctx).await;
-        return ControlFlow::Break(());
+        return;
     };
 
     let mut call = timeout(Duration::from_secs(30), call_lock.lock())
@@ -117,8 +117,7 @@ pub async fn handle_video(
         .await
         .insert::<MyAuxMetadata>(Arc::new(RwLock::new(my_metadata)));
 
-    return_response(&metadata, call.queue(), command, ctx).await;
-    ControlFlow::Continue(())
+    return_response(&metadata, call.queue(), command, ctx, false).await;
 }
 
 #[tracing::instrument(skip(sources,ctx,call_lock), fields(sources.length=sources.len()))]
@@ -152,7 +151,7 @@ async fn handle_playlist(
                 .await
                 .insert::<MyAuxMetadata>(Arc::new(RwLock::new(my_metadata)));
 
-            return_response(&metadata, call.queue(), command, ctx).await;
+            return_response(&metadata, call.queue(), command, ctx, true).await;
         }
         .instrument(info_span!("Play first song"))
         .await;
@@ -400,6 +399,7 @@ async fn return_response(
     queue: &TrackQueue,
     command: &CommandInteraction,
     ctx: &Context,
+    is_playlist: bool,
 ) {
     let mut embed = create_track_embed(metadata);
 
@@ -432,6 +432,9 @@ async fn return_response(
 
         format!("Position in queue: {}", queue.len())
     };
+    if is_playlist {
+        buttons.push(create_shuffle_button());
+    }
     let action_row = CreateActionRow::Buttons(buttons);
 
     let message = command

@@ -14,7 +14,10 @@ use crate::{
     global_data, markov, voice, GuildId,
 };
 use serenity::{
-    all::{Command, CommandInteraction, CommandOptionType, CreateInteractionResponseMessage},
+    all::{
+        Command, CommandInteraction, CommandOptionType, CreateInteractionResponseMessage,
+        EditInteractionResponse,
+    },
     builder::{CreateCommand, CreateCommandOption, CreateInteractionResponse},
     client::Context,
 };
@@ -144,7 +147,17 @@ pub async fn command_responses(command: &CommandInteraction, ctx: Context, pool:
             UserCommand::queue => queue(&ctx, command).await,
             UserCommand::loop_song => voice::loop_song(&ctx, command).await,
             UserCommand::swap_songs => voice::swap(&ctx, command).await,
-            UserCommand::queue_shuffle => shuffle_queue(&ctx, command).await,
+            UserCommand::queue_shuffle => {
+                command.defer(&ctx.http).await.unwrap();
+
+                let response = shuffle_queue(&ctx, command.guild_id.unwrap()).await;
+
+                command
+                    .edit_response(&ctx.http, EditInteractionResponse::new().content(response))
+                    .instrument(info_span!("Sending message"))
+                    .await
+                    .expect("Error creating interaction response");
+            }
         },
         Err(why) => {
             error!("Cannot respond to slash command {why}");
