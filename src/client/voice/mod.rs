@@ -27,6 +27,7 @@ use serenity::all::ActionRowComponent;
 use serenity::all::ButtonKind;
 use serenity::all::ButtonStyle;
 use serenity::all::CreateSelectMenuKind;
+use serenity::all::Reaction;
 use serenity::all::ReactionType;
 use serenity::async_trait;
 use serenity::builder::CreateActionRow;
@@ -302,7 +303,7 @@ fn set_skip_button_row() -> CreateActionRow {
 
 pub fn create_skip_button() -> CreateButton {
     CreateButton::new(ComponentIds::Skip.to_string())
-        .label("Skip")
+        .emoji(ReactionType::Unicode("⏭️".to_string()))
         .style(ButtonStyle::Primary)
 }
 
