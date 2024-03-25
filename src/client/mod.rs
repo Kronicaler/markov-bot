@@ -25,8 +25,8 @@ use self::{
 use super::tags::check_for_tag_listeners;
 use serenity::{
     all::{
-        ApplicationId, CreateInteractionResponseFollowup, CreateInteractionResponseMessage, Guild,
-        Interaction, InteractionResponseFlags,
+        ApplicationId, CreateInteractionResponseMessage, Guild, Interaction,
+        InteractionResponseFlags,
     },
     async_trait,
     builder::{CreateInteractionResponse, CreateMessage},
@@ -155,14 +155,7 @@ and the users can choose themselves if they don't want their messages saved (/st
                     }
                     ComponentIds::Shuffle => {
                         component.defer(&ctx.http).await.unwrap();
-                        let response = shuffle_queue(&ctx, component.guild_id.unwrap()).await;
-                        component
-                            .create_followup(
-                                &ctx.http,
-                                CreateInteractionResponseFollowup::new().content(response),
-                            )
-                            .await
-                            .unwrap();
+                        shuffle_queue(&ctx, component.guild_id.unwrap()).await;
                     }
                 };
             }
