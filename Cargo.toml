@@ -34,7 +34,7 @@ tracing-subscriber = { version = "0.3", features = [
 ] }
 opentelemetry-otlp = "0.15"
 futures = "0.3"
-itertools = "0.12"
+itertools = "0.13"
 serenity = { version = "0.12", features = [
 	"cache",
 	"client",
