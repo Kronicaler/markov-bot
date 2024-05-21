@@ -336,7 +336,7 @@ async fn send_response_in_tag_channel(
         Ok(mut msg) => {
             let http = ctx.http.clone();
             task::spawn(async move {
-                tokio::time::sleep(Duration::from_secs(10)).await;
+                tokio::time::sleep(Duration::from_secs(20)).await;
                 msg.edit(&http, EditMessage::new().components(vec![]))
                     .await
                     .unwrap();
