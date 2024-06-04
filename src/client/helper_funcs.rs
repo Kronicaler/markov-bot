@@ -18,7 +18,7 @@ pub async fn user_id_command(ctx: Context, command: &CommandInteraction) {
     let options = &command
         .data
         .options
-        .get(0)
+        .first()
         .expect("Expected user option")
         .value;
 

@@ -49,7 +49,7 @@ pub async fn play_now(ctx: &Context, component: &ComponentInteraction) {
     match &component.data.kind {
         ComponentInteractionDataKind::Button => play_now_button(component, call_lock).await,
         ComponentInteractionDataKind::StringSelect { values: _ } => {
-            play_now_select_menu(component, call_lock).await
+            play_now_select_menu(component, call_lock).await;
         }
         _ => panic!("Unknown interaction"),
     }
@@ -59,7 +59,7 @@ async fn play_now_button(button: &ComponentInteraction, call_lock: Arc<Mutex<Cal
     let song_title = button
         .message
         .embeds
-        .get(0)
+        .first()
         .unwrap()
         .title
         .as_ref()
@@ -75,7 +75,7 @@ async fn play_now_button(button: &ComponentInteraction, call_lock: Arc<Mutex<Cal
 
         if queued_song_title == song_title {
             call.queue().modify_queue(|q| {
-                let Some(playing_song) = q.get(0) else {
+                let Some(playing_song) = q.front() else {
                     return;
                 };
 
@@ -86,7 +86,7 @@ async fn play_now_button(button: &ComponentInteraction, call_lock: Arc<Mutex<Cal
 
                 q.push_front(song_to_play_now);
 
-                let song_to_play_now = q.get(0).unwrap();
+                let song_to_play_now = q.front().unwrap();
 
                 song_to_play_now.play().unwrap();
             });
@@ -108,7 +108,7 @@ async fn play_now_select_menu(select_menu: &ComponentInteraction, call_lock: Arc
         .unwrap()
         .queue()
         .modify_queue(|q| {
-            let Some(playing_song) = q.get(0) else {
+            let Some(playing_song) = q.front() else {
                 return;
             };
 
@@ -119,7 +119,7 @@ async fn play_now_select_menu(select_menu: &ComponentInteraction, call_lock: Arc
 
             q.push_front(song_to_play_now);
 
-            let song_to_play_now = q.get(0).unwrap();
+            let song_to_play_now = q.front().unwrap();
 
             song_to_play_now.play().unwrap();
         });

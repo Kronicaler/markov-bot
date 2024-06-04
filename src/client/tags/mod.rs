@@ -304,9 +304,7 @@ async fn send_response_in_tag_channel(
             .await
             .unwrap();
 
-        tag_response_channel = guild_channels
-            .get(&ChannelId::from(channel_id))
-            .map(std::clone::Clone::clone);
+        tag_response_channel = guild_channels.get(&ChannelId::from(channel_id)).cloned();
     }
 
     let Some(tag_response_channel) = tag_response_channel else {

@@ -29,7 +29,7 @@ pub async fn play_from_attachment(ctx: &Context, command: &CommandInteraction) {
         &guild_id.to_guild_cached(&ctx.cache).unwrap().clone(),
         command.user.id,
     ) {
-        voice_channel_not_same_response(&command, &ctx).await;
+        voice_channel_not_same_response(command, ctx).await;
 
         return;
     }
@@ -48,7 +48,7 @@ pub async fn play_from_attachment(ctx: &Context, command: &CommandInteraction) {
         .get(&message_id.into())
         .unwrap()
         .attachments
-        .get(0);
+        .first();
 
     let Some(attachment) = video else {
         command
@@ -137,7 +137,7 @@ pub async fn play_from_attachment(ctx: &Context, command: &CommandInteraction) {
         }
 
         call.queue().modify_queue(|q| {
-            let Some(playing_song) = q.get(0) else {
+            let Some(playing_song) = q.front() else {
                 return;
             };
 
@@ -148,7 +148,7 @@ pub async fn play_from_attachment(ctx: &Context, command: &CommandInteraction) {
 
             q.push_front(song_to_play_now);
 
-            let song_to_play_now = q.get(0).unwrap();
+            let song_to_play_now = q.front().unwrap();
 
             song_to_play_now.play().unwrap();
         });

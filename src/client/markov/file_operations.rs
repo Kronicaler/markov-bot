@@ -15,10 +15,7 @@ use tracing::{info_span, instrument};
 
 /// Append a sentence to the markov file
 pub fn append_to_markov_file(str: &str) -> Result<(), std::io::Error> {
-    let mut file = OpenOptions::new()
-        .write(true)
-        .append(true)
-        .open(MARKOV_DATA_SET_PATH)?;
+    let mut file = OpenOptions::new().append(true).open(MARKOV_DATA_SET_PATH)?;
 
     Ok(writeln!(file, "{str}\n")?)
 }

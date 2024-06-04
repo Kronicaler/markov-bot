@@ -277,7 +277,7 @@ pub async fn start() {
     let termination_signal = wait_for_signal();
     let client = client.start();
     select! {
-        _ = termination_signal=>{}
+        () = termination_signal=>{}
         result = client => {result.unwrap();}
     }
 }
@@ -318,5 +318,5 @@ async fn wait_for_signal_impl() {
 /// Registers signal handlers and waits for a signal that
 /// indicates a shutdown request.
 pub(crate) async fn wait_for_signal() {
-    wait_for_signal_impl().await
+    wait_for_signal_impl().await;
 }

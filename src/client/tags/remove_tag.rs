@@ -68,9 +68,9 @@ async fn tag_removed_response(command: &CommandInteraction, listener: &str, ctx:
 
 fn get_listener(command: &CommandInteraction) -> String {
     let listener = if let CommandDataOptionValue::SubCommand(sub_command) =
-        command.data.options.get(0).unwrap().value.clone()
+        command.data.options.first().unwrap().value.clone()
     {
-        sub_command.get(0).unwrap().value.clone()
+        sub_command.first().unwrap().value.clone()
     } else {
         panic!("Expected the first option to be a subcommand");
     };

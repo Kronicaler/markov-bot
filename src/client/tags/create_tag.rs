@@ -99,10 +99,10 @@ async fn tag_outside_server_response(command: &CommandInteraction, ctx: &Context
 
 fn get_listener_and_response(command: &CommandInteraction) -> (String, String) {
     let (listener, response) = if let CommandDataOptionValue::SubCommand(sub_command) =
-        command.data.options.get(0).unwrap().value.clone()
+        command.data.options.first().unwrap().value.clone()
     {
         (
-            sub_command.get(0).unwrap().value.clone(),
+            sub_command.first().unwrap().value.clone(),
             sub_command.get(1).unwrap().value.clone(),
         )
     } else {

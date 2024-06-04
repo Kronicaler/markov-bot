@@ -27,7 +27,7 @@ use songbird::{
 };
 use std::{collections::VecDeque, sync::Arc, time::Duration};
 use tokio::time::timeout;
-use tracing::{info, info_span, warn, Instrument};
+use tracing::{error, info, info_span, warn, Instrument};
 
 ///play song from youtube
 #[tracing::instrument(skip(ctx))]
@@ -239,8 +239,13 @@ async fn fill_queue(
                 .instrument(info_span!("Fetching metadatas"))
                 .await
                 .into_iter()
-                .filter(std::result::Result::is_ok)
-                .filter_map(std::result::Result::unwrap);
+                .filter_map(|f| {
+                    match f {
+                        Ok(f) => return f,
+                        Err(e) => error!("{:?}", e),
+                    }
+                    None
+                });
 
             for (metadata, input) in task_results {
                 let queue_filling_stopped = !queue_data_lock
@@ -369,7 +374,6 @@ async fn get_source(query: String) -> SourceType {
                     .stdout,
             )
             .unwrap()
-            .to_string()
             .split('\n')
             .filter(|f| !f.is_empty())
             .for_each(|id| {

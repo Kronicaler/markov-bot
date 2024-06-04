@@ -52,10 +52,10 @@ pub async fn bring_to_front(ctx: &Context, component: &ComponentInteraction) {
 
     match &component.data.kind {
         ComponentInteractionDataKind::Button => {
-            bring_to_front_button(component, call_lock.clone()).await
+            bring_to_front_button(component, call_lock.clone()).await;
         }
         ComponentInteractionDataKind::StringSelect { values: _ } => {
-            bring_to_front_select_menu(component, call_lock.clone()).await
+            bring_to_front_select_menu(component, call_lock.clone()).await;
         }
         _ => panic!("Unexpected component type"),
     }
@@ -67,7 +67,7 @@ async fn bring_to_front_button(button: &ComponentInteraction, call_lock: Arc<Mut
     let song_title = button
         .message
         .embeds
-        .get(0)
+        .first()
         .unwrap()
         .title
         .as_ref()

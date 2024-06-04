@@ -113,7 +113,7 @@ pub async fn swap(ctx: &Context, command: &CommandInteraction) {
     };
 
     match queue.swap(first_track_pos, second_track_pos) {
-        Ok(_) => {
+        Ok(()) => {
             swapping_success_response(
                 command,
                 ctx,
@@ -230,7 +230,7 @@ async fn track_not_in_queue_response(command: &CommandInteraction, ctx: &Context
 
 fn get_track_numbers(command: &CommandInteraction) -> Option<(usize, usize)> {
     let CommandDataOptionValue::Integer(first_track_idx) =
-        command.data.options.get(0).unwrap().value
+        command.data.options.first().unwrap().value
     else {
         return None;
     };

@@ -141,7 +141,7 @@ async fn empty_queue_response(command: &CommandInteraction, ctx: &ClientContext)
 }
 
 fn get_skip_info(command: &CommandInteraction) -> Option<(SkipType, i64)> {
-    let command_data_option = command.data.options.get(0)?;
+    let command_data_option = command.data.options.first()?;
 
     let skip_type = SkipType::from_str(&command_data_option.name).unwrap();
     let track_number = command_data_option.value.as_i64().unwrap();

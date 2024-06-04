@@ -29,7 +29,7 @@ pub async fn shuffle_queue(ctx: &Context, guild_id: GuildId) -> &'static str {
                 let mut vec: Vec<Queued> = vec![];
 
                 let current_song = q.pop_front().unwrap();
-                while q.len() != 0 {
+                while !q.is_empty() {
                     let queued_song = q.pop_front().unwrap();
 
                     vec.push(queued_song);
@@ -41,8 +41,8 @@ pub async fn shuffle_queue(ctx: &Context, guild_id: GuildId) -> &'static str {
 
                 q.push_front(current_song);
 
-                while vec.len() != 0 {
-                    q.push_back(vec.pop().unwrap());
+                while let Some(element) = vec.pop() {
+                    q.push_back(element);
                 }
             });
 
@@ -51,7 +51,7 @@ pub async fn shuffle_queue(ctx: &Context, guild_id: GuildId) -> &'static str {
 
             let cloned_ctx = ctx.clone();
             tokio::spawn(async move {
-                update_queue_message(&cloned_ctx, GuildId::new(guild_id.get()), call_lock).await
+                update_queue_message(&cloned_ctx, GuildId::new(guild_id.get()), call_lock).await;
             });
 
             return "Shuffled the queue";
