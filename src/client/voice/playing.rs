@@ -77,9 +77,9 @@ async fn create_playing_embed(
     //channel
     let channel = &song.channel.unwrap_or_else(|| "Unknown".to_string());
     //image
-    let thumbnail = &song.thumbnail.unwrap_or_else(|| "Unknown".to_string());
+    let thumbnail_option = &song.thumbnail;
     //embed
-    let url = &song.source_url.unwrap_or_else(|| "Unknown".to_string());
+    let url_option = &song.source_url;
     //color
     let colour = Colour::from_rgb(149, 8, 2);
 
@@ -91,11 +91,19 @@ async fn create_playing_embed(
     let position = format!("{}:{:02}", position.as_secs() / 60, position.as_secs() % 60);
     let position_to_duration = format!("{position} / {duration}");
 
-    CreateEmbed::new()
+    let mut embed = CreateEmbed::new()
         .title(title)
         .colour(colour)
         .description(channel)
-        .field("Duration: ", position_to_duration, false)
-        .thumbnail(thumbnail)
-        .url(url)
+        .field("Duration: ", position_to_duration, false);
+
+    if let Some(url) = url_option {
+        embed = embed.url(url);
+    }
+
+    if let Some(thumbnail) = thumbnail_option {
+        embed = embed.thumbnail(thumbnail);
+    }
+
+    embed
 }

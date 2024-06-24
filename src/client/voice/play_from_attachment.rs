@@ -89,7 +89,8 @@ pub async fn play_from_attachment(ctx: &Context, command: &CommandInteraction) {
             .guild_id
             .unwrap()
             .to_guild_cached(&ctx.cache)
-            .unwrap(),
+            .unwrap()
+            .to_owned(),
         command.user.id,
     ) else {
         voice_channel_not_found_response(command, ctx).await;

@@ -84,8 +84,8 @@ pub async fn play(ctx: &Context, command: &CommandInteraction) {
     let source = get_source(query.clone()).await;
 
     match source {
-        SourceType::Video(source) => {
-            handle_video(source.into(), command, ctx, &call_lock).await;
+        SourceType::Video(source, metadata) => {
+            handle_video(source.into(), metadata, command, ctx, &call_lock).await;
         }
         SourceType::Playlist(sources) => {
             handle_playlist(sources, command, ctx, call_lock).await;
@@ -95,16 +95,12 @@ pub async fn play(ctx: &Context, command: &CommandInteraction) {
 
 #[tracing::instrument(skip(input, ctx, call_lock))]
 pub async fn handle_video(
-    mut input: Input,
+    input: Input,
+    metadata: AuxMetadata,
     command: &CommandInteraction,
     ctx: &Context,
     call_lock: &Arc<Mutex<songbird::Call>>,
 ) {
-    let Ok(metadata) = input.aux_metadata().await else {
-        invalid_link_response(command, ctx).await;
-        return;
-    };
-
     let mut call = timeout(Duration::from_secs(30), call_lock.lock())
         .await
         .unwrap();
@@ -347,7 +343,7 @@ pub async fn voice_channel_not_found_response(command: &CommandInteraction, ctx:
 }
 
 enum SourceType {
-    Video(YoutubeDl),
+    Video(Input, AuxMetadata),
     Playlist(VecDeque<YoutubeDl>),
 }
 
@@ -359,8 +355,9 @@ async fn get_source(query: String) -> SourceType {
 
     let list_regex = regex::Regex::new(r"(&list).*|(\?list).*").unwrap();
     let playlist_regex = regex::Regex::new(r"playlist\?list=").unwrap();
+    let yt_regex = regex::Regex::new(r"^((?:https?:)?\/\/)?((?:www|m)\.)?((?:youtube(?:-nocookie)?\.com|youtu.be))(\/(?:[\w\-]+\?v=|embed\/|live\/|v\/)?)([\w\-]+)(\S+)?$").unwrap();
 
-    if link_regex.is_match(&query) {
+    if link_regex.is_match(&query) && yt_regex.is_match(&query) {
         if playlist_regex.is_match(&query) {
             let mut songs_in_playlist = VecDeque::default();
             let client = Client::new();
@@ -390,12 +387,37 @@ async fn get_source(query: String) -> SourceType {
 
         // Remove breaking part of url
         let query = list_regex.replace(&query, "").to_string();
-        return SourceType::Video(YoutubeDl::new(Client::new(), query));
+        let mut input: Input = YoutubeDl::new(Client::new(), query).into();
+        let metadata = input.aux_metadata().await.unwrap();
+        return SourceType::Video(input, metadata);
+    }
+
+    if link_regex.is_match(&query) {
+        let video_stream_bytes = tokio::process::Command::new("yt-dlp")
+            .args(["yt-dlp", "-o", "-", &query])
+            .output()
+            .await
+            .unwrap()
+            .stdout;
+
+        let mut input: Input = video_stream_bytes.into();
+
+        let metadata = input.aux_metadata().await.unwrap_or_else(|_| {
+            let mut metadata = AuxMetadata::default();
+            metadata.source_url = Some(query.clone());
+            metadata.track = Some(query.clone());
+            metadata.title = Some(query);
+            return metadata;
+        });
+
+        return SourceType::Video(input, metadata);
     }
 
     let query = format!("ytsearch:{query}");
 
-    SourceType::Video(YoutubeDl::new(Client::new(), query))
+    let mut input: Input = YoutubeDl::new(Client::new(), query).into();
+    let metadata = input.aux_metadata().await.unwrap();
+    SourceType::Video(input, metadata)
 }
 
 async fn return_response(
