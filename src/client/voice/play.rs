@@ -13,6 +13,7 @@ use super::{
     MyAuxMetadata, PeriodicHandler, TrackStartHandler,
 };
 use futures::future::join_all;
+use infer::MatcherType;
 use reqwest::Client;
 use serenity::{
     all::{Colour, CommandDataOptionValue, CommandInteraction, GuildId},
@@ -84,11 +85,21 @@ pub async fn play(ctx: &Context, command: &CommandInteraction) {
     let source = get_source(query.clone()).await;
 
     match source {
-        SourceType::Video(source, metadata) => {
+        Some(SourceType::Video(source, metadata)) => {
             handle_video(source.into(), metadata, command, ctx, &call_lock).await;
         }
-        SourceType::Playlist(sources) => {
+        Some(SourceType::Playlist(sources)) => {
             handle_playlist(sources, command, ctx, call_lock).await;
+        }
+        None => {
+            command
+                .edit_response(
+                    &ctx.http,
+                    EditInteractionResponse::new().content("Invalid link"),
+                )
+                .instrument(info_span!("Sending message"))
+                .await
+                .expect("Error creating interaction response");
         }
     }
 }
@@ -348,7 +359,7 @@ enum SourceType {
 }
 
 #[tracing::instrument]
-async fn get_source(query: String) -> SourceType {
+async fn get_source(query: String) -> Option<SourceType> {
     let link_regex =
     regex::Regex::new(r#"(?:(?:https?|ftp)://|\b(?:[a-z\d]+\.))(?:(?:[^\s()<>]+|\((?:[^\s()<>]+|(?:\([^\s()<>]+\)))?\))+(?:\((?:[^\s()<>]+|(?:\(?:[^\s()<>]+\)))?\)|[^\s`!()\[\]{};:'".,<>?«»“”‘’]))?"#)
     .expect("Invalid regular expression");
@@ -382,14 +393,14 @@ async fn get_source(query: String) -> SourceType {
                 songs_in_playlist.push_back(song);
             });
 
-            return SourceType::Playlist(songs_in_playlist);
+            return Some(SourceType::Playlist(songs_in_playlist));
         }
 
         // Remove breaking part of url
         let query = list_regex.replace(&query, "").to_string();
         let mut input: Input = YoutubeDl::new(Client::new(), query).into();
         let metadata = input.aux_metadata().await.unwrap();
-        return SourceType::Video(input, metadata);
+        return Some(SourceType::Video(input, metadata));
     }
 
     if link_regex.is_match(&query) {
@@ -399,6 +410,16 @@ async fn get_source(query: String) -> SourceType {
             .await
             .unwrap()
             .stdout;
+
+        let Some(file_type) = infer::get(&video_stream_bytes) else {
+            return None;
+        };
+
+        if file_type.matcher_type() != MatcherType::Audio
+            && file_type.matcher_type() != MatcherType::Video
+        {
+            return None;
+        }
 
         let mut input: Input = video_stream_bytes.into();
 
@@ -410,14 +431,14 @@ async fn get_source(query: String) -> SourceType {
             return metadata;
         });
 
-        return SourceType::Video(input, metadata);
+        return Some(SourceType::Video(input, metadata));
     }
 
     let query = format!("ytsearch:{query}");
 
     let mut input: Input = YoutubeDl::new(Client::new(), query).into();
     let metadata = input.aux_metadata().await.unwrap();
-    SourceType::Video(input, metadata)
+    Some(SourceType::Video(input, metadata))
 }
 
 async fn return_response(

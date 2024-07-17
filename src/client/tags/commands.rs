@@ -1,5 +1,5 @@
 use serenity::{
-    all::CommandOptionType,
+    all::{CommandOptionType, InteractionContext},
     builder::{CreateCommand, CreateCommandOption},
 };
 use strum::EnumProperty;
@@ -10,7 +10,7 @@ pub fn create_tag_commands() -> CreateCommand {
     let command = CreateCommand::new("tag");
 
     command
-        .dm_permission(false)
+        .add_context(InteractionContext::Guild)
         .description("tagdesc")
         .add_option(create_tag_creation_option())
         .add_option(create_tag_removal_option())

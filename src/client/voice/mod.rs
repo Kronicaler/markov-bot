@@ -90,11 +90,20 @@ impl PeriodicHandler {
         &self,
         call: &tokio::sync::MutexGuard<'_, songbird::Call>,
     ) -> bool {
-        let channel_id = call.current_channel().unwrap();
+        let channel_id = ChannelId::new(call.current_channel().unwrap().0.get());
+        let guild_id = call.current_connection().unwrap().guild_id;
+        let voice_channel_members = self
+            .ctx
+            .cache
+            .guild(guild_id.0)
+            .unwrap()
+            .channels
+            .get(&channel_id)
+            .unwrap()
+            .members(&self.ctx.cache)
+            .unwrap();
 
-        let voice_channel = self.ctx.cache.channel(channel_id.0).unwrap();
-
-        if voice_channel.members(&self.ctx.cache).unwrap().len() == 1 {
+        if voice_channel_members.len() == 1 {
             return true;
         }
 

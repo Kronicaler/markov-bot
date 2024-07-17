@@ -5,6 +5,7 @@ mod model;
 mod remove_tag;
 
 pub use create_tag::create_tag;
+use model::TagChannel;
 use regex::Regex;
 pub use remove_tag::remove_tag;
 use tokio::task;
@@ -25,7 +26,6 @@ use serenity::{
     client::Context,
     model::{
         channel::Message,
-        guild::Guild,
         id::{ChannelId, UserId},
     },
     prelude::Mentionable,
@@ -225,7 +225,7 @@ pub async fn respond_to_tag(ctx: &Context, msg: &Message, message: &str, pool: &
 
     //If the guild has a tag response channel send the response there
     if let Some(tag_channel) = tag_channel {
-        send_response_in_tag_channel(ctx, tag_channel.channel_id, msg, message).await;
+        send_response_in_tag_channel(ctx, tag_channel, msg, message).await;
         return;
     }
 
@@ -290,26 +290,18 @@ async fn tag_response(
 
 async fn send_response_in_tag_channel(
     ctx: &Context,
-    channel_id: u64,
+    tag_channel: TagChannel,
     msg: &Message,
     message: &str,
 ) {
-    let mut tag_response_channel = ctx.cache.channel(channel_id).map(|c| c.to_owned());
-
-    if tag_response_channel.is_none() {
-        let guild_channels = Guild::get(&&ctx.http, msg.guild_id.unwrap())
-            .await
-            .expect("Couldn't fetch guild")
-            .channels(&ctx.http)
-            .await
-            .unwrap();
-
-        tag_response_channel = guild_channels.get(&ChannelId::from(channel_id)).cloned();
-    }
-
-    let Some(tag_response_channel) = tag_response_channel else {
-        return;
-    };
+    let tag_response_channel = ctx
+        .cache
+        .guild(tag_channel.server_id)
+        .unwrap()
+        .channels
+        .get(&ChannelId::new(tag_channel.channel_id))
+        .unwrap()
+        .clone();
 
     let mut tag_response = CreateMessage::new();
 
