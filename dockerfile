@@ -45,7 +45,7 @@ ENV SQLX_OFFLINE=true
 RUN --mount=type=cache,target=/root/.cache touch src/main.rs && \
     cargo build --release
 
-FROM debian:bookworm-slim as release
+FROM debian:bookworm-slim AS release
 
 RUN apt-get update && apt-get install --no-install-recommends -y libssl3 libopus-dev curl ca-certificates python3 && rm -rf /var/lib/apt/lists/*;
 
