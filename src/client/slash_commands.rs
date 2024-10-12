@@ -10,13 +10,16 @@ use super::{
     voice::commands::create_voice_commands,
 };
 use crate::{
-    client::voice::queue::{command_response::queue, shuffle::shuffle_queue},
+    client::{
+        helper_funcs::{download_command, download_from_message_command},
+        voice::queue::{command_response::queue, shuffle::shuffle_queue},
+    },
     global_data, markov, voice, GuildId,
 };
 use serenity::{
     all::{
-        Command, CommandInteraction, CommandOptionType, CreateInteractionResponseMessage,
-        EditInteractionResponse,
+        Command, CommandInteraction, CommandOptionType, CommandType,
+        CreateInteractionResponseMessage, EditInteractionResponse, InstallationContext,
     },
     builder::{CreateCommand, CreateCommandOption, CreateInteractionResponse},
     client::Context,
@@ -41,6 +44,9 @@ pub enum UserCommand {
     stop_saving_messages_server,
     help,
     version,
+    download,
+    #[strum(serialize = "Download from Link")]
+    download_from_message_link,
 
     // =====TAGS=====
     #[strum(props(SubCommand = "create"), serialize = "tag create")]
@@ -92,6 +98,10 @@ pub async fn command_responses(command: &CommandInteraction, ctx: Context, pool:
     match UserCommand::from_str(&full_command_name) {
         Ok(user_command) => match user_command {
             UserCommand::ping => ping_command(ctx, command).await,
+            UserCommand::download => download_command(ctx, command).await,
+            UserCommand::download_from_message_link => {
+                download_from_message_command(ctx, command).await
+            }
             UserCommand::id => user_id_command(ctx, command).await,
             UserCommand::stop_saving_my_messages => {
                 markov::add_user_to_blacklist(user, &ctx, command, pool).await;
@@ -178,6 +188,20 @@ pub async fn create_global_commands(ctx: &Context) {
         CreateCommand::new(UserCommand::help.to_string())
             .description("Information about my commands"),
         CreateCommand::new(UserCommand::version.to_string()).description("My current version"),
+        CreateCommand::new(UserCommand::download.to_string())
+            .description("download a video or audio file from a url")
+            .add_option(
+                CreateCommandOption::new(
+                    CommandOptionType::String,
+                    "url",
+                    "The url to download from",
+                )
+                .required(true),
+            )
+            .add_integration_type(InstallationContext::User),
+        CreateCommand::new(UserCommand::download_from_message_link.to_string())
+            .add_integration_type(InstallationContext::User)
+            .kind(CommandType::Message),
     ];
     commands.append(&mut create_markov_commands());
     commands.append(&mut create_voice_commands());
