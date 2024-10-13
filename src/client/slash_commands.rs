@@ -20,6 +20,7 @@ use serenity::{
     all::{
         Command, CommandInteraction, CommandOptionType, CommandType,
         CreateInteractionResponseMessage, EditInteractionResponse, InstallationContext,
+        InteractionContext,
     },
     builder::{CreateCommand, CreateCommandOption, CreateInteractionResponse},
     client::Context,
@@ -188,6 +189,19 @@ pub async fn create_global_commands(ctx: &Context) {
         CreateCommand::new(UserCommand::help.to_string())
             .description("Information about my commands"),
         CreateCommand::new(UserCommand::version.to_string()).description("My current version"),
+    ];
+    commands.append(&mut create_download_commands());
+    commands.append(&mut create_markov_commands());
+    commands.append(&mut create_voice_commands());
+    commands.push(create_tag_commands());
+
+    Command::set_global_commands(&ctx.http, commands)
+        .await
+        .expect("Couldn't create global slash commands");
+}
+
+fn create_download_commands() -> Vec<CreateCommand> {
+    vec![
         CreateCommand::new(UserCommand::download.to_string())
             .description("download a video or audio file from a url")
             .add_option(
@@ -199,19 +213,16 @@ pub async fn create_global_commands(ctx: &Context) {
                 .required(true),
             )
             .add_integration_type(InstallationContext::User)
-            .add_integration_type(InstallationContext::Guild),
+            .add_integration_type(InstallationContext::Guild)
+            .add_context(InteractionContext::Guild)
+            .add_context(InteractionContext::PrivateChannel),
         CreateCommand::new(UserCommand::download_from_message_link.to_string())
             .add_integration_type(InstallationContext::User)
             .add_integration_type(InstallationContext::Guild)
+            .add_context(InteractionContext::Guild)
+            .add_context(InteractionContext::PrivateChannel)
             .kind(CommandType::Message),
-    ];
-    commands.append(&mut create_markov_commands());
-    commands.append(&mut create_voice_commands());
-    commands.push(create_tag_commands());
-
-    Command::set_global_commands(&ctx.http, commands)
-        .await
-        .expect("Couldn't create global slash commands");
+    ]
 }
 
 /// For testing purposes. Creates commands for a specific guild
