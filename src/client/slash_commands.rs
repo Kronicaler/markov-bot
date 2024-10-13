@@ -198,9 +198,11 @@ pub async fn create_global_commands(ctx: &Context) {
                 )
                 .required(true),
             )
-            .add_integration_type(InstallationContext::User),
+            .add_integration_type(InstallationContext::User)
+            .add_integration_type(InstallationContext::Guild),
         CreateCommand::new(UserCommand::download_from_message_link.to_string())
             .add_integration_type(InstallationContext::User)
+            .add_integration_type(InstallationContext::Guild)
             .kind(CommandType::Message),
     ];
     commands.append(&mut create_markov_commands());
