@@ -47,7 +47,7 @@ RUN --mount=type=cache,target=/root/.cache touch src/main.rs && \
 
 FROM debian:bookworm-slim AS release
 
-RUN apt-get update && apt-get install --no-install-recommends -y libssl3 libopus-dev curl ca-certificates python3 && rm -rf /var/lib/apt/lists/*;
+RUN apt-get update && apt-get install --no-install-recommends -y ffmpeg libssl3 libopus-dev curl ca-certificates python3 && rm -rf /var/lib/apt/lists/*;
 
 RUN curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp;
 RUN chmod a+rx /usr/local/bin/yt-dlp;
