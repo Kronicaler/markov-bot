@@ -28,25 +28,19 @@ pub async fn shuffle_queue(ctx: &Context, guild_id: GuildId) -> &'static str {
             queue.modify_queue(|q| {
                 let mut vec: Vec<Queued> = vec![];
 
-                let current_song = q.pop_front().unwrap();
-                while !q.is_empty() {
-                    let queued_song = q.pop_front().unwrap();
+                while q.len() > 1 {
+                    let queued_song = q.pop_back().unwrap();
 
                     vec.push(queued_song);
                 }
 
                 vec.shuffle(&mut thread_rng());
 
-                q.clear();
-
-                q.push_front(current_song);
-
                 while let Some(element) = vec.pop() {
                     q.push_back(element);
                 }
             });
 
-            queue.resume().unwrap();
             drop(call);
 
             let cloned_ctx = ctx.clone();
