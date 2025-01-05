@@ -11,7 +11,6 @@ edition = "2021"
 tokio = { version = "1.40", features = ["macros", "rt-multi-thread", "signal"] }
 serde_json = "1.0"
 regex = "1.11"
-markov_strings = "0.1.5"
 dotenvy = "0.15"
 crossbeam = "0.8"
 rayon = "1.9"
@@ -48,6 +47,7 @@ serenity = { version = "0.12", features = [
 songbird = { version = "0.4", features = ["builtin-queue", "serenity"] }
 infer = "0.16.0"
 uuid = "1.11"
+markov_str = { version = "0.3.0", features = ["serde", "serialize"] }
 
 [dependencies.symphonia]
 version = "0.5"

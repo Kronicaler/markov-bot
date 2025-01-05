@@ -5,7 +5,7 @@ use super::{
 };
 use crate::client::file_operations::create_file_if_missing;
 use anyhow::{Context, Result};
-use markov_strings::{ImportExport, InputData};
+use markov_str::MarkovChain;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use std::{
     fs::{self, OpenOptions},
@@ -43,50 +43,39 @@ pub fn clean_markov_file() {
 }
 
 #[instrument]
-pub fn export_corpus_to_file(export: &ImportExport) -> Result<(), std::io::Error> {
-    fs::write(
-        MARKOV_EXPORT_PATH,
-        serde_json::to_string(&export).expect("Serialization failed"),
-    )
-}
-
-#[instrument]
-pub fn import_corpus_from_file() -> Result<ImportExport> {
+pub fn import_chain_from_file() -> Result<MarkovChain> {
     let file_contents = info_span!("Reading file").in_scope(|| {
         let x = create_file_if_missing(MARKOV_EXPORT_PATH, "").context("Failed to create file")?;
         fs::read_to_string(x).context("Failed to read file")
     })?;
 
     let import_export = info_span!("Parsing file contents")
-        .in_scope(|| serde_json::from_str::<ImportExport>(&file_contents))?;
+        .in_scope(|| serde_json::from_str::<MarkovChain>(&file_contents))?;
 
     Ok(import_export)
 }
 
 #[instrument]
 /// Reads the Markov data set from [`MARKOV_DATA_SET_PATH`]
-pub fn import_messages_from_file() -> Result<Vec<InputData>> {
+pub fn get_messages_from_file() -> Result<Vec<String>> {
     let text_from_file = fs::read_to_string(create_file_if_missing(MARKOV_DATA_SET_PATH, "")?)?;
     let text_array: Vec<&str> = text_from_file.split("\n\n").collect();
-    Ok(text_array
-        .into_par_iter()
-        .map(|message| InputData {
-            text: message.to_owned(),
-            meta: None,
-        })
-        .collect())
+    Ok(text_array.into_par_iter().map(|s| s.to_owned()).collect())
 }
 
 #[instrument]
-pub fn generate_new_corpus_from_msg_file() -> Result<ImportExport> {
-    let messages = import_messages_from_file()?;
+/// also writes the serialized version to file
+pub fn generate_new_chain_from_msg_file() -> Result<MarkovChain> {
+    let messages = get_messages_from_file()?;
 
     let mut markov = create_default_chain();
-    markov.add_to_corpus(messages);
+    for msg in messages {
+        markov.add_text(&msg);
+    }
 
-    let export = markov.export();
+    let export = serde_json::to_string(&markov)?;
 
-    export_corpus_to_file(&export)?;
+    fs::write(MARKOV_EXPORT_PATH, export)?;
 
-    Ok(export)
+    Ok(markov)
 }

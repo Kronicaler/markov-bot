@@ -1,12 +1,12 @@
-use markov_strings::Markov;
+use markov_str::MarkovChain;
 use serenity::prelude::{RwLock, TypeMap, TypeMapKey};
 use std::sync::Arc;
 
-use super::{create_default_chain_from_export, file_operations::generate_new_corpus_from_msg_file};
+use super::file_operations::generate_new_chain_from_msg_file;
 
-pub struct MarkovChain;
-impl TypeMapKey for MarkovChain {
-    type Value = Arc<RwLock<Markov>>;
+pub struct MyMarkovChain;
+impl TypeMapKey for MyMarkovChain {
+    type Value = Arc<RwLock<MarkovChain>>;
 }
 pub const MARKOV_DATA_SET_PATH: &str = "data/markov data/markov data set.txt";
 pub const MARKOV_EXPORT_PATH: &str = "data/markov data/corpus.json";
@@ -27,11 +27,11 @@ pub struct MarkovBlacklistedServer {
 }
 
 #[tracing::instrument(skip(data))]
-pub async fn get_markov_chain_lock(data: &Arc<RwLock<TypeMap>>) -> Arc<RwLock<Markov>> {
+pub async fn get_markov_chain_lock(data: &Arc<RwLock<TypeMap>>) -> Arc<RwLock<MarkovChain>> {
     let markov_chain_lock = data
         .read()
         .await
-        .get::<MarkovChain>()
+        .get::<MyMarkovChain>()
         .expect("expected MarkovChain in TypeMap")
         .clone();
     markov_chain_lock
@@ -41,13 +41,11 @@ pub async fn get_markov_chain_lock(data: &Arc<RwLock<TypeMap>>) -> Arc<RwLock<Ma
 pub async fn replace_markov_chain_lock(data: &Arc<RwLock<TypeMap>>) {
     let mut type_map = data.write().await;
 
-    let markov_chain = type_map.remove::<MarkovChain>();
+    let markov_chain = type_map.remove::<MyMarkovChain>();
 
     drop(markov_chain);
 
-    let corpus = generate_new_corpus_from_msg_file().unwrap();
+    let chain = generate_new_chain_from_msg_file().unwrap();
 
-    type_map.insert::<MarkovChain>(Arc::new(RwLock::new(create_default_chain_from_export(
-        corpus,
-    ))));
+    type_map.insert::<MyMarkovChain>(Arc::new(RwLock::new(chain)));
 }

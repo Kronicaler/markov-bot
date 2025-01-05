@@ -11,11 +11,13 @@ use self::{
         delete_markov_blacklisted_server, delete_markov_blacklisted_user,
         get_markov_blacklisted_channel, get_markov_blacklisted_server, get_markov_blacklisted_user,
     },
-    file_operations::{export_corpus_to_file, import_corpus_from_file, import_messages_from_file},
+    file_operations::{get_messages_from_file, import_chain_from_file},
     markov_chain::filter_message_for_markov_file,
     model::{get_markov_chain_lock, replace_markov_chain_lock, MARKOV_EXPORT_PATH},
 };
-use markov_strings::{ImportExport, Markov};
+use markov_str::MarkovChain;
+use rand::Rng;
+use regex::Regex;
 use serenity::{
     all::{CommandInteraction, CreateInteractionResponseMessage, User},
     builder::CreateInteractionResponse,
@@ -24,7 +26,7 @@ use serenity::{
     prelude::{RwLock, TypeMap},
 };
 use sqlx::{MySql, MySqlPool, Pool};
-use std::{error::Error, sync::Arc};
+use std::{error::Error, fs, sync::Arc};
 use tokio::sync::RwLockWriteGuard;
 use tracing::{info_span, instrument, Instrument};
 
@@ -70,75 +72,68 @@ pub async fn add_message_to_chain(
 }
 
 #[tracing::instrument(skip(ctx))]
-pub async fn generate_sentence(ctx: &Context) -> String {
+pub async fn generate_sentence(ctx: &Context, start: Option<&str>) -> String {
     let markov_lock = get_markov_chain_lock(&ctx.data).await;
 
     let markov_chain = markov_lock.read().await;
 
-    match markov_chain.generate() {
-        Ok(markov_result) => {
-            let mut message = markov_result.text;
+    let output = match start {
+        Some(start) => markov_chain
+            .generate_start(
+                &(start.to_owned() + " "),
+                rand::thread_rng().gen_range(2..50),
+                &mut rand::thread_rng(),
+            )
+            .and_then(|o| Some(start.to_owned() + " " + &o)),
+        None => markov_chain.generate(rand::thread_rng().gen_range(2..50), &mut rand::thread_rng()),
+    };
+
+    match output {
+        Some(mut message) => {
             if cfg!(debug_assertions) {
                 message += " --debug";
             }
             message
         }
-        Err(why) => match why {
-            markov_strings::ErrorType::CorpusEmpty => "The corpus is empty, try again later!",
-            markov_strings::ErrorType::TriesExceeded => "couldn't generate a sentence, try again!",
-            markov_strings::ErrorType::CorpusNotEmpty => "Try again later.",
-        }
-        .to_owned(),
+        None => "Couldn't generate a sentence due to not having enough data, try again later!"
+            .to_owned(),
     }
 }
 
 #[instrument]
 /// Initializes the Markov chain from [`MARKOV_EXPORT_PATH`][model::MARKOV_EXPORT_PATH]
-pub fn init() -> Result<Markov, Box<dyn Error>> {
+pub fn init() -> Result<MarkovChain, Box<dyn Error>> {
     let mut markov_chain = create_default_chain();
 
     if !std::path::Path::new(MARKOV_EXPORT_PATH).exists() {
-        let input_data = import_messages_from_file()?;
+        let messages = get_messages_from_file()?;
 
         info_span!("Add markov data to corpus").in_scope(|| {
-            markov_chain.add_to_corpus(input_data);
+            for msg in messages {
+                markov_chain.add_text(&msg);
+            }
         });
 
-        export_corpus_to_file(&markov_chain.export())?;
+        let export = serde_json::to_string(&markov_chain)?;
+        fs::write(MARKOV_EXPORT_PATH, export)?;
+
+        return Ok(markov_chain);
     }
 
-    markov_chain = create_default_chain_from_export(import_corpus_from_file()?);
+    markov_chain = import_chain_from_file()?;
 
     Ok(markov_chain)
 }
 
 pub const MARKOV_STATE_SIZE: usize = 4;
-pub const MARKOV_MAX_TRIES: u16 = 5000;
 
 #[instrument]
-fn create_default_chain() -> Markov {
-    let mut markov_chain = Markov::new();
+fn create_default_chain() -> MarkovChain {
+    let markov_chain = MarkovChain::new(
+        MARKOV_STATE_SIZE,
+        Regex::new(markov_str::WORD_REGEX).unwrap(),
+    );
     markov_chain
-        .set_state_size(MARKOV_STATE_SIZE)
-        .expect("Will never fail");
-    markov_chain.set_max_tries(MARKOV_MAX_TRIES);
-    markov_chain.set_filter(markov_filter);
-    markov_chain
-}
-
-#[instrument(skip(export))]
-fn create_default_chain_from_export(export: ImportExport) -> Markov {
-    let mut markov_chain = Markov::from_export(export);
-    markov_chain.set_max_tries(MARKOV_MAX_TRIES);
-    markov_chain.set_filter(markov_filter);
-    markov_chain
-}
-
-fn markov_filter(r: &markov_strings::MarkovResult) -> bool {
-    if r.score >= 10 {
-        return true;
-    }
-    false
 }
 
 #[tracing::instrument(skip(ctx))]
@@ -328,6 +323,6 @@ pub async fn stop_saving_messages_server(
 pub fn init_markov_data(data: &mut RwLockWriteGuard<TypeMap>) -> Result<(), Box<dyn Error>> {
     let markov = init()?;
 
-    data.insert::<model::MarkovChain>(Arc::new(RwLock::new(markov)));
+    data.insert::<model::MyMarkovChain>(Arc::new(RwLock::new(markov)));
     Ok(())
 }

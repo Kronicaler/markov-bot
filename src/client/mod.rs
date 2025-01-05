@@ -7,6 +7,8 @@ pub mod tags;
 pub mod voice;
 
 use global_data::{init_global_data_for_client, HELP_MESSAGE};
+use itertools::Itertools;
+use regex::Regex;
 use slash_commands::{command_responses, create_global_commands, create_test_commands};
 use sqlx::{MySql, Pool};
 use tracing::{info_span, Instrument};
@@ -210,11 +212,29 @@ and the users can choose themselves if they don't want their messages saved (/st
                     return;
                 }
 
-                msg.channel_id
-                    .say(&ctx.http, markov::generate_sentence(&ctx).await)
-                    .instrument(info_span!("Sending message"))
-                    .await
-                    .expect("Couldn't send message");
+                if words_in_message.len() > 1 {
+                    let user_regex = Regex::new(r"<@!?(\d+)>").expect("Invalid regular expression");
+
+                    let sanitized_message = words_in_message
+                        .into_iter()
+                        .filter(|w| !user_regex.is_match(&w))
+                        .join(" ");
+
+                    msg.channel_id
+                        .say(
+                            &ctx.http,
+                            markov::generate_sentence(&ctx, Some(&sanitized_message)).await,
+                        )
+                        .instrument(info_span!("Sending message"))
+                        .await
+                        .expect("Couldn't send message");
+                } else {
+                    msg.channel_id
+                        .say(&ctx.http, markov::generate_sentence(&ctx, None).await)
+                        .instrument(info_span!("Sending message"))
+                        .await
+                        .expect("Couldn't send message");
+                }
             }
             .instrument(info_span!("Mentioned"))
             .await;
