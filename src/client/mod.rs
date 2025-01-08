@@ -183,26 +183,12 @@ and the users can choose themselves if they don't want their messages saved (/st
             .map(ToString::to_string)
             .collect::<Vec<String>>();
 
-        if msg.guild_id.is_some() {
-            if let Some(response) = check_for_tag_listeners(
-                &words_in_message,
-                msg.author.id,
-                msg.guild_id.unwrap().get(),
-                &self.pool,
-            )
-            .await
-            {
-                respond_to_tag(&ctx, &msg, &response, &self.pool).await;
-                return;
-            }
-        }
-
         if msg
             .mentions_me(&ctx.http)
             .await
             .expect("Couldn't read cache")
         {
-            async move {
+            async {
                 if words_in_message.contains(&"help".to_owned()) {
                     msg.channel_id
                         .say(&ctx.http, HELP_MESSAGE)
@@ -216,7 +202,7 @@ and the users can choose themselves if they don't want their messages saved (/st
                     let user_regex = Regex::new(r"<@!?(\d+)>").expect("Invalid regular expression");
 
                     let sanitized_message = words_in_message
-                        .into_iter()
+                        .iter()
                         .filter(|w| !user_regex.is_match(&w))
                         .join(" ");
 
@@ -238,6 +224,20 @@ and the users can choose themselves if they don't want their messages saved (/st
             }
             .instrument(info_span!("Mentioned"))
             .await;
+        }
+
+        if msg.guild_id.is_some() {
+            if let Some(response) = check_for_tag_listeners(
+                &words_in_message,
+                msg.author.id,
+                msg.guild_id.unwrap().get(),
+                &self.pool,
+            )
+            .await
+            {
+                respond_to_tag(&ctx, &msg, &response, &self.pool).await;
+                return;
+            }
         }
     }
 
