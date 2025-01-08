@@ -224,6 +224,7 @@ and the users can choose themselves if they don't want their messages saved (/st
             }
             .instrument(info_span!("Mentioned"))
             .await;
+            return;
         }
 
         if msg.guild_id.is_some() {
