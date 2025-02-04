@@ -1,7 +1,7 @@
-FROM rust:slim-bookworm AS builder
+FROM rust:slim-bookworm AS builder-1
 WORKDIR /app
 
-RUN apt-get update && apt-get install --no-install-recommends -y pkg-config openssl libssl-dev build-essential wget && rm -rf /var/lib/apt/lists/*;
+RUN apt-get update && apt-get install -y cmake pkg-config openssl libssl-dev build-essential wget && rm -rf /var/lib/apt/lists/*;
 
 ENV SCCACHE_VERSION=0.5.0
 
@@ -22,10 +22,13 @@ RUN ARCH= && alpineArch="$(dpkg --print-architecture)" \
 
 ENV RUSTC_WRAPPER=/usr/local/bin/sccache
 
+RUN rustup default nightly
+RUN rustup update
+
+FROM builder-1 AS builder-2
+
 # Pre-compile dependencies
 WORKDIR /build
-
-RUN apt-get update && apt-get install --no-install-recommends -y cmake && rm -rf /var/lib/apt/lists/*;
 
 RUN cargo init --name rust-docker
 
@@ -35,6 +38,8 @@ RUN --mount=type=cache,target=/root/.cache cargo fetch && \
     cargo build && \
     cargo build --release && \
     rm src/*.rs
+
+FROM builder-2 AS builder-3
 
 # Build the project
 COPY src src
@@ -52,7 +57,8 @@ RUN apt-get update && apt-get install --no-install-recommends -y ffmpeg libssl3 
 RUN curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp;
 RUN chmod a+rx /usr/local/bin/yt-dlp;
 
-WORKDIR /app
-COPY --link --from=builder /build/target/release/markov_bot /app/markov_bot
+COPY --link --from=builder-3 /build/target/release/markov_bot /app/markov_bot
 
-ENTRYPOINT ["/app/markov_bot"]
+WORKDIR /app
+ENTRYPOINT ["./markov_bot"]
+
