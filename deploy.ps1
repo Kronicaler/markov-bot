@@ -1,0 +1,1 @@
+docker build . --tag kronicaler/markov_bot && docker push kronicaler/markov_bot
