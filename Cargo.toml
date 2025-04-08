@@ -8,7 +8,7 @@ authors = ["Kroni"]
 edition = "2021"
 
 [dependencies]
-tokio = { version = "1.40", features = ["macros", "rt-multi-thread", "signal"] }
+tokio = { version = "1.43", features = ["macros", "rt-multi-thread", "signal"] }
 serde_json = "1.0"
 regex = "1.11"
 dotenvy = "0.15"
