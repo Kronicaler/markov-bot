@@ -101,7 +101,7 @@ pub async fn command_responses(command: &CommandInteraction, ctx: Context, pool:
             UserCommand::ping => ping_command(ctx, command).await,
             UserCommand::download => download_command(ctx, command).await,
             UserCommand::download_from_message_link => {
-                download_from_message_command(ctx, command).await
+                download_from_message_command(ctx, command).await;
             }
             UserCommand::id => user_id_command(ctx, command).await,
             UserCommand::stop_saving_my_messages => {

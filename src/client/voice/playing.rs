@@ -62,13 +62,7 @@ async fn create_playing_embed(
     let track_handle = queue.current().unwrap();
 
     let song = track_handle
-        .typemap()
-        .read()
-        .await
-        .get::<MyAuxMetadata>()
-        .unwrap()
-        .read()
-        .await
+        .data::<MyAuxMetadata>()
         .0
         .clone();
     //create embed

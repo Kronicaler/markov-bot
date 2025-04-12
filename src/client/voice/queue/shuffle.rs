@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use rand::{seq::SliceRandom, thread_rng};
+use rand::seq::SliceRandom;
 use serenity::all::{Context, GuildId};
 use songbird::tracks::Queued;
 use tokio::time::timeout;
@@ -34,7 +34,7 @@ pub async fn shuffle_queue(ctx: &Context, guild_id: GuildId) -> &'static str {
                     vec.push(queued_song);
                 }
 
-                vec.shuffle(&mut thread_rng());
+                vec.shuffle(&mut rand::thread_rng());
 
                 while let Some(element) = vec.pop() {
                     q.push_back(element);

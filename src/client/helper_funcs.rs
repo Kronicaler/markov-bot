@@ -1,7 +1,7 @@
 use serenity::{
     all::{
         CommandDataOptionValue, CommandInteraction, CommandOptionType, CreateAttachment,
-        CreateInteractionResponseMessage, EditInteractionResponse,
+        CreateInteractionResponseMessage, EditInteractionResponse, ResolvedValue,
     },
     builder::CreateInteractionResponse,
     client::Context,
@@ -63,13 +63,12 @@ pub async fn ping_command(ctx: Context, command: &CommandInteraction) {
 pub async fn download_command(ctx: Context, command: &CommandInteraction) {
     command.defer(&ctx.http).await.unwrap();
 
-    let query = match command.data.options()[0].value {
-        serenity::all::ResolvedValue::String(s) => s,
-        _ => panic!("unknown command"),
+    let ResolvedValue::String(query) = command.data.options()[0].value else {
+        panic!("unknown command")
     };
 
     let attachment_bytes = tokio::process::Command::new("yt-dlp")
-        .args(["yt-dlp", "-o", "-", &query])
+        .args(["yt-dlp", "-o", "-", query])
         .output()
         .await
         .unwrap()
@@ -130,7 +129,7 @@ pub async fn download_from_message_command(ctx: Context, command: &CommandIntera
     };
 
     let attachment_bytes = tokio::process::Command::new("yt-dlp")
-        .args(["yt-dlp", "-o", "-", &query.as_str()])
+        .args(["yt-dlp", "-o", "-", query.as_str()])
         .output()
         .await
         .unwrap()

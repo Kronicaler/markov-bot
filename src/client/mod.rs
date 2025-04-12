@@ -203,7 +203,7 @@ and the users can choose themselves if they don't want their messages saved (/st
 
                     let sanitized_message = words_in_message
                         .iter()
-                        .filter(|w| !user_regex.is_match(&w))
+                        .filter(|w| !user_regex.is_match(w))
                         .join(" ");
 
                     msg.channel_id

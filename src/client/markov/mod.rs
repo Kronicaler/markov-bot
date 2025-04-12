@@ -83,8 +83,7 @@ pub async fn generate_sentence(ctx: &Context, start: Option<&str>) -> String {
                 &(start.to_owned() + " "),
                 rand::thread_rng().gen_range(2..50),
                 &mut rand::thread_rng(),
-            )
-            .and_then(|o| Some(start.to_owned() + " " + &o)),
+            ).map(|o| start.to_owned() + " " + &o),
         None => markov_chain.generate(rand::thread_rng().gen_range(2..50), &mut rand::thread_rng()),
     };
 
@@ -129,11 +128,11 @@ pub const MARKOV_STATE_SIZE: usize = 4;
 
 #[instrument]
 fn create_default_chain() -> MarkovChain {
-    let markov_chain = MarkovChain::new(
+    
+    MarkovChain::new(
         MARKOV_STATE_SIZE,
         Regex::new(markov_str::WORD_REGEX).unwrap(),
-    );
-    markov_chain
+    )
 }
 
 #[tracing::instrument(skip(ctx))]

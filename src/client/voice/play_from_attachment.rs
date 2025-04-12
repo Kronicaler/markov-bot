@@ -7,8 +7,7 @@ use crate::client::voice::play::{add_track_start_event, voice_channel_not_found_
 use serenity::all::CommandInteraction;
 use serenity::builder::EditInteractionResponse;
 use serenity::prelude::Context;
-use songbird::input::Input;
-use tokio::sync::RwLock;
+use songbird::tracks::Track;
 use tracing::info_span;
 use tracing::{self, Instrument};
 
@@ -89,8 +88,7 @@ pub async fn play_from_attachment(ctx: &Context, command: &CommandInteraction) {
             .guild_id
             .unwrap()
             .to_guild_cached(&ctx.cache)
-            .unwrap()
-            .to_owned(),
+            .unwrap(),
         command.user.id,
     ) else {
         voice_channel_not_found_response(command, ctx).await;
@@ -114,16 +112,12 @@ pub async fn play_from_attachment(ctx: &Context, command: &CommandInteraction) {
 
         let mut call = call_lock.lock().await;
 
-        let input: Input = attachment.download().await.unwrap().into();
         let my_metadata = MyAuxMetadata::default();
-
-        let track_handle = call.enqueue_input(input).await;
-
-        track_handle
-            .typemap()
-            .write()
-            .await
-            .insert::<MyAuxMetadata>(Arc::new(RwLock::new(my_metadata)));
+        let track = Track::new_with_data(
+            attachment.download().await.unwrap().into(),
+            Arc::new(my_metadata),
+        );
+        call.enqueue(track).await;
 
         command
             .edit_response(

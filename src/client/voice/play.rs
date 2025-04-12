@@ -19,11 +19,11 @@ use serenity::{
     all::{Colour, CommandDataOptionValue, CommandInteraction, GuildId},
     builder::{CreateActionRow, CreateEmbed, EditInteractionResponse},
     client::Context,
-    prelude::{Mutex, RwLock},
+    prelude::Mutex,
 };
 use songbird::{
     input::{AuxMetadata, Input, YoutubeDl},
-    tracks::TrackQueue,
+    tracks::{Track, TrackQueue},
     TrackEvent,
 };
 use std::{collections::VecDeque, sync::Arc, time::Duration};
@@ -85,11 +85,11 @@ pub async fn play(ctx: &Context, command: &CommandInteraction) {
     let source = get_source(query.clone()).await;
 
     match source {
-        Some(SourceType::Video(source, metadata)) => {
-            handle_video(source.into(), metadata, command, ctx, &call_lock).await;
+        Some(SourceType::Video(input, metadata)) => {
+            handle_video(input, metadata, command, ctx, &call_lock).await;
         }
-        Some(SourceType::Playlist(sources)) => {
-            handle_playlist(sources, command, ctx, call_lock).await;
+        Some(SourceType::Playlist(inputs)) => {
+            handle_playlist(inputs, command, ctx, call_lock).await;
         }
         None => {
             command
@@ -115,48 +115,36 @@ pub async fn handle_video(
     let mut call = timeout(Duration::from_secs(30), call_lock.lock())
         .await
         .unwrap();
-    let track_handle = call.enqueue_input(input).await;
     let my_metadata = MyAuxMetadata(metadata.clone());
-
-    track_handle
-        .typemap()
-        .write()
-        .await
-        .insert::<MyAuxMetadata>(Arc::new(RwLock::new(my_metadata)));
+    let track = Track::new_with_data(input, Arc::new(my_metadata));
+    call.enqueue(track).await;
 
     return_response(&metadata, call.queue(), command, ctx, false).await;
 }
 
-#[tracing::instrument(skip(sources,ctx,call_lock), fields(sources.length=sources.len()))]
+#[tracing::instrument(skip(inputs,ctx,call_lock), fields(inputs.length=inputs.len()))]
 async fn handle_playlist(
-    mut sources: VecDeque<YoutubeDl>,
+    mut inputs: VecDeque<Input>,
     command: &CommandInteraction,
     ctx: &Context,
     call_lock: Arc<Mutex<songbird::Call>>,
 ) {
-    if sources.is_empty() {
+    if inputs.is_empty() {
         invalid_link_response(command, ctx).await;
         return;
     }
 
     {
         async {
-            let source = sources.pop_front().unwrap();
-            let mut input: Input = source.into();
+            let mut input = inputs.pop_front().unwrap();
             let metadata = input.aux_metadata().await.unwrap_or_default();
             let mut call = timeout(Duration::from_secs(30), call_lock.lock())
                 .await
                 .unwrap();
 
-            let track_handle = call.enqueue_input(input).await;
-
             let my_metadata = MyAuxMetadata(metadata.clone());
-
-            track_handle
-                .typemap()
-                .write()
-                .await
-                .insert::<MyAuxMetadata>(Arc::new(RwLock::new(my_metadata)));
+            let track = Track::new_with_data(input, Arc::new(my_metadata));
+            call.enqueue(track).await;
 
             return_response(&metadata, call.queue(), command, ctx, true).await;
         }
@@ -164,18 +152,16 @@ async fn handle_playlist(
         .await;
     }
 
-    fill_queue(sources, call_lock, ctx, command.guild_id.unwrap()).await;
+    fill_queue(inputs, call_lock, ctx, command.guild_id.unwrap()).await;
 }
 
-#[tracing::instrument(skip(sources,call_lock,ctx), fields(sources.length=sources.len()))]
+#[tracing::instrument(skip(inputs,call_lock,ctx), fields(inputs.length=inputs.len()))]
 async fn fill_queue(
-    sources: VecDeque<YoutubeDl>,
+    inputs: VecDeque<Input>,
     call_lock: Arc<Mutex<songbird::Call>>,
     ctx: &Context,
     guild_id: GuildId,
 ) {
-    let inputs: VecDeque<Input> = sources.into_iter().map(Into::into).collect();
-
     let queue_data_lock = get_queue_data_lock(&ctx.data).await;
 
     queue_data_lock
@@ -267,14 +253,8 @@ async fn fill_queue(
                 }
 
                 let my_metadata = MyAuxMetadata(metadata);
-
-                let track_handle = call_lock.lock().await.enqueue_input(input).await;
-
-                track_handle
-                    .typemap()
-                    .write()
-                    .await
-                    .insert::<MyAuxMetadata>(Arc::new(RwLock::new(my_metadata)));
+                let track = Track::new_with_data(input, Arc::new(my_metadata));
+                call_lock.lock().await.enqueue(track).await;
             }
 
             let ctx = ctx.clone();
@@ -355,7 +335,7 @@ pub async fn voice_channel_not_found_response(command: &CommandInteraction, ctx:
 
 enum SourceType {
     Video(Input, AuxMetadata),
-    Playlist(VecDeque<YoutubeDl>),
+    Playlist(VecDeque<Input>),
 }
 
 #[tracing::instrument]
@@ -390,7 +370,7 @@ async fn get_source(query: String) -> Option<SourceType> {
                     format!("https://www.youtube.com/watch?v={id}"),
                 );
 
-                songs_in_playlist.push_back(song);
+                songs_in_playlist.push_back(song.into());
             });
 
             return Some(SourceType::Playlist(songs_in_playlist));
@@ -411,9 +391,7 @@ async fn get_source(query: String) -> Option<SourceType> {
             .unwrap()
             .stdout;
 
-        let Some(file_type) = infer::get(&video_stream_bytes) else {
-            return None;
-        };
+        let file_type = infer::get(&video_stream_bytes)?;
 
         if file_type.matcher_type() != MatcherType::Audio
             && file_type.matcher_type() != MatcherType::Video
@@ -424,11 +402,13 @@ async fn get_source(query: String) -> Option<SourceType> {
         let mut input: Input = video_stream_bytes.into();
 
         let metadata = input.aux_metadata().await.unwrap_or_else(|_| {
-            let mut metadata = AuxMetadata::default();
-            metadata.source_url = Some(query.clone());
-            metadata.track = Some(query.clone());
-            metadata.title = Some(query);
-            return metadata;
+            let metadata = AuxMetadata {
+                source_url: Some(query.clone()),
+                track: Some(query.clone()),
+                title: Some(query),
+                ..Default::default()
+            };
+            metadata
         });
 
         return Some(SourceType::Video(input, metadata));
@@ -452,7 +432,7 @@ async fn return_response(
 
     let time = metadata.duration.unwrap_or_else(|| Duration::new(0, 0));
 
-    let durations = get_queue_durations(queue).await;
+    let durations = get_queue_durations(queue);
 
     let time_before_song = durations
         .into_iter()
@@ -510,19 +490,13 @@ async fn return_response(
     }
 }
 
-async fn get_queue_durations(queue: &TrackQueue) -> Vec<Duration> {
+fn get_queue_durations(queue: &TrackQueue) -> Vec<Duration> {
     let mut durations = vec![];
 
     for track in queue.current_queue() {
         durations.push(
             track
-                .typemap()
-                .read()
-                .await
-                .get::<MyAuxMetadata>()
-                .unwrap()
-                .read()
-                .await
+                .data::<MyAuxMetadata>()
                 .0
                 .duration
                 .unwrap_or_else(|| Duration::from_secs(0)),

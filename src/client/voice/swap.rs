@@ -104,8 +104,8 @@ pub async fn swap(ctx: &Context, command: &CommandInteraction) {
         return;
     };
 
-    let first_track = get_track_from_queue(queue, first_track_pos).await;
-    let second_track = get_track_from_queue(queue, second_track_pos).await;
+    let first_track = get_track_from_queue(queue, first_track_pos);
+    let second_track = get_track_from_queue(queue, second_track_pos);
 
     let (Some(first_track), Some(second_track)) = (first_track, second_track) else {
         track_not_in_queue_response(command, ctx).await;
@@ -163,19 +163,14 @@ and
         .expect("Error creating interaction response");
 }
 
-async fn get_track_from_queue(queue: &TrackQueue, track_number: usize) -> Option<MyAuxMetadata> {
-    let second_track = queue
+fn get_track_from_queue(queue: &TrackQueue, track_number: usize) -> Option<MyAuxMetadata> {
+    let track_metadata = (*queue
         .current_queue()
         .get(track_number - 1)?
-        .typemap()
-        .read()
-        .await
-        .get::<MyAuxMetadata>()?
-        .read()
-        .await
-        .clone();
+        .data::<MyAuxMetadata>())
+    .clone();
 
-    Some(second_track)
+    Some(track_metadata)
 }
 
 async fn invalid_number_response(command: &CommandInteraction, ctx: &Context) {

@@ -76,19 +76,13 @@ pub async fn queue(ctx: &Context, command: &CommandInteraction) {
     }
 }
 
-async fn get_queue_duration(queue: &songbird::tracks::TrackQueue) -> String {
+fn get_queue_duration(queue: &songbird::tracks::TrackQueue) -> String {
     let mut durations = vec![];
 
     for track in queue.current_queue() {
         durations.push(
             track
-                .typemap()
-                .read()
-                .await
-                .get::<MyAuxMetadata>()
-                .unwrap()
-                .read()
-                .await
+                .data::<MyAuxMetadata>()
                 .0
                 .duration
                 .unwrap_or_default(),
@@ -153,7 +147,7 @@ async fn create_queue_embed(
     queue: &songbird::tracks::TrackQueue,
     queue_start_index: usize,
 ) -> serenity::builder::CreateEmbed {
-    let duration = get_queue_duration(queue).await;
+    let duration = get_queue_duration(queue);
     let colour = Colour::from_rgb(149, 8, 2);
 
     let mut e = CreateEmbed::new()
@@ -183,13 +177,7 @@ pub async fn get_song_metadata_from_queue(
         .current_queue()
         .get(index_in_queue)
         .unwrap()
-        .typemap()
-        .read()
-        .await
-        .get::<MyAuxMetadata>()
-        .unwrap()
-        .read()
-        .await
+        .data::<MyAuxMetadata>()
         .0
         .clone();
 

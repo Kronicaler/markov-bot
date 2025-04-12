@@ -1,6 +1,5 @@
 use regex::{Captures, Regex};
 use serenity::model::channel::Message;
-use std::u64;
 
 const MIN_NUM_OF_WORDS: usize = 5;
 
@@ -69,7 +68,7 @@ pub fn filter_message_for_markov_file(msg: &Message) -> Option<String> {
         return None;
     }
 
-    return Some(filtered_message.trim().to_owned());
+    Some(filtered_message.trim().to_owned())
 }
 
 fn remove_links(msg: &Message) -> String {
@@ -162,5 +161,5 @@ pub fn filter_string_for_markov_file(msg: &str) -> String {
         }
     }
 
-    return filtered_message.trim().to_owned();
+    filtered_message.trim().to_owned()
 }

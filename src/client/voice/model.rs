@@ -32,30 +32,14 @@ pub trait HasAuxMetadata {
 #[async_trait]
 impl HasAuxMetadata for Queued {
     async fn get_aux_metadata(&self) -> AuxMetadata {
-        self.typemap()
-            .read()
-            .await
-            .get::<MyAuxMetadata>()
-            .unwrap()
-            .read()
-            .await
-            .0
-            .clone()
+        self.data::<MyAuxMetadata>().0.clone()
     }
 }
 
 #[async_trait]
 impl HasAuxMetadata for TrackHandle {
     async fn get_aux_metadata(&self) -> AuxMetadata {
-        self.typemap()
-            .read()
-            .await
-            .get::<MyAuxMetadata>()
-            .unwrap()
-            .read()
-            .await
-            .0
-            .clone()
+        self.data::<MyAuxMetadata>().0.clone()
     }
 }
 
@@ -80,7 +64,7 @@ impl TypeMapKey for QueueData {
 }
 
 impl VoiceMessages {
-    #[tracing::instrument(skip(ctx))]
+    #[tracing::instrument(skip(self, ctx,))]
     pub async fn get_last_message_type_in_channel(
         &self,
         guild_id: GuildId,
