@@ -10,7 +10,7 @@ use client::{file_operations, global_data, markov, start, tags, voice};
 use logging::setup_logging;
 use serenity::model::id::GuildId;
 use tokio::{process::Command, spawn, time::interval};
-use tracing::{error, info};
+use tracing::{error, info, info_span};
 
 #[tokio::main(flavor = "multi_thread")]
 async fn main() {
@@ -24,17 +24,20 @@ async fn main() {
 }
 
 async fn update_ytdlp_loop() {
+    let mut interval = interval(Duration::days(1).to_std().unwrap());
     loop {
-        let mut interval = interval(Duration::days(1).to_std().unwrap());
         interval.tick().await;
-
-        match Command::new("yt-dlp")
-            .args(["yt-dlp", "--update"])
-            .output()
-            .await
-        {
-            Ok(o) => info!("{:?}", String::from_utf8(o.stdout)),
-            Err(e) => error!(?e),
-        }
+        info_span!("updating_ytdlp")
+            .in_scope(async || {
+                match Command::new("yt-dlp")
+                    .args(["yt-dlp", "--update"])
+                    .output()
+                    .await
+                {
+                    Ok(o) => info!("{:?}", String::from_utf8(o.stdout)),
+                    Err(e) => error!(?e),
+                }
+            })
+            .await;
     }
 }
