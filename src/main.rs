@@ -34,7 +34,10 @@ async fn update_ytdlp_loop() {
                     .output()
                     .await
                 {
-                    Ok(o) => info!("{:?}", String::from_utf8(o.stdout)),
+                    Ok(o) => {
+                        info!("{:?}", String::from_utf8(o.stdout));
+                        error!("{:?}", String::from_utf8(o.stderr));
+                    }
                     Err(e) => error!(?e),
                 }
             })
