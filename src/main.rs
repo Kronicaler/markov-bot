@@ -28,19 +28,21 @@ async fn update_ytdlp_loop() {
     loop {
         interval.tick().await;
         info_span!("updating_ytdlp")
-            .in_scope(async || {
-                match Command::new("yt-dlp")
-                    .args(["yt-dlp", "--update"])
-                    .output()
-                    .await
-                {
+            .in_scope(
+                async || match Command::new("yt-dlp").args(["--update"]).output().await {
                     Ok(o) => {
-                        info!("{:?}", String::from_utf8(o.stdout));
-                        error!("{:?}", String::from_utf8(o.stderr));
+                        let stdout = String::from_utf8(o.stdout).unwrap();
+                        let stderr = String::from_utf8(o.stderr).unwrap();
+                        if !stdout.is_empty() {
+                            info!(stdout);
+                        }
+                        if !stderr.is_empty() {
+                            error!(stderr);
+                        }
                     }
                     Err(e) => error!(?e),
-                }
-            })
+                },
+            )
             .await;
     }
 }

@@ -12,9 +12,16 @@ use super::{
     queue::update_queue_message::update_queue_message,
     MyAuxMetadata, PeriodicHandler, TrackStartHandler,
 };
-use futures::future::join_all;
+use futures::{future::join_all, StreamExt};
 use infer::MatcherType;
+use itertools::Itertools;
 use reqwest::Client;
+use rspotify::{
+    http::HttpError,
+    model::{Country, Market, PlaylistId},
+    prelude::BaseClient,
+    ClientCredsSpotify, ClientError, Credentials,
+};
 use serenity::{
     all::{Colour, CommandDataOptionValue, CommandInteraction, GuildId},
     builder::{CreateActionRow, CreateEmbed, EditInteractionResponse},
@@ -29,6 +36,7 @@ use songbird::{
 use std::{collections::VecDeque, sync::Arc, time::Duration};
 use tokio::time::timeout;
 use tracing::{error, info, info_span, warn, Instrument};
+use url::Url;
 
 ///play song from youtube
 #[tracing::instrument(skip(ctx))]
@@ -82,7 +90,7 @@ pub async fn play(ctx: &Context, command: &CommandInteraction) {
         add_track_start_event(&mut call, command, ctx);
     }
     //get source from YouTube
-    let source = get_source(query.clone()).await;
+    let source = get_source(query).await;
 
     match source {
         Some(SourceType::Video(input, metadata)) => {
@@ -92,14 +100,8 @@ pub async fn play(ctx: &Context, command: &CommandInteraction) {
             handle_playlist(inputs, command, ctx, call_lock).await;
         }
         None => {
-            command
-                .edit_response(
-                    &ctx.http,
-                    EditInteractionResponse::new().content("Invalid link"),
-                )
-                .instrument(info_span!("Sending message"))
-                .await
-                .expect("Error creating interaction response");
+            info!("no sourcetype");
+            invalid_link_response(command, ctx).await;
         }
     }
 }
@@ -122,7 +124,7 @@ pub async fn handle_video(
     return_response(&metadata, call.queue(), command, ctx, false).await;
 }
 
-#[tracing::instrument(skip(inputs,ctx,call_lock), fields(inputs.length=inputs.len()))]
+#[tracing::instrument(skip(inputs, command, ctx, call_lock), fields(inputs.length=inputs.len()))]
 async fn handle_playlist(
     mut inputs: VecDeque<Input>,
     command: &CommandInteraction,
@@ -130,6 +132,7 @@ async fn handle_playlist(
     call_lock: Arc<Mutex<songbird::Call>>,
 ) {
     if inputs.is_empty() {
+        info!("no songs in playlist");
         invalid_link_response(command, ctx).await;
         return;
     }
@@ -155,7 +158,7 @@ async fn handle_playlist(
     fill_queue(inputs, call_lock, ctx, command.guild_id.unwrap()).await;
 }
 
-#[tracing::instrument(skip(inputs,call_lock,ctx), fields(inputs.length=inputs.len()))]
+#[tracing::instrument(skip(inputs, call_lock, ctx), fields(inputs.length=inputs.len()))]
 async fn fill_queue(
     inputs: VecDeque<Input>,
     call_lock: Arc<Mutex<songbird::Call>>,
@@ -344,16 +347,18 @@ async fn get_source(query: String) -> Option<SourceType> {
     regex::Regex::new(r#"(?:(?:https?|ftp)://|\b(?:[a-z\d]+\.))(?:(?:[^\s()<>]+|\((?:[^\s()<>]+|(?:\([^\s()<>]+\)))?\))+(?:\((?:[^\s()<>]+|(?:\(?:[^\s()<>]+\)))?\)|[^\s`!()\[\]{};:'".,<>?«»“”‘’]))?"#)
     .expect("Invalid regular expression");
 
-    let list_regex = regex::Regex::new(r"(&list).*|(\?list).*").unwrap();
-    let playlist_regex = regex::Regex::new(r"playlist\?list=").unwrap();
+    let spot_regex = regex::Regex::new(r"spotify.com").unwrap();
+    let spot_playlist_regex = regex::Regex::new(r"spotify.com/playlist").unwrap();
+    let spot_track_regex = regex::Regex::new(r"spotify.com/track").unwrap();
     let yt_regex = regex::Regex::new(r"^((?:https?:)?\/\/)?((?:www|m)\.)?((?:youtube(?:-nocookie)?\.com|youtu.be))(\/(?:[\w\-]+\?v=|embed\/|live\/|v\/)?)([\w\-]+)(\S+)?$").unwrap();
+    let yt_list_regex = regex::Regex::new(r"(&list).*|(\?list).*").unwrap();
+    let yt_playlist_regex = regex::Regex::new(r"youtube.*playlist\?list=").unwrap();
 
     if link_regex.is_match(&query) && yt_regex.is_match(&query) {
-        if playlist_regex.is_match(&query) {
-            let mut songs_in_playlist = VecDeque::default();
+        if yt_playlist_regex.is_match(&query) {
             let client = Client::new();
 
-            std::str::from_utf8(
+            let songs_in_playlist = std::str::from_utf8(
                 &tokio::process::Command::new("yt-dlp")
                     .args(["yt-dlp", "--flat-playlist", "--get-id", &query])
                     .output()
@@ -364,23 +369,80 @@ async fn get_source(query: String) -> Option<SourceType> {
             .unwrap()
             .split('\n')
             .filter(|f| !f.is_empty())
-            .for_each(|id| {
-                let song = YoutubeDl::new(
+            .map(|id| {
+                YoutubeDl::new(
                     client.clone(),
                     format!("https://www.youtube.com/watch?v={id}"),
-                );
-
-                songs_in_playlist.push_back(song.into());
-            });
+                )
+                .into()
+            })
+            .collect();
 
             return Some(SourceType::Playlist(songs_in_playlist));
         }
 
         // Remove breaking part of url
-        let query = list_regex.replace(&query, "").to_string();
+        let query = yt_list_regex.replace(&query, "").to_string();
         let mut input: Input = YoutubeDl::new(Client::new(), query).into();
         let metadata = input.aux_metadata().await.unwrap();
         return Some(SourceType::Video(input, metadata));
+    }
+
+    if link_regex.is_match(&query) && spot_regex.is_match(&query) {
+        let creds = Credentials::from_env().unwrap();
+        let spotify = ClientCredsSpotify::new(creds);
+        spotify.request_token().await.unwrap();
+
+        if spot_playlist_regex.is_match(&query) {
+            let url = Url::parse(&query).unwrap();
+            let path_segments = url.path_segments().unwrap().collect_vec();
+            let playlist_id = path_segments.get(1).unwrap();
+            let playlist_id = PlaylistId::from_id(
+                playlist_id
+                    .chars()
+                    .take_while(|c| *c != '?')
+                    .join("")
+                    .trim()
+                    .to_string(),
+            )
+            .unwrap();
+
+            let mut playlist_items =
+                spotify.playlist_items(playlist_id, None, Some(Market::Country(Country::Croatia)));
+
+            let mut tracks = VecDeque::new();
+            let client = Client::new();
+            while let Some(item) = playlist_items.next().await {
+                let item = match item {
+                    Ok(item) => item,
+                    Err(err) => {
+                        error!("{:?}", err);
+
+                        if let ClientError::Http(err) = err {
+                            if let HttpError::StatusCode(err) = *err {
+                                error!("{:?}", err.text().await);
+                            }
+                        }
+                        continue;
+                    }
+                };
+
+                let track = match item.track.unwrap() {
+                    rspotify::model::PlayableItem::Track(full_track) => full_track,
+                    rspotify::model::PlayableItem::Episode(_) => {
+                        panic!("episodes arent supported")
+                    }
+                };
+
+                let song_name = track.name;
+                let artists = track.artists.into_iter().map(|a| a.name).join(" ");
+                let query = format!("ytsearch:{} {}", song_name, artists);
+                let input: Input = YoutubeDl::new(client.clone(), query).into();
+                tracks.push_back(input);
+            }
+
+            return Some(SourceType::Playlist(tracks));
+        }
     }
 
     if link_regex.is_match(&query) {
