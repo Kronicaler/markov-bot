@@ -188,7 +188,7 @@ impl TrackStartHandler {
 
         drop(call);
 
-        let track_metadata = next_track.data::<MyAuxMetadata>().0.clone();
+        let track_metadata = next_track.data::<MyAuxMetadata>().aux_metadata.clone();
 
         let embed = create_track_embed(&track_metadata);
 

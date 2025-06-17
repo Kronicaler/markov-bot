@@ -117,7 +117,10 @@ pub async fn handle_video(
     let mut call = timeout(Duration::from_secs(30), call_lock.lock())
         .await
         .unwrap();
-    let my_metadata = MyAuxMetadata(metadata.clone());
+    let my_metadata = MyAuxMetadata {
+        aux_metadata: metadata.clone(),
+        queued_by: command.user.name.clone(),
+    };
     let track = Track::new_with_data(input, Arc::new(my_metadata));
     call.enqueue(track).await;
 
@@ -145,7 +148,10 @@ async fn handle_playlist(
                 .await
                 .unwrap();
 
-            let my_metadata = MyAuxMetadata(metadata.clone());
+            let my_metadata = MyAuxMetadata {
+                aux_metadata: metadata.clone(),
+                queued_by: command.user.name.clone(),
+            };
             let track = Track::new_with_data(input, Arc::new(my_metadata));
             call.enqueue(track).await;
 
@@ -155,7 +161,14 @@ async fn handle_playlist(
         .await;
     }
 
-    fill_queue(inputs, call_lock, ctx, command.guild_id.unwrap()).await;
+    fill_queue(
+        inputs,
+        call_lock,
+        ctx,
+        command.guild_id.unwrap(),
+        command.user.name.clone(),
+    )
+    .await;
 }
 
 #[tracing::instrument(skip(inputs, call_lock, ctx), fields(inputs.length=inputs.len()))]
@@ -164,6 +177,7 @@ async fn fill_queue(
     call_lock: Arc<Mutex<songbird::Call>>,
     ctx: &Context,
     guild_id: GuildId,
+    queued_by: String,
 ) {
     let queue_data_lock = get_queue_data_lock(&ctx.data).await;
 
@@ -255,7 +269,10 @@ async fn fill_queue(
                     return;
                 }
 
-                let my_metadata = MyAuxMetadata(metadata);
+                let my_metadata = MyAuxMetadata {
+                    aux_metadata: metadata,
+                    queued_by: queued_by.clone(),
+                };
                 let track = Track::new_with_data(input, Arc::new(my_metadata));
                 call_lock.lock().await.enqueue(track).await;
             }
@@ -613,7 +630,7 @@ fn get_queue_durations(queue: &TrackQueue) -> Vec<Duration> {
         durations.push(
             track
                 .data::<MyAuxMetadata>()
-                .0
+                .aux_metadata
                 .duration
                 .unwrap_or_else(|| Duration::from_secs(0)),
         );

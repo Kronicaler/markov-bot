@@ -63,7 +63,7 @@ async fn create_playing_embed(
 
     let song = track_handle
         .data::<MyAuxMetadata>()
-        .0
+        .aux_metadata
         .clone();
     //create embed
     //title

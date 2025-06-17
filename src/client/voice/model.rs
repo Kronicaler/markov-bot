@@ -18,7 +18,10 @@ pub fn init_voice_data(data: &mut tokio::sync::RwLockWriteGuard<serenity::prelud
 }
 
 #[derive(Clone, Default)]
-pub struct MyAuxMetadata(pub AuxMetadata);
+pub struct MyAuxMetadata {
+    pub aux_metadata: AuxMetadata,
+    pub queued_by: String,
+}
 
 impl TypeMapKey for MyAuxMetadata {
     type Value = Arc<RwLock<MyAuxMetadata>>;
@@ -32,14 +35,14 @@ pub trait HasAuxMetadata {
 #[async_trait]
 impl HasAuxMetadata for Queued {
     async fn get_aux_metadata(&self) -> AuxMetadata {
-        self.data::<MyAuxMetadata>().0.clone()
+        self.data::<MyAuxMetadata>().aux_metadata.clone()
     }
 }
 
 #[async_trait]
 impl HasAuxMetadata for TrackHandle {
     async fn get_aux_metadata(&self) -> AuxMetadata {
-        self.data::<MyAuxMetadata>().0.clone()
+        self.data::<MyAuxMetadata>().aux_metadata.clone()
     }
 }
 

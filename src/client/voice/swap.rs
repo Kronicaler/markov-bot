@@ -148,12 +148,12 @@ and
 ",
                 first_track_idx,
                 first_track
-                    .0
+                    .aux_metadata
                     .title
                     .unwrap_or_else(|| "NO TITLE".to_string()),
                 second_track_idx,
                 second_track
-                    .0
+                    .aux_metadata
                     .title
                     .unwrap_or_else(|| "NO TITLE".to_string())
             )),

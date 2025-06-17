@@ -83,7 +83,7 @@ fn get_queue_duration(queue: &songbird::tracks::TrackQueue) -> String {
         durations.push(
             track
                 .data::<MyAuxMetadata>()
-                .0
+                .aux_metadata
                 .duration
                 .unwrap_or_default(),
         );
@@ -151,10 +151,9 @@ async fn create_queue_embed(
     let colour = Colour::from_rgb(149, 8, 2);
 
     let mut e = CreateEmbed::new()
-        .title("queue")
         .title("Current Queue:")
         .description(format!(
-            "Current size: {} | Total queue length: {}",
+            "Current size: **{}** | Total queue length: **{}**",
             queue.len(),
             duration
         ))
@@ -163,8 +162,8 @@ async fn create_queue_embed(
     let queue_end = min(queue.len(), queue_start_index + 10);
 
     for i in queue_start_index..queue_end {
-        let (song_name_and_channel, duration) = get_song_metadata_from_queue(queue, i).await;
-        e = e.field(song_name_and_channel, duration, false);
+        let (heading, subheading) = get_song_metadata_from_queue(queue, i).await;
+        e = e.field(heading, subheading, false);
     }
     e
 }
@@ -177,20 +176,26 @@ pub async fn get_song_metadata_from_queue(
         .current_queue()
         .get(index_in_queue)
         .unwrap()
-        .data::<MyAuxMetadata>()
-        .0
-        .clone();
+        .data::<MyAuxMetadata>();
 
-    let channel = &song.channel.unwrap_or_else(|| "Unknown".to_string());
-    let title = &song.title.unwrap_or_else(|| "Unknown".to_string());
-    //duration
-    let time = &song.duration.unwrap_or_default();
+    let channel = song
+        .aux_metadata
+        .channel
+        .clone()
+        .unwrap_or_else(|| "Unknown".to_string());
+    let title = song
+        .aux_metadata
+        .title
+        .clone()
+        .unwrap_or_else(|| "Unknown".to_string());
+    let heading = format!("{}. {title} | {channel}", index_in_queue + 1);
+
+    let time = &song.aux_metadata.duration.unwrap_or_default();
     let minutes = time.as_secs() / 60;
     let seconds = time.as_secs() - minutes * 60;
-    let duration = format!("{minutes}:{seconds:02}");
-    let song_name_and_channel = format!("{}. {title} | {channel}", index_in_queue + 1);
+    let subheading = format!("{minutes}:{seconds:02} | Queued by **{}**", song.queued_by);
 
-    (song_name_and_channel, duration)
+    (heading, subheading)
 }
 
 pub fn get_queue_start_from_queue_message(message_content: impl Into<String>) -> usize {
