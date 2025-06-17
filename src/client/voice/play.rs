@@ -18,7 +18,7 @@ use itertools::Itertools;
 use reqwest::Client;
 use rspotify::{
     http::HttpError,
-    model::{Country, Market, PlaylistId},
+    model::{AlbumId, Country, Market, PlaylistId},
     prelude::BaseClient,
     ClientCredsSpotify, ClientError, Credentials,
 };
@@ -349,7 +349,7 @@ async fn get_source(query: String) -> Option<SourceType> {
 
     let spot_regex = regex::Regex::new(r"spotify.com").unwrap();
     let spot_playlist_regex = regex::Regex::new(r"spotify.com/playlist").unwrap();
-    let spot_track_regex = regex::Regex::new(r"spotify.com/track").unwrap();
+    let spot_album_regex = regex::Regex::new(r"spotify.com/album").unwrap();
     let yt_regex = regex::Regex::new(r"^((?:https?:)?\/\/)?((?:www|m)\.)?((?:youtube(?:-nocookie)?\.com|youtu.be))(\/(?:[\w\-]+\?v=|embed\/|live\/|v\/)?)([\w\-]+)(\S+)?$").unwrap();
     let yt_list_regex = regex::Regex::new(r"(&list).*|(\?list).*").unwrap();
     let yt_playlist_regex = regex::Regex::new(r"youtube.*playlist\?list=").unwrap();
@@ -431,6 +431,50 @@ async fn get_source(query: String) -> Option<SourceType> {
                     rspotify::model::PlayableItem::Track(full_track) => full_track,
                     rspotify::model::PlayableItem::Episode(_) => {
                         panic!("episodes arent supported")
+                    }
+                };
+
+                let song_name = track.name;
+                let artists = track.artists.into_iter().map(|a| a.name).join(" ");
+                let query = format!("ytsearch:{} {}", song_name, artists);
+                let input: Input = YoutubeDl::new(client.clone(), query).into();
+                tracks.push_back(input);
+            }
+
+            return Some(SourceType::Playlist(tracks));
+        }
+
+        if spot_album_regex.is_match(&query){
+            let url = Url::parse(&query).unwrap();
+            let path_segments = url.path_segments().unwrap().collect_vec();
+            let album_id = path_segments.get(1).unwrap();
+            let album_id = AlbumId::from_id(
+                album_id
+                    .chars()
+                    .take_while(|c| *c != '?')
+                    .join("")
+                    .trim()
+                    .to_string(),
+            )
+            .unwrap();
+
+            let mut album_tracks =
+                spotify.album_track(album_id, Some(Market::Country(Country::Croatia)));
+
+            let mut tracks = VecDeque::new();
+            let client = Client::new();
+            while let Some(track) = album_tracks.next().await {
+                let track = match track {
+                    Ok(track) => track,
+                    Err(err) => {
+                        error!("{:?}", err);
+
+                        if let ClientError::Http(err) = err {
+                            if let HttpError::StatusCode(err) = *err {
+                                error!("{:?}", err.text().await);
+                            }
+                        }
+                        continue;
                     }
                 };
 
