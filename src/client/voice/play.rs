@@ -346,7 +346,6 @@ async fn get_source(query: String) -> Option<SourceType> {
     let link_regex =
     regex::Regex::new(r#"(?:(?:https?|ftp)://|\b(?:[a-z\d]+\.))(?:(?:[^\s()<>]+|\((?:[^\s()<>]+|(?:\([^\s()<>]+\)))?\))+(?:\((?:[^\s()<>]+|(?:\(?:[^\s()<>]+\)))?\)|[^\s`!()\[\]{};:'".,<>?«»“”‘’]))?"#)
     .expect("Invalid regular expression");
-
     let spot_regex = regex::Regex::new(r"spotify.com").unwrap();
     let spot_playlist_regex = regex::Regex::new(r"spotify.com/playlist").unwrap();
     let spot_album_regex = regex::Regex::new(r"spotify.com/album").unwrap();
@@ -356,32 +355,10 @@ async fn get_source(query: String) -> Option<SourceType> {
 
     if link_regex.is_match(&query) && yt_regex.is_match(&query) {
         if yt_playlist_regex.is_match(&query) {
-            let client = Client::new();
-
-            let songs_in_playlist = std::str::from_utf8(
-                &tokio::process::Command::new("yt-dlp")
-                    .args(["yt-dlp", "--flat-playlist", "--get-id", &query])
-                    .output()
-                    .await
-                    .unwrap()
-                    .stdout,
-            )
-            .unwrap()
-            .split('\n')
-            .filter(|f| !f.is_empty())
-            .map(|id| {
-                YoutubeDl::new(
-                    client.clone(),
-                    format!("https://www.youtube.com/watch?v={id}"),
-                )
-                .into()
-            })
-            .collect();
-
-            return Some(SourceType::Playlist(songs_in_playlist));
+            return Some(get_yt_playlist_inputs(&query).await);
         }
 
-        // Remove breaking part of url
+        // Remove possible breaking part of url
         let query = yt_list_regex.replace(&query, "").to_string();
         let mut input: Input = YoutubeDl::new(Client::new(), query).into();
         let metadata = input.aux_metadata().await.unwrap();
@@ -394,130 +371,16 @@ async fn get_source(query: String) -> Option<SourceType> {
         spotify.request_token().await.unwrap();
 
         if spot_playlist_regex.is_match(&query) {
-            let url = Url::parse(&query).unwrap();
-            let path_segments = url.path_segments().unwrap().collect_vec();
-            let playlist_id = path_segments.get(1).unwrap();
-            let playlist_id = PlaylistId::from_id(
-                playlist_id
-                    .chars()
-                    .take_while(|c| *c != '?')
-                    .join("")
-                    .trim()
-                    .to_string(),
-            )
-            .unwrap();
-
-            let mut playlist_items =
-                spotify.playlist_items(playlist_id, None, Some(Market::Country(Country::Croatia)));
-
-            let mut tracks = VecDeque::new();
-            let client = Client::new();
-            while let Some(item) = playlist_items.next().await {
-                let item = match item {
-                    Ok(item) => item,
-                    Err(err) => {
-                        error!("{:?}", err);
-
-                        if let ClientError::Http(err) = err {
-                            if let HttpError::StatusCode(err) = *err {
-                                error!("{:?}", err.text().await);
-                            }
-                        }
-                        continue;
-                    }
-                };
-
-                let track = match item.track.unwrap() {
-                    rspotify::model::PlayableItem::Track(full_track) => full_track,
-                    rspotify::model::PlayableItem::Episode(_) => {
-                        panic!("episodes arent supported")
-                    }
-                };
-
-                let song_name = track.name;
-                let artists = track.artists.into_iter().map(|a| a.name).join(" ");
-                let query = format!("ytsearch:{} {}", song_name, artists);
-                let input: Input = YoutubeDl::new(client.clone(), query).into();
-                tracks.push_back(input);
-            }
-
-            return Some(SourceType::Playlist(tracks));
+            return Some(get_spotify_playlist_inputs(&query, &spotify).await);
         }
 
-        if spot_album_regex.is_match(&query){
-            let url = Url::parse(&query).unwrap();
-            let path_segments = url.path_segments().unwrap().collect_vec();
-            let album_id = path_segments.get(1).unwrap();
-            let album_id = AlbumId::from_id(
-                album_id
-                    .chars()
-                    .take_while(|c| *c != '?')
-                    .join("")
-                    .trim()
-                    .to_string(),
-            )
-            .unwrap();
-
-            let mut album_tracks =
-                spotify.album_track(album_id, Some(Market::Country(Country::Croatia)));
-
-            let mut tracks = VecDeque::new();
-            let client = Client::new();
-            while let Some(track) = album_tracks.next().await {
-                let track = match track {
-                    Ok(track) => track,
-                    Err(err) => {
-                        error!("{:?}", err);
-
-                        if let ClientError::Http(err) = err {
-                            if let HttpError::StatusCode(err) = *err {
-                                error!("{:?}", err.text().await);
-                            }
-                        }
-                        continue;
-                    }
-                };
-
-                let song_name = track.name;
-                let artists = track.artists.into_iter().map(|a| a.name).join(" ");
-                let query = format!("ytsearch:{} {}", song_name, artists);
-                let input: Input = YoutubeDl::new(client.clone(), query).into();
-                tracks.push_back(input);
-            }
-
-            return Some(SourceType::Playlist(tracks));
+        if spot_album_regex.is_match(&query) {
+            return Some(get_spotify_album_inputs(&query, spotify).await);
         }
     }
 
     if link_regex.is_match(&query) {
-        let video_stream_bytes = tokio::process::Command::new("yt-dlp")
-            .args(["yt-dlp", "-o", "-", &query])
-            .output()
-            .await
-            .unwrap()
-            .stdout;
-
-        let file_type = infer::get(&video_stream_bytes)?;
-
-        if file_type.matcher_type() != MatcherType::Audio
-            && file_type.matcher_type() != MatcherType::Video
-        {
-            return None;
-        }
-
-        let mut input: Input = video_stream_bytes.into();
-
-        let metadata = input.aux_metadata().await.unwrap_or_else(|_| {
-            let metadata = AuxMetadata {
-                source_url: Some(query.clone()),
-                track: Some(query.clone()),
-                title: Some(query),
-                ..Default::default()
-            };
-            metadata
-        });
-
-        return Some(SourceType::Video(input, metadata));
+        try_get_link_input(&query).await?;
     }
 
     let query = format!("ytsearch:{query}");
@@ -525,6 +388,153 @@ async fn get_source(query: String) -> Option<SourceType> {
     let mut input: Input = YoutubeDl::new(Client::new(), query).into();
     let metadata = input.aux_metadata().await.unwrap();
     Some(SourceType::Video(input, metadata))
+}
+
+async fn try_get_link_input(query: &String) -> Option<SourceType> {
+    let video_stream_bytes = tokio::process::Command::new("yt-dlp")
+        .args(["yt-dlp", "-o", "-", query])
+        .output()
+        .await
+        .unwrap()
+        .stdout;
+    let file_type = infer::get(&video_stream_bytes)?;
+
+    if file_type.matcher_type() != MatcherType::Audio
+        && file_type.matcher_type() != MatcherType::Video
+    {
+        return None;
+    }
+
+    let mut input: Input = video_stream_bytes.into();
+    let metadata = input.aux_metadata().await.unwrap_or_else(|_| {
+        let metadata = AuxMetadata {
+            source_url: Some(query.clone()),
+            track: Some(query.clone()),
+            title: Some(query.clone()),
+            ..Default::default()
+        };
+        metadata
+    });
+
+    return Some(SourceType::Video(input, metadata));
+}
+
+async fn get_spotify_album_inputs(query: &String, spotify: ClientCredsSpotify) -> SourceType {
+    let url = Url::parse(query).unwrap();
+    let path_segments = url.path_segments().unwrap().collect_vec();
+    let album_id = path_segments.get(1).unwrap();
+    let album_id = AlbumId::from_id(
+        album_id
+            .chars()
+            .take_while(|c| *c != '?')
+            .join("")
+            .trim()
+            .to_string(),
+    )
+    .unwrap();
+    let mut album_tracks = spotify.album_track(album_id, Some(Market::Country(Country::Croatia)));
+    let mut tracks = VecDeque::new();
+    let client = Client::new();
+    while let Some(track) = album_tracks.next().await {
+        let track = match track {
+            Ok(track) => track,
+            Err(err) => {
+                error!("{:?}", err);
+
+                if let ClientError::Http(err) = err {
+                    if let HttpError::StatusCode(err) = *err {
+                        error!("{:?}", err.text().await);
+                    }
+                }
+                continue;
+            }
+        };
+
+        let song_name = track.name;
+        let artists = track.artists.into_iter().map(|a| a.name).join(" ");
+        let query = format!("ytsearch:{} {}", song_name, artists);
+        let input: Input = YoutubeDl::new(client.clone(), query).into();
+        tracks.push_back(input);
+    }
+
+    return SourceType::Playlist(tracks);
+}
+
+async fn get_spotify_playlist_inputs(query: &String, spotify: &ClientCredsSpotify) -> SourceType {
+    let url = Url::parse(query).unwrap();
+    let path_segments = url.path_segments().unwrap().collect_vec();
+    let playlist_id = path_segments.get(1).unwrap();
+    let playlist_id = PlaylistId::from_id(
+        playlist_id
+            .chars()
+            .take_while(|c| *c != '?')
+            .join("")
+            .trim()
+            .to_string(),
+    )
+    .unwrap();
+
+    let mut playlist_items =
+        spotify.playlist_items(playlist_id, None, Some(Market::Country(Country::Croatia)));
+
+    let mut tracks = VecDeque::new();
+    let client = Client::new();
+
+    while let Some(item) = playlist_items.next().await {
+        let item = match item {
+            Ok(item) => item,
+            Err(err) => {
+                error!("{:?}", err);
+
+                if let ClientError::Http(err) = err {
+                    if let HttpError::StatusCode(err) = *err {
+                        error!("{:?}", err.text().await);
+                    }
+                }
+                continue;
+            }
+        };
+
+        let track = match item.track.unwrap() {
+            rspotify::model::PlayableItem::Track(full_track) => full_track,
+            rspotify::model::PlayableItem::Episode(_) => {
+                panic!("episodes arent supported")
+            }
+        };
+
+        let song_name = track.name;
+        let artists = track.artists.into_iter().map(|a| a.name).join(" ");
+        let query = format!("ytsearch:{} {}", song_name, artists);
+        let input: Input = YoutubeDl::new(client.clone(), query).into();
+        tracks.push_back(input);
+    }
+
+    return SourceType::Playlist(tracks);
+}
+
+async fn get_yt_playlist_inputs(query: &String) -> SourceType {
+    let client = Client::new();
+    let songs_in_playlist = std::str::from_utf8(
+        &tokio::process::Command::new("yt-dlp")
+            .args(["yt-dlp", "--flat-playlist", "--get-id", query])
+            .output()
+            .await
+            .unwrap()
+            .stdout,
+    )
+    .unwrap()
+    .split('\n')
+    .filter(|f| !f.is_empty())
+    .map(|id| {
+        YoutubeDl::new(
+            client.clone(),
+            format!("https://www.youtube.com/watch?v={id}"),
+        )
+        .into()
+    })
+    .collect();
+
+    return SourceType::Playlist(songs_in_playlist);
 }
 
 async fn return_response(
