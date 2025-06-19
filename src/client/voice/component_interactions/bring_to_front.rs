@@ -63,6 +63,7 @@ pub async fn bring_to_front(ctx: &Context, component: &ComponentInteraction) {
     update_queue_message(ctx, component.guild_id.unwrap(), call_lock).await;
 }
 
+#[tracing::instrument(skip(call_lock))]
 async fn bring_to_front_button(button: &ComponentInteraction, call_lock: Arc<Mutex<Call>>) {
     let song_title = button
         .message

@@ -55,6 +55,7 @@ pub async fn play_now(ctx: &Context, component: &ComponentInteraction) {
     }
 }
 
+#[tracing::instrument(skip(call_lock))]
 async fn play_now_button(button: &ComponentInteraction, call_lock: Arc<Mutex<Call>>) {
     let song_title = button
         .message
@@ -97,6 +98,7 @@ async fn play_now_button(button: &ComponentInteraction, call_lock: Arc<Mutex<Cal
     info!("The song is no longer in the queue");
 }
 
+#[tracing::instrument(skip(call_lock))]
 async fn play_now_select_menu(select_menu: &ComponentInteraction, call_lock: Arc<Mutex<Call>>) {
     let index: usize = match &select_menu.data.kind {
         ComponentInteractionDataKind::StringSelect { values } => values[0].clone().parse().unwrap(),

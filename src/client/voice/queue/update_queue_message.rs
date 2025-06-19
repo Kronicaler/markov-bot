@@ -11,7 +11,7 @@ use crate::client::voice::model::get_voice_messages_lock;
 
 use super::command_response::{create_queue_edit_message, get_queue_start_from_queue_message};
 
-#[instrument(skip(ctx))]
+#[instrument(skip(ctx, call_lock))]
 pub async fn update_queue_message(ctx: &Context, guild_id: GuildId, call_lock: Arc<Mutex<Call>>) {
     let voice_messages_lock = get_voice_messages_lock(&ctx.data).await;
 
