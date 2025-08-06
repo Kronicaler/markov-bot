@@ -8,7 +8,7 @@
 // - the "my_folder" command is executed in server X and B.mp4 is posted
 // - the "my_folder" command is executed in server Y and A.mp4 is posted
 // - the "my_folder" command is executed in server Y and B.mp4 is posted
-// - if all the memes have been sent from the folder then it loops
+// - if all the files have been sent from the folder then it loops again from the beginning
 
 pub mod commands;
 mod dal;
