@@ -5,6 +5,7 @@ pub mod markov;
 pub mod slash_commands;
 pub mod tags;
 pub mod voice;
+pub mod memes;
 
 use global_data::{init_global_data_for_client, HELP_MESSAGE};
 use itertools::Itertools;

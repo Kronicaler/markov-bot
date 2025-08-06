@@ -18,7 +18,7 @@ services:
         limits:
           memory: 500M
     ports:
-      - 3306-3306
+      - 3306:3306
       
   adminer:
     image: adminer

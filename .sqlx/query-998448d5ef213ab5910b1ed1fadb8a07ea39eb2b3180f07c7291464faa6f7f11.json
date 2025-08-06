@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "\n\t\tREPLACE INTO server_folder_indexes ( server_id, folder_name, file_index )\n\t\tVALUES ( ?, ?, ? )\n\t\t",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": []
+  },
+  "hash": "998448d5ef213ab5910b1ed1fadb8a07ea39eb2b3180f07c7291464faa6f7f11"
+}

@@ -12,13 +12,14 @@ use super::{
 use crate::{
     client::{
         helper_funcs::{download_command, download_from_message_command},
+        memes::{self, commands::create_memes_commands, model::get_meme_folders_lock},
         voice::queue::{command_response::queue, shuffle::shuffle_queue},
     },
     global_data, markov, voice, GuildId,
 };
 use serenity::{
     all::{
-        Command, CommandInteraction, CommandOptionType, CommandType,
+        Command, CommandInteraction, CommandOptionType, CommandType, CreateAttachment,
         CreateInteractionResponseMessage, EditInteractionResponse, InstallationContext,
         InteractionContext,
     },
@@ -171,7 +172,36 @@ pub async fn command_responses(command: &CommandInteraction, ctx: Context, pool:
             }
         },
         Err(why) => {
-            error!("Cannot respond to slash command {why}");
+            let meme_folders_lock = get_meme_folders_lock(&ctx.data).await;
+            let Some(folder_name) = meme_folders_lock
+                .read()
+                .await
+                .folders
+                .get(&full_command_name)
+                .cloned()
+            else {
+                error!("Cannot respond to slash command {why}");
+                return;
+            };
+
+            command.defer(&ctx.http).await.unwrap();
+
+            let (file, bytes) =
+                memes::read_meme(command.guild_id.unwrap().get(), &folder_name, pool)
+                    .await
+                    .unwrap();
+
+            command
+                .edit_response(
+                    ctx.http,
+                    EditInteractionResponse::new().new_attachment(CreateAttachment::bytes(
+                        bytes,
+                        file.file_name().to_string_lossy().to_string(),
+                    )),
+                )
+                .instrument(info_span!("Sending message"))
+                .await
+                .expect("Couldn't create interaction response");
         }
     };
 }
@@ -193,6 +223,7 @@ pub async fn create_global_commands(ctx: &Context) {
     commands.append(&mut create_download_commands());
     commands.append(&mut create_markov_commands());
     commands.append(&mut create_voice_commands());
+    commands.append(&mut create_memes_commands());
     commands.push(create_tag_commands());
 
     Command::set_global_commands(&ctx.http, commands)
