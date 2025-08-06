@@ -48,14 +48,13 @@ pub async fn read_meme(
     if files.is_empty() {
         bail!("no files in folder");
     }
-
-    // find file by index
-
-    // if index is out of bounds reset it to 0
+    
+    // if index is out of bounds set it to 0
     if files.len() < index as usize {
         index = 0;
     }
-
+    
+    // find file by index
     let file = files.swap_remove(index as usize);
 
     let file_bytes = fs::read(file.path())?;
