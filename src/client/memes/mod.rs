@@ -37,7 +37,12 @@ pub async fn read_meme(
 
     let mut files = fs::read_dir(format!("./data/memes/{folder_name}"))?
         .filter_map(|f| f.ok())
-        .sorted_by_key(|f| f.file_name())
+        .sorted_by(|a, b| {
+            alphanumeric_sort::compare_str(
+                a.file_name().to_string_lossy().to_string(),
+                b.file_name().to_string_lossy().to_string(),
+            )
+        })
         .collect_vec();
 
     if files.is_empty() {

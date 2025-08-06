@@ -52,6 +52,7 @@ markov_str = { version = "0.3.0", features = ["serde", "serialize"] }
 chrono = "0.4.40"
 rspotify = { version = "0.14.0", features = ["env-file"] }
 url = "2.5.4"
+alphanumeric-sort = "1.5.3"
 
 [dependencies.symphonia]
 version = "0.5"
