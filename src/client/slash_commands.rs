@@ -12,7 +12,11 @@ use super::{
 use crate::{
     client::{
         helper_funcs::{download_command, download_from_message_command},
-        memes::{self, commands::create_memes_commands, model::get_meme_folders_lock},
+        memes::{
+            self,
+            commands::create_memes_commands,
+            model::{get_meme_folders_lock, get_random_meme_folders_lock},
+        },
         voice::queue::{command_response::queue, shuffle::shuffle_queue},
     },
     global_data, markov, voice, GuildId,
@@ -172,38 +176,91 @@ pub async fn command_responses(command: &CommandInteraction, ctx: Context, pool:
             }
         },
         Err(why) => {
-            let meme_folders_lock = get_meme_folders_lock(&ctx.data).await;
-            let Some(folder_name) = meme_folders_lock
-                .read()
-                .await
-                .folders
-                .get(&full_command_name)
-                .cloned()
-            else {
-                error!("Cannot respond to slash command {why}");
+            if handle_meme(command, &ctx, pool, &full_command_name).await {
                 return;
-            };
+            }
 
-            command.defer(&ctx.http).await.unwrap();
+            if handle_random_meme(command, ctx, full_command_name).await {
+                return;
+            }
 
-            let (file, bytes) =
-                memes::read_meme(command.guild_id.unwrap().get(), &folder_name, pool)
-                    .await
-                    .unwrap();
-
-            command
-                .edit_response(
-                    ctx.http,
-                    EditInteractionResponse::new().new_attachment(CreateAttachment::bytes(
-                        bytes,
-                        file.file_name().to_string_lossy().to_string(),
-                    )),
-                )
-                .instrument(info_span!("Sending message"))
-                .await
-                .expect("Couldn't create interaction response");
+            error!("Cannot respond to slash command {why}");
+            return;
         }
     };
+}
+
+async fn handle_random_meme(
+    command: &CommandInteraction,
+    ctx: Context,
+    full_command_name: String,
+) -> bool {
+    let meme_folders_lock = get_random_meme_folders_lock(&ctx.data).await;
+    if let Some(folder_name) = meme_folders_lock
+        .read()
+        .await
+        .folders
+        .get(&full_command_name)
+        .cloned()
+    {
+        command.defer(&ctx.http).await.unwrap();
+
+        let (file, bytes) = memes::read_random_meme(command.guild_id.unwrap().get(), &folder_name)
+            .await
+            .unwrap();
+
+        command
+            .edit_response(
+                ctx.http,
+                EditInteractionResponse::new().new_attachment(CreateAttachment::bytes(
+                    bytes,
+                    file.file_name().to_string_lossy().to_string(),
+                )),
+            )
+            .instrument(info_span!("Sending message"))
+            .await
+            .expect("Couldn't create interaction response");
+        return true;
+    };
+
+    false
+}
+
+async fn handle_meme(
+    command: &CommandInteraction,
+    ctx: &Context,
+    pool: &Pool<MySql>,
+    full_command_name: &String,
+) -> bool {
+    let meme_folders_lock = get_meme_folders_lock(&ctx.data).await;
+    if let Some(folder_name) = meme_folders_lock
+        .read()
+        .await
+        .folders
+        .get(full_command_name)
+        .cloned()
+    {
+        command.defer(&ctx.http).await.unwrap();
+
+        let (file, bytes) = memes::read_meme(command.guild_id.unwrap().get(), &folder_name, pool)
+            .await
+            .unwrap();
+
+        command
+            .edit_response(
+                &ctx.http,
+                EditInteractionResponse::new().new_attachment(CreateAttachment::bytes(
+                    bytes,
+                    file.file_name().to_string_lossy().to_string(),
+                )),
+            )
+            .instrument(info_span!("Sending message"))
+            .await
+            .expect("Couldn't create interaction response");
+        return true;
+    };
+
+    false
 }
 
 /// Create the slash commands
