@@ -27,7 +27,7 @@ pub fn create_memes_commands() -> Vec<CreateCommand> {
                 .add_integration_type(InstallationContext::User)
                 .add_integration_type(InstallationContext::Guild)
                 .add_context(InteractionContext::Guild)
-                .add_context(InteractionContext::BotDm)
+                .add_context(InteractionContext::PrivateChannel)
         })
         .collect_vec();
 
