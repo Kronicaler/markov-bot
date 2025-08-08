@@ -71,7 +71,6 @@ pub async fn read_meme(
 
 #[tracing::instrument(err)]
 pub async fn read_random_meme(
-    server_id: u64,
     folder_name: &str,
 ) -> anyhow::Result<(DirEntry, Vec<u8>)> {
     let mut files = fs::read_dir(format!("{RANDOM_MEMES_FOLDER}/{folder_name}"))?

@@ -205,9 +205,7 @@ async fn handle_random_meme(
     {
         command.defer(&ctx.http).await.unwrap();
 
-        let (file, bytes) = memes::read_random_meme(command.guild_id.unwrap().get(), &folder_name)
-            .await
-            .unwrap();
+        let (file, bytes) = memes::read_random_meme(&folder_name).await.unwrap();
 
         command
             .edit_response(
