@@ -240,9 +240,16 @@ async fn handle_meme(
     {
         command.defer(&ctx.http).await.unwrap();
 
-        let (file, bytes) = memes::read_meme(command.guild_id.unwrap().get(), &folder_name, pool)
-            .await
-            .unwrap();
+        let (file, bytes) = memes::read_meme(
+            command
+                .guild_id
+                .and_then(|gi| Some(gi.get()))
+                .unwrap_or(command.channel_id.get()),
+            &folder_name,
+            pool,
+        )
+        .await
+        .unwrap();
 
         command
             .edit_response(
