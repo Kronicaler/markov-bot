@@ -259,7 +259,7 @@ pub async fn respond_to_tag(ctx: &Context, msg: &Message, message: &str, pool: &
 
                     break;
                 }
-                Err(_) => continue,
+                Err(_) => {},
             }
         }
     }

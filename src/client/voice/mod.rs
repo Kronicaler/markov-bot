@@ -292,7 +292,7 @@ impl TrackStartHandler {
                     .last_now_playing
                     .insert(self.guild_id, now_playing_msg);
             }
-        };
+        }
     }
 }
 

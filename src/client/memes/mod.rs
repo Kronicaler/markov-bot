@@ -21,8 +21,8 @@ use itertools::Itertools;
 use rand::Rng;
 use sqlx::MySqlPool;
 
-pub const MEMES_FOLDER: &'static str = "./data/memes";
-pub const RANDOM_MEMES_FOLDER: &'static str = "./data/random_memes";
+pub const MEMES_FOLDER: &str = "./data/memes";
+pub const RANDOM_MEMES_FOLDER: &str = "./data/random_memes";
 
 #[tracing::instrument(err, skip(pool))]
 pub async fn read_meme(
@@ -34,17 +34,16 @@ pub async fn read_meme(
 
     let mut index = dal::get_server_folder_index(server_id, folder_name, pool)
         .await?
-        .map(|i| i.file_index)
-        .unwrap_or(0);
+        .map_or(0, |i| i.file_index);
 
     // read dir and sort by name
 
     let mut files = fs::read_dir(format!("{MEMES_FOLDER}/{folder_name}"))?
-        .filter_map(|f| f.ok())
+        .filter_map(std::result::Result::ok)
         .sorted_by(|a, b| {
             alphanumeric_sort::compare_str(
-                a.file_name().to_string_lossy().to_string(),
-                b.file_name().to_string_lossy().to_string(),
+                a.file_name().to_string_lossy(),
+                b.file_name().to_string_lossy(),
             )
         })
         .collect_vec();
@@ -72,7 +71,7 @@ pub async fn read_meme(
 #[tracing::instrument(err)]
 pub async fn read_random_meme(folder_name: &str) -> anyhow::Result<(DirEntry, Vec<u8>)> {
     let mut files = fs::read_dir(format!("{RANDOM_MEMES_FOLDER}/{folder_name}"))?
-        .filter_map(|f| f.ok())
+        .filter_map(std::result::Result::ok)
         .collect_vec();
 
     if files.is_empty() {
@@ -94,12 +93,12 @@ pub fn get_meme_folders() -> Vec<DirEntry> {
         return vec![];
     };
 
-    let folders = folders
-        .filter_map(|f| f.ok())
-        .filter(|f| f.file_type().is_ok_and(|f| f.is_dir()))
-        .collect_vec();
+    
 
     folders
+        .filter_map(std::result::Result::ok)
+        .filter(|f| f.file_type().is_ok_and(|f| f.is_dir()))
+        .collect_vec()
 }
 
 #[tracing::instrument(ret)]
@@ -108,10 +107,10 @@ pub fn get_random_meme_folders() -> Vec<DirEntry> {
         return vec![];
     };
 
-    let folders = folders
-        .filter_map(|f| f.ok())
-        .filter(|f| f.file_type().is_ok_and(|f| f.is_dir()))
-        .collect_vec();
+    
 
     folders
+        .filter_map(std::result::Result::ok)
+        .filter(|f| f.file_type().is_ok_and(|f| f.is_dir()))
+        .collect_vec()
 }

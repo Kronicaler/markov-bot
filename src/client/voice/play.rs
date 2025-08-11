@@ -407,7 +407,7 @@ async fn get_source(query: String) -> Option<SourceType> {
     Some(SourceType::Video(input, metadata))
 }
 
-async fn try_get_link_input(query: &String) -> Option<SourceType> {
+async fn try_get_link_input(query: &str) -> Option<SourceType> {
     let video_stream_bytes = tokio::process::Command::new("yt-dlp")
         .args(["yt-dlp", "-o", "-", query])
         .output()
@@ -424,19 +424,19 @@ async fn try_get_link_input(query: &String) -> Option<SourceType> {
 
     let mut input: Input = video_stream_bytes.into();
     let metadata = input.aux_metadata().await.unwrap_or_else(|_| {
-        let metadata = AuxMetadata {
+        
+        AuxMetadata {
             source_url: Some(query.clone()),
             track: Some(query.clone()),
             title: Some(query.clone()),
             ..Default::default()
-        };
-        metadata
+        }
     });
 
-    return Some(SourceType::Video(input, metadata));
+    Some(SourceType::Video(input, metadata))
 }
 
-async fn get_spotify_album_inputs(query: &String, spotify: ClientCredsSpotify) -> SourceType {
+async fn get_spotify_album_inputs(query: &str, spotify: ClientCredsSpotify) -> SourceType {
     let url = Url::parse(query).unwrap();
     let path_segments = url.path_segments().unwrap().collect_vec();
     let album_id = path_segments.get(1).unwrap();
@@ -469,15 +469,15 @@ async fn get_spotify_album_inputs(query: &String, spotify: ClientCredsSpotify) -
 
         let song_name = track.name;
         let artists = track.artists.into_iter().map(|a| a.name).join(" ");
-        let query = format!("ytsearch:{} {}", song_name, artists);
+        let query = format!("ytsearch:{song_name} {artists}");
         let input: Input = YoutubeDl::new(client.clone(), query).into();
         tracks.push_back(input);
     }
 
-    return SourceType::Playlist(tracks);
+    SourceType::Playlist(tracks)
 }
 
-async fn get_spotify_playlist_inputs(query: &String, spotify: &ClientCredsSpotify) -> SourceType {
+async fn get_spotify_playlist_inputs(query: &str, spotify: &ClientCredsSpotify) -> SourceType {
     let url = Url::parse(query).unwrap();
     let path_segments = url.path_segments().unwrap().collect_vec();
     let playlist_id = path_segments.get(1).unwrap();
@@ -521,15 +521,15 @@ async fn get_spotify_playlist_inputs(query: &String, spotify: &ClientCredsSpotif
 
         let song_name = track.name;
         let artists = track.artists.into_iter().map(|a| a.name).join(" ");
-        let query = format!("ytsearch:{} {}", song_name, artists);
+        let query = format!("ytsearch:{song_name} {artists}");
         let input: Input = YoutubeDl::new(client.clone(), query).into();
         tracks.push_back(input);
     }
 
-    return SourceType::Playlist(tracks);
+    SourceType::Playlist(tracks)
 }
 
-async fn get_yt_playlist_inputs(query: &String) -> SourceType {
+async fn get_yt_playlist_inputs(query: &str) -> SourceType {
     let client = Client::new();
     let songs_in_playlist = std::str::from_utf8(
         &tokio::process::Command::new("yt-dlp")
@@ -551,7 +551,7 @@ async fn get_yt_playlist_inputs(query: &String) -> SourceType {
     })
     .collect();
 
-    return SourceType::Playlist(songs_in_playlist);
+    SourceType::Playlist(songs_in_playlist)
 }
 
 async fn return_response(

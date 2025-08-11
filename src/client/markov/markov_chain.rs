@@ -24,7 +24,7 @@ pub fn filter_message_for_markov_file(msg: &Message) -> Option<String> {
             if cant_find_user_in_message(&user_regex, &filtered_message, msg) {
                 // Don't save the message to the chain if it can't replace the user mention with it's name
                 return None;
-            };
+            }
 
             filtered_message = user_regex
                 .replace(&filtered_message, |caps: &Captures| {
