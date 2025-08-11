@@ -21,8 +21,8 @@ use itertools::Itertools;
 use rand::Rng;
 use sqlx::MySqlPool;
 
-const MEMES_FOLDER: &'static str = "./data/memes";
-const RANDOM_MEMES_FOLDER: &'static str = "./data/random_memes";
+pub const MEMES_FOLDER: &'static str = "./data/memes";
+pub const RANDOM_MEMES_FOLDER: &'static str = "./data/random_memes";
 
 #[tracing::instrument(err, skip(pool))]
 pub async fn read_meme(
@@ -70,9 +70,7 @@ pub async fn read_meme(
 }
 
 #[tracing::instrument(err)]
-pub async fn read_random_meme(
-    folder_name: &str,
-) -> anyhow::Result<(DirEntry, Vec<u8>)> {
+pub async fn read_random_meme(folder_name: &str) -> anyhow::Result<(DirEntry, Vec<u8>)> {
     let mut files = fs::read_dir(format!("{RANDOM_MEMES_FOLDER}/{folder_name}"))?
         .filter_map(|f| f.ok())
         .collect_vec();
