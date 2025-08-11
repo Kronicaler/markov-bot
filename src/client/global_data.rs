@@ -34,7 +34,7 @@ pub async fn init_global_data_for_client(client: &Client) -> Result<(), Box<dyn 
         println!("Debugging enabled");
     } else {
         println!("Debugging disabled");
-    };
+    }
 
     init_markov_data(&mut data)?;
     init_voice_data(&mut data);

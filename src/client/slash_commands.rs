@@ -187,7 +187,7 @@ pub async fn command_responses(command: &CommandInteraction, ctx: Context, pool:
             error!("Cannot respond to slash command {why}");
             return;
         }
-    };
+    }
 }
 
 async fn handle_random_meme(
@@ -219,7 +219,7 @@ async fn handle_random_meme(
             .await
             .expect("Couldn't create interaction response");
         return true;
-    };
+    }
 
     false
 }
@@ -242,9 +242,7 @@ async fn handle_meme(
 
         let (file, bytes) = memes::read_meme(
             command
-                .guild_id
-                .and_then(|gi| Some(gi.get()))
-                .unwrap_or(command.channel_id.get()),
+                .guild_id.map_or(command.channel_id.get(), serenity::all::GuildId::get),
             &folder_name,
             pool,
         )
@@ -263,7 +261,7 @@ async fn handle_meme(
             .await
             .expect("Couldn't create interaction response");
         return true;
-    };
+    }
 
     false
 }

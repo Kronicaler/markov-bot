@@ -160,10 +160,10 @@ and the users can choose themselves if they don't want their messages saved (/st
                         component.defer(&ctx.http).await.unwrap();
                         shuffle_queue(&ctx, component.guild_id.unwrap()).await;
                     }
-                };
+                }
             }
             _ => {}
-        };
+        }
     }
 
     /// Is called by the framework whenever a user sends a message in a guild or in the bots DMs
