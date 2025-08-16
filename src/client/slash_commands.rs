@@ -19,7 +19,7 @@ use crate::{
         },
         voice::queue::{command_response::queue, shuffle::shuffle_queue},
     },
-    global_data, markov, voice, GuildId,
+    global_data, markov, voice,
 };
 use serenity::{
     all::{
@@ -242,7 +242,8 @@ async fn handle_meme(
 
         let (file, bytes) = memes::read_meme(
             command
-                .guild_id.map_or(command.channel_id.get(), serenity::all::GuildId::get),
+                .guild_id
+                .map_or(command.channel_id.get(), serenity::all::GuildId::get),
             &folder_name,
             pool,
         )
@@ -314,19 +315,4 @@ fn create_download_commands() -> Vec<CreateCommand> {
             .add_context(InteractionContext::PrivateChannel)
             .kind(CommandType::Message),
     ]
-}
-
-/// For testing purposes. Creates commands for a specific guild
-pub async fn create_test_commands(ctx: &Context) {
-    let testing_guild = std::env::var("TESTING_GUILD_ID")
-        .expect("Expected a TESTING_GUILD_ID in the environment")
-        .parse()
-        .expect("Couldn't parse the TESTING_GUILD_ID");
-
-    let test_commands: Vec<CreateCommand> = vec![];
-
-    GuildId::new(testing_guild)
-        .set_commands(&ctx.http, test_commands)
-        .await
-        .expect("Couldn't create guild test commands");
 }

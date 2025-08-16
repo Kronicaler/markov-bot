@@ -2,15 +2,15 @@ pub mod file_operations;
 pub mod global_data;
 pub mod helper_funcs;
 pub mod markov;
+pub mod memes;
 pub mod slash_commands;
 pub mod tags;
 pub mod voice;
-pub mod memes;
 
 use global_data::{init_global_data_for_client, HELP_MESSAGE};
 use itertools::Itertools;
 use regex::Regex;
-use slash_commands::{command_responses, create_global_commands, create_test_commands};
+use slash_commands::{command_responses, create_global_commands};
 use sqlx::{MySql, Pool};
 use tracing::{info_span, Instrument};
 
@@ -27,10 +27,7 @@ use self::{
 };
 use super::tags::check_for_tag_listeners;
 use serenity::{
-    all::{
-        ApplicationId, CreateInteractionResponseMessage, Guild, Interaction,
-        InteractionResponseFlags,
-    },
+    all::{CreateInteractionResponseMessage, Guild, Interaction, InteractionResponseFlags},
     async_trait,
     builder::{CreateInteractionResponse, CreateMessage},
     client::{Context, EventHandler},
@@ -44,7 +41,7 @@ use songbird::{
 };
 use std::{env, str::FromStr, time::Duration};
 use strum_macros::{Display, EnumString};
-use tokio::{join, select, time::timeout};
+use tokio::{select, time::timeout};
 
 #[derive(Display, EnumString, Debug, PartialEq, Eq, Clone, Copy)]
 pub enum ComponentIds {
@@ -71,14 +68,7 @@ impl EventHandler for Handler {
     async fn ready(&self, ctx: Context, ready: Ready) {
         println!("{} is connected!", ready.user.name);
 
-        let t1 = create_global_commands(&ctx);
-
-        if cfg!(debug_assertions) {
-            let t3 = create_test_commands(&ctx);
-            join!(t1, t3);
-        } else {
-            t1.await;
-        }
+        create_global_commands(&ctx).await;
     }
     // Is called when the bot gets data for a guild
     // if is_new is true then the bot just joined a new guild
