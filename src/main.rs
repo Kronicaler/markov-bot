@@ -8,7 +8,6 @@ mod logging;
 use chrono::Duration;
 use client::{file_operations, global_data, markov, start, tags, voice};
 use logging::setup_logging;
-use serenity::model::id::GuildId;
 use tokio::{process::Command, spawn, time::interval};
 use tracing::{error, info, info_span};
 

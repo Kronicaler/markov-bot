@@ -216,7 +216,7 @@ pub fn get_full_command_name(command: &CommandInteraction) -> String {
             CommandOptionType::SubCommandGroup => {
                 sub_command = Some(&option.name);
             }
-            _ => {},
+            _ => {}
         }
     }
 

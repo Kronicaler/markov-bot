@@ -247,19 +247,16 @@ pub async fn respond_to_tag(ctx: &Context, msg: &Message, message: &str, pool: &
             .collect();
 
         for channel in channels {
-            match tag_response(channel, ctx, msg, message).await {
-                Ok(mut msg) => {
-                    let http = ctx.http.clone();
-                    task::spawn(async move {
-                        tokio::time::sleep(Duration::from_secs(10)).await;
-                        msg.edit(&http, EditMessage::new().components(vec![]))
-                            .await
-                            .unwrap();
-                    });
+            if let Ok(mut msg) = tag_response(channel, ctx, msg, message).await {
+                let http = ctx.http.clone();
+                task::spawn(async move {
+                    tokio::time::sleep(Duration::from_secs(10)).await;
+                    msg.edit(&http, EditMessage::new().components(vec![]))
+                        .await
+                        .unwrap();
+                });
 
-                    break;
-                }
-                Err(_) => {},
+                break;
             }
         }
     }

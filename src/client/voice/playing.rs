@@ -61,10 +61,7 @@ async fn create_playing_embed(
 ) -> serenity::builder::CreateEmbed {
     let track_handle = queue.current().unwrap();
 
-    let song = track_handle
-        .data::<MyAuxMetadata>()
-        .aux_metadata
-        .clone();
+    let song = track_handle.data::<MyAuxMetadata>().aux_metadata.clone();
     //create embed
     //title
     let title = &song.title.unwrap_or_else(|| "Unknown".to_string());

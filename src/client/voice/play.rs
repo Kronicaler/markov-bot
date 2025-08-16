@@ -423,14 +423,11 @@ async fn try_get_link_input(query: &str) -> Option<SourceType> {
     }
 
     let mut input: Input = video_stream_bytes.into();
-    let metadata = input.aux_metadata().await.unwrap_or_else(|_| {
-        
-        AuxMetadata {
-            source_url: Some(query.to_string()),
-            track: Some(query.to_string()),
-            title: Some(query.to_string()),
-            ..Default::default()
-        }
+    let metadata = input.aux_metadata().await.unwrap_or_else(|_| AuxMetadata {
+        source_url: Some(query.to_string()),
+        track: Some(query.to_string()),
+        title: Some(query.to_string()),
+        ..Default::default()
     });
 
     Some(SourceType::Video(input, metadata))

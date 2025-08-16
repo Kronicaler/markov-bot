@@ -93,8 +93,6 @@ pub fn get_meme_folders() -> Vec<DirEntry> {
         return vec![];
     };
 
-    
-
     folders
         .filter_map(std::result::Result::ok)
         .filter(|f| f.file_type().is_ok_and(|f| f.is_dir()))
@@ -106,8 +104,6 @@ pub fn get_random_meme_folders() -> Vec<DirEntry> {
     let Ok(folders) = fs::read_dir(RANDOM_MEMES_FOLDER) else {
         return vec![];
     };
-
-    
 
     folders
         .filter_map(std::result::Result::ok)

@@ -60,7 +60,10 @@ pub fn import_chain_from_file() -> Result<MarkovChain> {
 pub fn get_messages_from_file() -> Result<Vec<String>> {
     let text_from_file = fs::read_to_string(create_file_if_missing(MARKOV_DATA_SET_PATH, "")?)?;
     let text_array: Vec<&str> = text_from_file.split("\n\n").collect();
-    Ok(text_array.into_par_iter().map(std::borrow::ToOwned::to_owned).collect())
+    Ok(text_array
+        .into_par_iter()
+        .map(std::borrow::ToOwned::to_owned)
+        .collect())
 }
 
 #[instrument]
