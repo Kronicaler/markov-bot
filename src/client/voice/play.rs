@@ -426,9 +426,9 @@ async fn try_get_link_input(query: &str) -> Option<SourceType> {
     let metadata = input.aux_metadata().await.unwrap_or_else(|_| {
         
         AuxMetadata {
-            source_url: Some(query.clone()),
-            track: Some(query.clone()),
-            title: Some(query.clone()),
+            source_url: Some(query.to_string()),
+            track: Some(query.to_string()),
+            title: Some(query.to_string()),
             ..Default::default()
         }
     });

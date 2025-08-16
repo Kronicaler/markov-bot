@@ -262,10 +262,6 @@ and the users can choose themselves if they don't want their messages saved (/st
 
 pub async fn start() {
     let token = env::var("DISCORD_TOKEN").expect("Expected a DISCORD_TOKEN in the environment");
-    let application_id: ApplicationId = env::var("APPLICATION_ID")
-        .expect("Expected an APPLICATION_ID in the environment")
-        .parse()
-        .expect("Couldn't parse the APPLICATION_ID");
 
     let songbird_config = Config::default()
         .driver_retry(Retry {
@@ -286,7 +282,6 @@ pub async fn start() {
     sqlx::migrate!("./migrations").run(&pool).await.unwrap();
 
     let mut client = Client::builder(token, intents)
-        .application_id(application_id)
         .event_handler(Handler { pool })
         .register_songbird_from_config(songbird_config)
         .await
