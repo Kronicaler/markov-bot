@@ -14,11 +14,15 @@ pub mod commands;
 mod dal;
 pub mod model;
 
-use std::fs::{self, DirEntry};
+use std::{
+    fs::{self, DirEntry},
+    hash::{DefaultHasher, Hash, Hasher},
+};
 
 use anyhow::bail;
 use itertools::Itertools;
 use rand::Rng;
+use serenity::all::Context;
 use sqlx::MySqlPool;
 
 pub const MEMES_FOLDER: &str = "./data/memes";
@@ -85,6 +89,65 @@ pub async fn read_random_meme(folder_name: &str) -> anyhow::Result<(DirEntry, Ve
     let file_bytes = fs::read(file.path())?;
 
     Ok((file, file_bytes))
+}
+
+fn calculate_hash<T: Hash>(t: &T) -> u64 {
+    let mut s = DefaultHasher::new();
+    t.hash(&mut s);
+    s.finish()
+}
+
+/// - hash bytes and check if it already is in the DB
+///     - if it exists in the DB then just add new categories and return
+/// - if not then:
+/// - if there's a new category make a new directory for it and make a new command for the category
+/// - save to folder name of first category
+/// - save hash, path and categories to DB
+#[tracing::instrument(err, skip(pool))]
+pub async fn save_meme(
+    name: String,
+    bytes: Vec<u8>,
+    categories: &Vec<String>,
+    pool: &MySqlPool,
+    ctx: &Context,
+) -> anyhow::Result<()> {
+    let hash = calculate_hash(&bytes);
+
+    if hash_exists(hash, &pool) {
+        add_categories_to_hash(categories, hash, &pool);
+        return Ok(());
+    }
+
+    create_new_category_dirs(categories);
+    create_new_category_commands(categories, ctx); // how to specify randomness?
+    let path = save_meme_to_file(&name, &bytes, categories.first().unwrap());
+    save_meme_hash(&path, hash, categories, pool);
+
+    Ok(())
+}
+
+fn save_meme_hash(path: &str, hash: u64, categories: &Vec<String>, pool: &MySqlPool) {
+    todo!()
+}
+
+fn save_meme_to_file(name: &str, bytes: &Vec<u8>, folder: &str) -> String {
+    todo!()
+}
+
+fn create_new_category_commands(categories: &Vec<String>, ctx: &Context) {
+    todo!()
+}
+
+fn create_new_category_dirs(categories: &Vec<String>) {
+    todo!()
+}
+
+fn add_categories_to_hash(categories: &Vec<String>, hash: u64, pool: &MySqlPool) {
+    todo!()
+}
+
+fn hash_exists(hash: u64, pool: &MySqlPool) -> bool {
+    todo!()
 }
 
 #[tracing::instrument(ret)]

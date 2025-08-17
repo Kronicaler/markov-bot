@@ -13,6 +13,7 @@ pub const MARKOV_EXPORT_PATH: &str = "data/markov data/corpus.json";
 
 /// User Ids that the bot will not learn from
 pub struct MarkovBlacklistedUser {
+    #[allow(dead_code)]
     pub user_id: u64,
 }
 

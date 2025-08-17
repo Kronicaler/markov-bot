@@ -11,6 +11,7 @@ pub struct Tag {
 }
 
 pub struct TagBlacklistedUser {
+    #[allow(dead_code)]
     pub user_id: u64,
 }
 

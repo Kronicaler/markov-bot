@@ -2,7 +2,9 @@ use sqlx::MySqlPool;
 
 #[derive(Debug)]
 pub struct ServerFolderIndex {
+    #[allow(dead_code)]
     pub server_id: u64,
+    #[allow(dead_code)]
     pub folder_name: String,
     pub file_index: u32,
 }
