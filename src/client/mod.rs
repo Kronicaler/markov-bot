@@ -6,6 +6,7 @@ pub mod memes;
 pub mod slash_commands;
 pub mod tags;
 pub mod voice;
+pub mod download;
 
 use global_data::{init_global_data_for_client, HELP_MESSAGE};
 use itertools::Itertools;

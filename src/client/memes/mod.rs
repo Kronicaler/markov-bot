@@ -113,7 +113,7 @@ pub async fn save_meme(
 ) -> anyhow::Result<()> {
     let hash = calculate_hash(&bytes);
 
-    if hash_exists(hash, &pool) {
+    if hash_exists(hash, &pool).await? {
         add_categories_to_hash(categories, hash, &pool);
         return Ok(());
     }
@@ -146,8 +146,21 @@ fn add_categories_to_hash(categories: &Vec<String>, hash: u64, pool: &MySqlPool)
     todo!()
 }
 
-fn hash_exists(hash: u64, pool: &MySqlPool) -> bool {
-    todo!()
+pub struct FileHash {
+    hash: u64,
+    path: String,
+}
+
+pub async fn hash_exists(hash: u64, pool: &MySqlPool) -> anyhow::Result<bool> {
+    let hash = sqlx::query_as!(
+        FileHash,
+        "select hash, path from file_hashes where hash = ?",
+        hash
+    )
+    .fetch_optional(pool)
+    .await?;
+
+    Ok(hash.is_some())
 }
 
 #[tracing::instrument(ret)]

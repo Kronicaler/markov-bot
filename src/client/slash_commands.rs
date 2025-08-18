@@ -11,13 +11,11 @@ use super::{
 };
 use crate::{
     client::{
-        helper_funcs::{download_command, download_from_message_command},
-        memes::{
+        download::{download_command, download_from_message_command}, memes::{
             self,
             commands::create_memes_commands,
             model::{get_meme_folders_lock, get_random_meme_folders_lock},
-        },
-        voice::queue::{command_response::queue, shuffle::shuffle_queue},
+        }, voice::queue::{command_response::queue, shuffle::shuffle_queue}
     },
     global_data, markov, voice,
 };

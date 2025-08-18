@@ -1,7 +1,6 @@
 use serenity::{
     all::{
-        CommandDataOptionValue, CommandInteraction, CommandOptionType, CreateAttachment,
-        CreateInteractionResponseMessage, EditInteractionResponse, ResolvedValue,
+        CommandDataOptionValue, CommandInteraction, CommandOptionType, CreateInteractionResponseMessage, 
     },
     builder::CreateInteractionResponse,
     client::Context,
@@ -12,7 +11,6 @@ use serenity::{
     },
 };
 use tracing::{info_span, Instrument};
-use uuid::Uuid;
 
 #[tracing::instrument(skip(ctx))]
 pub async fn user_id_command(ctx: Context, command: &CommandInteraction) {
@@ -53,107 +51,6 @@ pub async fn ping_command(ctx: Context, command: &CommandInteraction) {
             CreateInteractionResponse::Message(
                 CreateInteractionResponseMessage::new().content("Pong!"),
             ),
-        )
-        .instrument(info_span!("Sending message"))
-        .await
-        .expect("Couldn't create interaction response");
-}
-
-#[tracing::instrument(skip(ctx))]
-pub async fn download_command(ctx: Context, command: &CommandInteraction) {
-    command.defer(&ctx.http).await.unwrap();
-
-    let ResolvedValue::String(query) = command.data.options()[0].value else {
-        panic!("unknown command")
-    };
-
-    let attachment_bytes = tokio::process::Command::new("yt-dlp")
-        .args(["yt-dlp", "-o", "-", query])
-        .output()
-        .await
-        .unwrap()
-        .stdout;
-
-    let Some(file_type) = infer::get(&attachment_bytes) else {
-        command
-            .edit_response(
-                &ctx.http,
-                EditInteractionResponse::new().content("Unsupported link"),
-            )
-            .instrument(info_span!("Sending message"))
-            .await
-            .expect("Couldn't create interaction response");
-        return;
-    };
-
-    command
-        .edit_response(
-            ctx.http,
-            EditInteractionResponse::new().new_attachment(CreateAttachment::bytes(
-                attachment_bytes,
-                format!("dokibot-{}.{}", Uuid::new_v4(), file_type.extension()),
-            )),
-        )
-        .instrument(info_span!("Sending message"))
-        .await
-        .expect("Couldn't create interaction response");
-}
-
-#[tracing::instrument(skip(ctx))]
-pub async fn download_from_message_command(ctx: Context, command: &CommandInteraction) {
-    command.defer(&ctx.http).await.unwrap();
-
-    let message_id = command.data.target_id.unwrap();
-
-    let message = command
-        .data
-        .resolved
-        .messages
-        .get(&message_id.into())
-        .unwrap();
-
-    let link_regex =
-        regex::Regex::new(r#"(?:(?:https?|ftp)://|\b(?:[a-z\d]+\.))(?:(?:[^\s()<>]+|\((?:[^\s()<>]+|(?:\([^\s()<>]+\)))?\))+(?:\((?:[^\s()<>]+|(?:\(?:[^\s()<>]+\)))?\)|[^\s`!()\[\]{};:'".,<>?«»“”‘’]))?"#)
-        .expect("Invalid regular expression");
-
-    let Some(query) = link_regex.find(&message.content) else {
-        command
-            .edit_response(
-                &ctx.http,
-                EditInteractionResponse::new().content("Unsupported or no link found"),
-            )
-            .instrument(info_span!("Sending message"))
-            .await
-            .expect("Couldn't create interaction response");
-        return;
-    };
-
-    let attachment_bytes = tokio::process::Command::new("yt-dlp")
-        .args(["yt-dlp", "-o", "-", query.as_str()])
-        .output()
-        .await
-        .unwrap()
-        .stdout;
-
-    let Some(file_type) = infer::get(&attachment_bytes) else {
-        command
-            .edit_response(
-                &ctx.http,
-                EditInteractionResponse::new().content("Unsupported link"),
-            )
-            .instrument(info_span!("Sending message"))
-            .await
-            .expect("Couldn't create interaction response");
-        return;
-    };
-
-    command
-        .edit_response(
-            ctx.http,
-            EditInteractionResponse::new().new_attachment(CreateAttachment::bytes(
-                attachment_bytes,
-                format!("dokibot-{}.{}", Uuid::new_v4(), file_type.extension()),
-            )),
         )
         .instrument(info_span!("Sending message"))
         .await
