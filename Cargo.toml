@@ -8,7 +8,7 @@ authors = ["Kroni"]
 edition = "2021"
 
 [dependencies]
-tokio = { version = "1.44", features = ["macros", "rt-multi-thread", "signal"] }
+tokio = { version = "1.47", features = ["macros", "rt-multi-thread", "signal"] }
 serde_json = "1.0"
 regex = "1.11"
 dotenvy = "0.15"
@@ -23,16 +23,16 @@ anyhow = "1.0"
 thiserror = "2.0"
 sqlx = { version = "0.8", features = ["runtime-tokio-native-tls", "mysql"] }
 reqwest = "0.12"
-opentelemetry = "0.29"
-opentelemetry_sdk = { version = "0.29", features = ["rt-tokio"] }
+opentelemetry = "0.30"
+opentelemetry_sdk = { version = "0.30", features = ["rt-tokio"] }
 tracing = "0.1"
-tracing-opentelemetry = { version = "0.30" }
+tracing-opentelemetry = { version = "0.31" }
 tracing-subscriber = { version = "0.3", features = [
 	"tracing-log",
 	"env-filter",
 	"chrono",
 ] }
-opentelemetry-otlp = { version = "0.29", features = ["trace", "grpc-tonic"] }
+opentelemetry-otlp = { version = "0.30", features = ["trace", "grpc-tonic"] }
 futures = "0.3"
 itertools = "0.14"
 serenity = { version = "0.12", features = [
@@ -50,7 +50,7 @@ infer = "0.19.0"
 uuid = "1.16"
 markov_str = { version = "0.3.0", features = ["serde", "serialize"] }
 chrono = "0.4.40"
-rspotify = { version = "0.14.0", features = ["env-file"] }
+rspotify = { version = "0.15", features = ["env-file"] }
 url = "2.5.4"
 alphanumeric-sort = "1.5.3"
 

@@ -25,6 +25,8 @@ use rand::Rng;
 use serenity::all::Context;
 use sqlx::MySqlPool;
 
+use crate::client::memes::dal::{add_categories_to_hash, create_new_category_dirs, hash_exists, save_meme_hash, save_meme_to_file};
+
 pub const MEMES_FOLDER: &str = "./data/memes";
 pub const RANDOM_MEMES_FOLDER: &str = "./data/random_memes";
 
@@ -114,75 +116,18 @@ pub async fn save_meme(
     let hash = calculate_hash(&bytes);
 
     if hash_exists(hash, &pool).await? {
-        add_categories_to_hash(categories, hash, &pool);
+        add_categories_to_hash(categories, hash, &pool).await;
         return Ok(());
     }
 
-    create_new_category_dirs(categories);
-    create_new_category_commands(categories, ctx); // how to specify randomness?
-    let path = save_meme_to_file(&name, &bytes, categories.first().unwrap());
-    save_meme_hash(&path, hash, categories, pool);
+    create_new_category_dirs(categories).await;
+    create_new_category_commands(categories, ctx); // TODO: how to specify randomness?
+    let path = save_meme_to_file(&name, &bytes, categories.first().unwrap()).await;
+    save_meme_hash(&path, hash, categories, pool).await;
 
     Ok(())
 }
 
-fn save_meme_hash(path: &str, hash: u64, categories: &Vec<String>, pool: &MySqlPool) {
-    todo!()
-}
-
-fn save_meme_to_file(name: &str, bytes: &Vec<u8>, folder: &str) -> String {
-    todo!()
-}
-
 fn create_new_category_commands(categories: &Vec<String>, ctx: &Context) {
     todo!()
-}
-
-fn create_new_category_dirs(categories: &Vec<String>) {
-    todo!()
-}
-
-fn add_categories_to_hash(categories: &Vec<String>, hash: u64, pool: &MySqlPool) {
-    todo!()
-}
-
-pub struct FileHash {
-    hash: u64,
-    path: String,
-}
-
-pub async fn hash_exists(hash: u64, pool: &MySqlPool) -> anyhow::Result<bool> {
-    let hash = sqlx::query_as!(
-        FileHash,
-        "select hash, path from file_hashes where hash = ?",
-        hash
-    )
-    .fetch_optional(pool)
-    .await?;
-
-    Ok(hash.is_some())
-}
-
-#[tracing::instrument(ret)]
-pub fn get_meme_folders() -> Vec<DirEntry> {
-    let Ok(folders) = fs::read_dir(MEMES_FOLDER) else {
-        return vec![];
-    };
-
-    folders
-        .filter_map(std::result::Result::ok)
-        .filter(|f| f.file_type().is_ok_and(|f| f.is_dir()))
-        .collect_vec()
-}
-
-#[tracing::instrument(ret)]
-pub fn get_random_meme_folders() -> Vec<DirEntry> {
-    let Ok(folders) = fs::read_dir(RANDOM_MEMES_FOLDER) else {
-        return vec![];
-    };
-
-    folders
-        .filter_map(std::result::Result::ok)
-        .filter(|f| f.file_type().is_ok_and(|f| f.is_dir()))
-        .collect_vec()
 }

@@ -1,7 +1,7 @@
 use itertools::Itertools;
 use serenity::all::{CreateCommand, InstallationContext, InteractionContext};
 
-use crate::client::memes::{get_meme_folders, get_random_meme_folders};
+use crate::client::memes::dal::{get_meme_folders, get_random_meme_folders};
 
 pub fn create_memes_commands() -> Vec<CreateCommand> {
     let mut meme_commands = get_meme_folders()

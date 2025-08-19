@@ -3,7 +3,7 @@ use std::{collections::HashSet, sync::Arc, time::Duration};
 use serenity::prelude::{TypeMap, TypeMapKey};
 use tokio::{sync::RwLock, time::timeout};
 
-use crate::client::memes::{get_meme_folders, get_random_meme_folders};
+use crate::client::memes::dal::{get_meme_folders, get_random_meme_folders};
 
 #[tracing::instrument(skip(data))]
 pub fn init_memes_data(data: &mut tokio::sync::RwLockWriteGuard<serenity::prelude::TypeMap>) {
