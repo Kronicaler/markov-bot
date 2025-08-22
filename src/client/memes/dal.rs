@@ -1,5 +1,9 @@
-use std::fs::{self, DirEntry};
+use std::{
+    fs::{self, DirEntry},
+    path::{Path, PathBuf},
+};
 
+use anyhow::Context;
 use itertools::Itertools;
 use sqlx::MySqlPool;
 
@@ -60,16 +64,67 @@ pub async fn set_server_folder_index(
     Ok(())
 }
 
-pub async fn save_meme_hash(path: &str, hash: u64, categories: &Vec<String>, pool: &MySqlPool) {
-    todo!()
+pub async fn save_meme_hash(
+    path: &str,
+    hash: u64,
+    categories: &Vec<String>,
+    pool: &MySqlPool,
+) -> anyhow::Result<()> {
+    let mut tx = pool.begin().await?;
+
+    sqlx::query!(
+        r#"
+		INSERT INTO file_hashes( hash, path )
+		VALUES ( ?, ? )
+		"#,
+        hash,
+        path,
+    )
+    .execute(&mut *tx)
+    .await?;
+
+    for category in categories {
+        sqlx::query!(
+            r#"
+		INSERT INTO file_categories( category, file_hash)
+		VALUES ( ?, ? )
+		"#,
+            category,
+            hash,
+        )
+        .execute(&mut *tx)
+        .await?;
+    }
+
+    tx.commit().await?;
+
+    Ok(())
 }
 
-pub async fn save_meme_to_file(name: &str, bytes: &Vec<u8>, folder: &str) -> String {
-    todo!()
+pub async fn save_meme_to_file(
+    name: &str,
+    bytes: &Vec<u8>,
+    folder: &str,
+) -> anyhow::Result<String> {
+    let mut path = PathBuf::new();
+    path.push(folder);
+    path.push(name);
+
+    let ext = infer::get(&bytes).context("invalid file type")?;
+    path.set_extension(ext.extension());
+
+    fs::write(&path, bytes)?;
+
+    Ok(path.to_str().unwrap().to_string())
 }
 
-pub async fn create_new_category_dirs(categories: &Vec<String>) {
-    todo!()
+pub async fn create_new_category_dirs(categories: &Vec<String>) -> anyhow::Result<()> {
+    for category in categories {
+        let category_dir = format!("{MEMES_FOLDER}/{category}");
+        fs::create_dir(&category_dir)?;
+    }
+
+    Ok(())
 }
 
 pub async fn add_categories_to_hash(categories: &Vec<String>, hash: u64, pool: &MySqlPool) {

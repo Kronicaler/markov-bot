@@ -120,10 +120,10 @@ pub async fn save_meme(
         return Ok(());
     }
 
-    create_new_category_dirs(categories).await;
+    create_new_category_dirs(categories).await?;
+    let path = save_meme_to_file(&name, &bytes, categories.first().unwrap()).await?;
+    save_meme_hash(&path, hash, categories, pool).await?;
     create_new_category_commands(categories, ctx); // TODO: how to specify randomness?
-    let path = save_meme_to_file(&name, &bytes, categories.first().unwrap()).await;
-    save_meme_hash(&path, hash, categories, pool).await;
 
     Ok(())
 }
