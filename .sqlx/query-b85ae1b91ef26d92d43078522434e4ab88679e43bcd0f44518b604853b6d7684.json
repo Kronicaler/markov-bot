@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "\n\t\tINSERT INTO file_hashes( hash, path )\n\t\tVALUES ( ?, ? )\n\t\t",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "b85ae1b91ef26d92d43078522434e4ab88679e43bcd0f44518b604853b6d7684"
+}

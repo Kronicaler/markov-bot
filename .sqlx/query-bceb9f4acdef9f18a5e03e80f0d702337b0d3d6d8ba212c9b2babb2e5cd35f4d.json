@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "\n\t\tINSERT INTO file_categories( category, file_hash)\n\t\tVALUES ( ?, ? )\n\t\t",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "bceb9f4acdef9f18a5e03e80f0d702337b0d3d6d8ba212c9b2babb2e5cd35f4d"
+}
