@@ -1,5 +1,6 @@
 use std::time::Duration;
 
+use anyhow::Context as AnyhowContext;
 use rand::seq::SliceRandom;
 use serenity::all::{Context, GuildId};
 use songbird::tracks::Queued;
@@ -8,28 +9,28 @@ use tokio::time::timeout;
 use super::update_queue_message::update_queue_message;
 
 #[tracing::instrument(skip(ctx))]
-pub async fn shuffle_queue(ctx: &Context, guild_id: GuildId) -> &'static str {
+pub async fn shuffle_queue(ctx: &Context, guild_id: GuildId) -> anyhow::Result<&'static str> {
     let manager = songbird::get(ctx)
         .await
-        .expect("Songbird Voice client placed in at initialization.")
+        .context("Songbird Voice client placed in at initialization.")?
         .clone();
 
     match manager.get(guild_id) {
         Some(call_lock) => {
-            let call = timeout(Duration::from_secs(30), call_lock.lock())
-                .await
-                .unwrap();
+            let call = timeout(Duration::from_secs(30), call_lock.lock()).await?;
             let queue = call.queue();
 
             if queue.is_empty() {
-                return "The queue is empty!";
+                return Ok("The queue is empty!");
             }
 
             queue.modify_queue(|q| {
                 let mut vec: Vec<Queued> = vec![];
 
                 while q.len() > 1 {
-                    let queued_song = q.pop_back().unwrap();
+                    let Some(queued_song) = q.pop_back() else {
+                        break;
+                    };
 
                     vec.push(queued_song);
                 }
@@ -48,8 +49,8 @@ pub async fn shuffle_queue(ctx: &Context, guild_id: GuildId) -> &'static str {
                 update_queue_message(&cloned_ctx, GuildId::new(guild_id.get()), call_lock).await;
             });
 
-            return "Shuffled the queue";
+            return Ok("Shuffled the queue");
         }
-        None => return "You must be in a voice channel to use that command!",
+        None => return Ok("You must be in a voice channel to use that command!"),
     }
 }

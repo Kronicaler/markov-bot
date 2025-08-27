@@ -139,7 +139,7 @@ and the users can choose themselves if they don't want their messages saved (/st
                         change_queue_page(&ctx, &mut component, button_id).await;
                     }
                     ComponentIds::Skip => {
-                        skip_button_press(&ctx, &component).await;
+                        skip_button_press(&ctx, &component).await.unwrap();
                     }
                     ComponentIds::PlayNow | ComponentIds::PlayNowMenu => {
                         play_now(&ctx, &component).await;
@@ -149,7 +149,7 @@ and the users can choose themselves if they don't want their messages saved (/st
                     }
                     ComponentIds::Shuffle => {
                         component.defer(&ctx.http).await.unwrap();
-                        shuffle_queue(&ctx, component.guild_id.unwrap()).await;
+                        shuffle_queue(&ctx, component.guild_id.unwrap()).await.unwrap();
                     }
                 }
             }

@@ -16,30 +16,30 @@ use super::helper_funcs::{
 
 /// Skip the track
 #[tracing::instrument(skip(ctx))]
-pub async fn skip(ctx: &ClientContext, command: &CommandInteraction) {
-    let guild_id = command.guild_id.expect("Couldn't get guild ID");
+pub async fn skip(ctx: &ClientContext, command: &CommandInteraction) -> anyhow::Result<()> {
+    let guild_id = command.guild_id.context("Couldn't get guild ID")?;
 
-    command.defer(&ctx.http).await.unwrap();
+    command.defer(&ctx.http).await?;
 
     if is_bot_in_another_voice_channel(
         ctx,
-        &guild_id.to_guild_cached(&ctx.cache).unwrap().clone(),
+        &guild_id.to_guild_cached(&ctx.cache).context("cant get guild from guild_id")?.clone(),
         command.user.id,
     ) {
         voice_channel_not_same_response(command, ctx).await;
-        return;
+        return Ok(());
     }
 
     let Some(call_lock) = get_call_lock(ctx, guild_id, command).await else {
-        return;
+        return Ok(());
     };
     let call = timeout(Duration::from_secs(30), call_lock.lock())
         .await
-        .unwrap();
+        ?;
 
     if call.queue().is_empty() {
-        empty_queue_response(command, ctx).await;
-        return;
+        empty_queue_response(command, ctx).await?;
+        return Ok(());
     }
 
     let skip_info = get_skip_info(command);
@@ -52,22 +52,24 @@ pub async fn skip(ctx: &ClientContext, command: &CommandInteraction) {
                 let success = handle_skip_type_number(track_number, &call);
 
                 if !success {
-                    couldnt_skip_response(command, ctx).await;
-                    return;
+                    couldnt_skip_response(command, ctx).await?;
+                    return Ok(());
                 }
             }
             SkipType::Until => {
                 if handle_skip_type_until(&call, track_number).is_err() {
-                    couldnt_skip_response(command, ctx).await;
-                    return;
+                    couldnt_skip_response(command, ctx).await?;
+                    return Ok(());
                 }
             }
         }
     } else {
-        call.queue().skip().expect("Couldn't skip song");
+        call.queue().skip().context("Couldn't skip song")?;
     }
 
-    skip_embed_response(&call, command, ctx).await;
+    skip_embed_response(&call, command, ctx).await?;
+
+    Ok(())
 }
 
 fn handle_skip_type_until(
@@ -101,7 +103,7 @@ fn handle_skip_type_number(
     success
 }
 
-async fn couldnt_skip_response(command: &CommandInteraction, ctx: &ClientContext) {
+async fn couldnt_skip_response(command: &CommandInteraction, ctx: &ClientContext) -> anyhow::Result<()>{
     command
         .edit_response(
             &ctx.http,
@@ -109,14 +111,16 @@ async fn couldnt_skip_response(command: &CommandInteraction, ctx: &ClientContext
         )
         .instrument(info_span!("Sending message"))
         .await
-        .expect("Error creating interaction response");
+        .context("Error creating interaction response")?;
+
+    Ok(())
 }
 
 async fn skip_embed_response(
     call: &songbird::Call,
     command: &CommandInteraction,
     ctx: &ClientContext,
-) {
+) -> anyhow::Result<()>{
     let title = format!("Song skipped, {} left in queue.", call.queue().len() - 1);
     let colour = Colour::from_rgb(149, 8, 2);
     command
@@ -126,10 +130,12 @@ async fn skip_embed_response(
         )
         .instrument(info_span!("Sending message"))
         .await
-        .expect("Error creating interaction response");
+        .context("Error creating interaction response")?;
+
+    Ok(())
 }
 
-async fn empty_queue_response(command: &CommandInteraction, ctx: &ClientContext) {
+async fn empty_queue_response(command: &CommandInteraction, ctx: &ClientContext)-> anyhow::Result<()> {
     command
         .edit_response(
             &ctx.http,
@@ -137,14 +143,16 @@ async fn empty_queue_response(command: &CommandInteraction, ctx: &ClientContext)
         )
         .instrument(info_span!("Sending message"))
         .await
-        .expect("Couldn't create response");
+        .context("Couldn't create response")?;
+
+    Ok(())
 }
 
 fn get_skip_info(command: &CommandInteraction) -> Option<(SkipType, i64)> {
     let command_data_option = command.data.options.first()?;
 
     let skip_type = SkipType::from_str(&command_data_option.name).unwrap();
-    let track_number = command_data_option.value.as_i64().unwrap();
+    let track_number = command_data_option.value.as_i64()?;
 
     Some((skip_type, track_number))
 }

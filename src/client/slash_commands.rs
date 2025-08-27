@@ -155,7 +155,7 @@ pub async fn command_responses(command: &CommandInteraction, ctx: Context, pool:
             // ===== VOICE =====
             UserCommand::play => voice::play(&ctx, command).await,
             UserCommand::play_from_attachment => voice::play_from_attachment(&ctx, command).await,
-            UserCommand::skip => voice::skip(&ctx, command).await,
+            UserCommand::skip => voice::skip(&ctx, command).await.unwrap(),
             UserCommand::stop => voice::stop(&ctx, command).await,
             UserCommand::playing => voice::playing(&ctx, command).await,
             UserCommand::queue => queue(&ctx, command).await,
@@ -164,7 +164,7 @@ pub async fn command_responses(command: &CommandInteraction, ctx: Context, pool:
             UserCommand::queue_shuffle => {
                 command.defer(&ctx.http).await.unwrap();
 
-                let response = shuffle_queue(&ctx, command.guild_id.unwrap()).await;
+                let response = shuffle_queue(&ctx, command.guild_id.unwrap()).await.unwrap();
 
                 command
                     .edit_response(&ctx.http, EditInteractionResponse::new().content(response))
