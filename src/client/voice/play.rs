@@ -15,6 +15,7 @@ use super::{
 use futures::{future::join_all, StreamExt};
 use infer::MatcherType;
 use itertools::Itertools;
+use rand::seq::SliceRandom;
 use reqwest::Client;
 use rspotify::{
     http::HttpError,
@@ -173,7 +174,7 @@ async fn handle_playlist(
 
 #[tracing::instrument(skip(inputs, call_lock, ctx), fields(inputs.length=inputs.len()))]
 async fn fill_queue(
-    inputs: VecDeque<Input>,
+    mut inputs: VecDeque<Input>,
     call_lock: Arc<Mutex<songbird::Call>>,
     ctx: &Context,
     guild_id: GuildId,
@@ -190,7 +191,9 @@ async fn fill_queue(
     let length = inputs.len();
 
     let mut fetch_aux_metadata_futures: Vec<_> = vec![];
-    for (i, mut input) in inputs.into_iter().enumerate() {
+    for i in 0..(inputs.len() - 1) {
+        let mut input = inputs.pop_front().unwrap();
+
         let call_lock = call_lock.clone();
         let queue_data_lock = queue_data_lock.clone();
 
@@ -267,6 +270,24 @@ async fn fill_queue(
 
                 if call_lock.lock().await.current_channel().is_none() || queue_filling_stopped {
                     return;
+                }
+
+                let shuffle_queue = queue_data_lock
+                    .read()
+                    .await
+                    .shuffle_queue
+                    .get(&guild_id)
+                    .cloned()
+                    .unwrap();
+
+                if shuffle_queue {
+                    inputs.make_contiguous().shuffle(&mut rand::thread_rng());
+
+                    queue_data_lock
+                        .write()
+                        .await
+                        .shuffle_queue
+                        .insert(guild_id.clone(), false);
                 }
 
                 let my_metadata = MyAuxMetadata {

@@ -60,6 +60,7 @@ impl TypeMapKey for VoiceMessages {
 #[derive(Clone, Default)]
 pub struct QueueData {
     pub filling_queue: HashMap<GuildId, bool>,
+    pub shuffle_queue: HashMap<GuildId, bool>,
 }
 
 impl TypeMapKey for QueueData {

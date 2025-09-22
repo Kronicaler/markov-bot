@@ -6,6 +6,8 @@ use serenity::all::{Context, GuildId};
 use songbird::tracks::Queued;
 use tokio::time::timeout;
 
+use crate::client::voice::model::get_queue_data_lock;
+
 use super::update_queue_message::update_queue_message;
 
 #[tracing::instrument(skip(ctx))]
@@ -43,6 +45,14 @@ pub async fn shuffle_queue(ctx: &Context, guild_id: GuildId) -> anyhow::Result<&
             });
 
             drop(call);
+
+            let queue_data_lock = get_queue_data_lock(&ctx.data).await;
+
+            queue_data_lock
+                .write()
+                .await
+                .shuffle_queue
+                .insert(guild_id, true);
 
             let cloned_ctx = ctx.clone();
             tokio::spawn(async move {
