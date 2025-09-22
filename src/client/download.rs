@@ -108,7 +108,11 @@ pub async fn download_from_message_command(ctx: Context, command: &CommandIntera
             ctx.http,
             EditInteractionResponse::new().new_attachment(CreateAttachment::bytes(
                 attachment_bytes,
-                format!("doki-{}.{}", Utc::now().timestamp() - 1575072000, file_type.extension()),
+                format!(
+                    "doki-{}.{}",
+                    Utc::now().timestamp() - 1575072000,
+                    file_type.extension()
+                ),
             )),
         )
         .instrument(info_span!("Sending message"))

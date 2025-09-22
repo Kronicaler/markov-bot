@@ -1,3 +1,4 @@
+pub mod download;
 pub mod file_operations;
 pub mod global_data;
 pub mod helper_funcs;
@@ -6,7 +7,6 @@ pub mod memes;
 pub mod slash_commands;
 pub mod tags;
 pub mod voice;
-pub mod download;
 
 use global_data::{init_global_data_for_client, HELP_MESSAGE};
 use itertools::Itertools;
@@ -149,7 +149,9 @@ and the users can choose themselves if they don't want their messages saved (/st
                     }
                     ComponentIds::Shuffle => {
                         component.defer(&ctx.http).await.unwrap();
-                        shuffle_queue(&ctx, component.guild_id.unwrap()).await.unwrap();
+                        shuffle_queue(&ctx, component.guild_id.unwrap())
+                            .await
+                            .unwrap();
                     }
                 }
             }

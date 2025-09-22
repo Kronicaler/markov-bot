@@ -1,6 +1,7 @@
 use serenity::{
     all::{
-        CommandDataOptionValue, CommandInteraction, CommandOptionType, CreateInteractionResponseMessage, 
+        CommandDataOptionValue, CommandInteraction, CommandOptionType,
+        CreateInteractionResponseMessage,
     },
     builder::CreateInteractionResponse,
     client::Context,

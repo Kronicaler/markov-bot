@@ -19,7 +19,10 @@ pub async fn skip_button_press(ctx: &Context, button: &ComponentInteraction) -> 
 
     if is_bot_in_another_voice_channel(
         ctx,
-        &guild_id.to_guild_cached(&ctx.cache).context("couldn't get guild from guild id")?.clone(),
+        &guild_id
+            .to_guild_cached(&ctx.cache)
+            .context("couldn't get guild from guild id")?
+            .clone(),
         button.user.id,
     ) {
         return Ok(());

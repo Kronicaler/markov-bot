@@ -11,11 +11,13 @@ use super::{
 };
 use crate::{
     client::{
-        download::{download_command, download_from_message_command}, memes::{
+        download::{download_command, download_from_message_command},
+        memes::{
             self,
             commands::create_memes_commands,
             model::{get_meme_folders_lock, get_random_meme_folders_lock},
-        }, voice::queue::{command_response::queue, shuffle::shuffle_queue}
+        },
+        voice::queue::{command_response::queue, shuffle::shuffle_queue},
     },
     global_data, markov, voice,
 };
@@ -164,7 +166,9 @@ pub async fn command_responses(command: &CommandInteraction, ctx: Context, pool:
             UserCommand::queue_shuffle => {
                 command.defer(&ctx.http).await.unwrap();
 
-                let response = shuffle_queue(&ctx, command.guild_id.unwrap()).await.unwrap();
+                let response = shuffle_queue(&ctx, command.guild_id.unwrap())
+                    .await
+                    .unwrap();
 
                 command
                     .edit_response(&ctx.http, EditInteractionResponse::new().content(response))

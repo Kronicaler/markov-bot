@@ -25,7 +25,10 @@ use rand::Rng;
 use serenity::all::Context;
 use sqlx::MySqlPool;
 
-use crate::client::memes::dal::{add_categories_to_hash, create_new_category_dirs, hash_exists, save_meme_hash, save_meme_to_file};
+use crate::client::memes::dal::{
+    add_categories_to_hash, create_new_category_dirs, hash_exists, save_meme_hash,
+    save_meme_to_file,
+};
 
 pub const MEMES_FOLDER: &str = "./data/memes";
 pub const RANDOM_MEMES_FOLDER: &str = "./data/random_memes";

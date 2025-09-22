@@ -192,6 +192,24 @@ async fn fill_queue(
 
     let mut fetch_aux_metadata_futures: Vec<_> = vec![];
     for i in 0..(inputs.len() - 1) {
+        let shuffle_queue = queue_data_lock
+            .read()
+            .await
+            .shuffle_queue
+            .get(&guild_id)
+            .cloned()
+            .unwrap();
+
+        if shuffle_queue {
+            inputs.make_contiguous().shuffle(&mut rand::thread_rng());
+
+            queue_data_lock
+                .write()
+                .await
+                .shuffle_queue
+                .insert(guild_id.clone(), false);
+        }
+
         let mut input = inputs.pop_front().unwrap();
 
         let call_lock = call_lock.clone();
@@ -270,24 +288,6 @@ async fn fill_queue(
 
                 if call_lock.lock().await.current_channel().is_none() || queue_filling_stopped {
                     return;
-                }
-
-                let shuffle_queue = queue_data_lock
-                    .read()
-                    .await
-                    .shuffle_queue
-                    .get(&guild_id)
-                    .cloned()
-                    .unwrap();
-
-                if shuffle_queue {
-                    inputs.make_contiguous().shuffle(&mut rand::thread_rng());
-
-                    queue_data_lock
-                        .write()
-                        .await
-                        .shuffle_queue
-                        .insert(guild_id.clone(), false);
                 }
 
                 let my_metadata = MyAuxMetadata {

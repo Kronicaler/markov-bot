@@ -23,7 +23,10 @@ pub async fn skip(ctx: &ClientContext, command: &CommandInteraction) -> anyhow::
 
     if is_bot_in_another_voice_channel(
         ctx,
-        &guild_id.to_guild_cached(&ctx.cache).context("cant get guild from guild_id")?.clone(),
+        &guild_id
+            .to_guild_cached(&ctx.cache)
+            .context("cant get guild from guild_id")?
+            .clone(),
         command.user.id,
     ) {
         voice_channel_not_same_response(command, ctx).await;
@@ -33,9 +36,7 @@ pub async fn skip(ctx: &ClientContext, command: &CommandInteraction) -> anyhow::
     let Some(call_lock) = get_call_lock(ctx, guild_id, command).await else {
         return Ok(());
     };
-    let call = timeout(Duration::from_secs(30), call_lock.lock())
-        .await
-        ?;
+    let call = timeout(Duration::from_secs(30), call_lock.lock()).await?;
 
     if call.queue().is_empty() {
         empty_queue_response(command, ctx).await?;
@@ -103,7 +104,10 @@ fn handle_skip_type_number(
     success
 }
 
-async fn couldnt_skip_response(command: &CommandInteraction, ctx: &ClientContext) -> anyhow::Result<()>{
+async fn couldnt_skip_response(
+    command: &CommandInteraction,
+    ctx: &ClientContext,
+) -> anyhow::Result<()> {
     command
         .edit_response(
             &ctx.http,
@@ -120,7 +124,7 @@ async fn skip_embed_response(
     call: &songbird::Call,
     command: &CommandInteraction,
     ctx: &ClientContext,
-) -> anyhow::Result<()>{
+) -> anyhow::Result<()> {
     let title = format!("Song skipped, {} left in queue.", call.queue().len() - 1);
     let colour = Colour::from_rgb(149, 8, 2);
     command
@@ -135,7 +139,10 @@ async fn skip_embed_response(
     Ok(())
 }
 
-async fn empty_queue_response(command: &CommandInteraction, ctx: &ClientContext)-> anyhow::Result<()> {
+async fn empty_queue_response(
+    command: &CommandInteraction,
+    ctx: &ClientContext,
+) -> anyhow::Result<()> {
     command
         .edit_response(
             &ctx.http,
