@@ -198,7 +198,7 @@ async fn fill_queue(
             .shuffle_queue
             .get(&guild_id)
             .cloned()
-            .unwrap();
+            .unwrap_or(false);
 
         if shuffle_queue {
             inputs.make_contiguous().shuffle(&mut rand::thread_rng());
