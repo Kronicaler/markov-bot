@@ -34,7 +34,7 @@ use songbird::{
     tracks::{Track, TrackQueue},
     TrackEvent,
 };
-use std::{collections::VecDeque, sync::Arc, time::Duration};
+use std::{cmp::min, collections::VecDeque, sync::Arc, time::Duration};
 use tokio::time::timeout;
 use tracing::{error, info, info_span, warn, Instrument};
 use url::Url;
@@ -197,7 +197,7 @@ async fn fill_queue(
             .await
             .shuffle_queue
             .get(&guild_id)
-            .cloned()
+            .copied()
             .unwrap_or(false);
 
         if shuffle_queue {
@@ -207,7 +207,45 @@ async fn fill_queue(
                 .write()
                 .await
                 .shuffle_queue
-                .insert(guild_id.clone(), false);
+                .insert(guild_id, false);
+        }
+
+        let skip_queue = queue_data_lock
+            .read()
+            .await
+            .skip_queue
+            .get(&guild_id)
+            .cloned();
+
+        if let Some((skip_type, number)) = skip_queue {
+            let call = call_lock.lock().await;
+
+            match skip_type {
+                crate::client::voice::skip::SkipType::Number => todo!(),
+                crate::client::voice::skip::SkipType::Until => {
+                    let queue_len = call.queue().len();
+                    let leftover = number - queue_len as i64;
+
+                    call.queue()
+                        .modify_queue(|q| -> anyhow::Result<()> {
+                            for _ in 1..min(queue_len as i64, number) {
+                                q.pop_front().unwrap().stop().unwrap();
+                            }
+
+                            Ok(())
+                        })
+                        .unwrap();
+                    call.queue().skip().unwrap();
+
+                    if leftover > 0 {
+                        for _ in 0..leftover {
+                            inputs.pop_front();
+                        }
+                    }
+                }
+            }
+
+            queue_data_lock.write().await.skip_queue.remove(&guild_id);
         }
 
         let mut input = inputs.pop_front().unwrap();

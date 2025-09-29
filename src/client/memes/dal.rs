@@ -1,6 +1,6 @@
 use std::{
     fs::{self, DirEntry},
-    path::{Path, PathBuf},
+    path::PathBuf,
 };
 
 use anyhow::Context;
@@ -110,7 +110,7 @@ pub async fn save_meme_to_file(
     path.push(folder);
     path.push(name);
 
-    let ext = infer::get(&bytes).context("invalid file type")?;
+    let ext = infer::get(bytes).context("invalid file type")?;
     path.set_extension(ext.extension());
 
     fs::write(&path, bytes)?;

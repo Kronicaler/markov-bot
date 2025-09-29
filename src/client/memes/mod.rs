@@ -118,8 +118,8 @@ pub async fn save_meme(
 ) -> anyhow::Result<()> {
     let hash = calculate_hash(&bytes);
 
-    if hash_exists(hash, &pool).await? {
-        add_categories_to_hash(categories, hash, &pool).await;
+    if hash_exists(hash, pool).await? {
+        add_categories_to_hash(categories, hash, pool).await;
         return Ok(());
     }
 

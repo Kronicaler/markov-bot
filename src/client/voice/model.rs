@@ -12,6 +12,8 @@ use songbird::{
 };
 use tokio::time::timeout;
 
+use crate::client::voice::skip::SkipType;
+
 pub fn init_voice_data(data: &mut tokio::sync::RwLockWriteGuard<serenity::prelude::TypeMap>) {
     data.insert::<VoiceMessages>(Arc::new(RwLock::new(VoiceMessages::default())));
     data.insert::<QueueData>(Arc::new(RwLock::new(QueueData::default())));
@@ -61,6 +63,7 @@ impl TypeMapKey for VoiceMessages {
 pub struct QueueData {
     pub filling_queue: HashMap<GuildId, bool>,
     pub shuffle_queue: HashMap<GuildId, bool>,
+    pub skip_queue: HashMap<GuildId, (SkipType, i64)>,
 }
 
 impl TypeMapKey for QueueData {

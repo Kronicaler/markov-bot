@@ -2,13 +2,15 @@ use std::{str::FromStr, time::Duration};
 
 use anyhow::Context;
 use serenity::{
-    all::{Colour, CommandInteraction},
+    all::{Colour, CommandInteraction, GuildId},
     builder::{CreateEmbed, EditInteractionResponse},
     client::Context as ClientContext,
 };
 use strum_macros::EnumString;
 use tokio::time::timeout;
 use tracing::{info_span, Instrument};
+
+use crate::client::voice::model::get_queue_data_lock;
 
 use super::helper_funcs::{
     get_call_lock, is_bot_in_another_voice_channel, voice_channel_not_same_response,
@@ -50,7 +52,7 @@ pub async fn skip(ctx: &ClientContext, command: &CommandInteraction) -> anyhow::
 
         match skip_info.0 {
             SkipType::Number => {
-                let success = handle_skip_type_number(track_number, &call);
+                let success = handle_skip_type_number(track_number, &call, ctx, guild_id).await;
 
                 if !success {
                     couldnt_skip_response(command, ctx).await?;
@@ -58,7 +60,10 @@ pub async fn skip(ctx: &ClientContext, command: &CommandInteraction) -> anyhow::
                 }
             }
             SkipType::Until => {
-                if handle_skip_type_until(&call, track_number).is_err() {
+                if handle_skip_type_until(&call, track_number, ctx, guild_id)
+                    .await
+                    .is_err()
+                {
                     couldnt_skip_response(command, ctx).await?;
                     return Ok(());
                 }
@@ -73,10 +78,28 @@ pub async fn skip(ctx: &ClientContext, command: &CommandInteraction) -> anyhow::
     Ok(())
 }
 
-fn handle_skip_type_until(
-    call: &tokio::sync::MutexGuard<songbird::Call>,
+async fn handle_skip_type_until<'a>(
+    call: &tokio::sync::MutexGuard<'a, songbird::Call>,
     track_number: i64,
+    ctx: &ClientContext,
+    guild_id: GuildId,
 ) -> anyhow::Result<()> {
+    let queue_data_lock = get_queue_data_lock(&ctx.data).await;
+    let mut queue_data = queue_data_lock.write().await;
+
+    let filling_queue = queue_data
+        .filling_queue
+        .get(&guild_id)
+        .copied()
+        .unwrap_or(false);
+
+    if filling_queue {
+        queue_data
+            .skip_queue
+            .insert(guild_id, (SkipType::Until, track_number));
+        return Ok(());
+    }
+
     call.queue().modify_queue(|q| -> anyhow::Result<()> {
         for _ in 1..track_number - 1 {
             q.pop_front()
@@ -90,10 +113,28 @@ fn handle_skip_type_until(
     Ok(())
 }
 
-fn handle_skip_type_number(
+async fn handle_skip_type_number<'a>(
     track_number: i64,
-    call: &tokio::sync::MutexGuard<songbird::Call>,
+    call: &tokio::sync::MutexGuard<'a, songbird::Call>,
+    ctx: &ClientContext,
+    guild_id: GuildId,
 ) -> bool {
+    let queue_data_lock = get_queue_data_lock(&ctx.data).await;
+    let mut queue_data = queue_data_lock.write().await;
+
+    let filling_queue = queue_data
+        .filling_queue
+        .get(&guild_id)
+        .copied()
+        .unwrap_or(false);
+
+    if filling_queue {
+        queue_data
+            .skip_queue
+            .insert(guild_id, (SkipType::Number, track_number));
+        return true;
+    }
+
     let success = if track_number == 1 {
         call.queue().skip().is_ok()
     } else {
@@ -164,8 +205,8 @@ fn get_skip_info(command: &CommandInteraction) -> Option<(SkipType, i64)> {
     Some((skip_type, track_number))
 }
 
-#[derive(EnumString)]
-enum SkipType {
+#[derive(EnumString, Clone)]
+pub enum SkipType {
     #[strum(serialize = "number")]
     Number,
     #[strum(serialize = "until")]
