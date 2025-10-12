@@ -23,7 +23,7 @@ cp ./target/release/markov_bot /markov_bot
 
 FROM debian:bookworm-slim AS release
 
-RUN apt-get update && apt-get install -y ffmpeg libssl3 libopus-dev curl ca-certificates python3 && rm -rf /var/lib/apt/lists/*;
+RUN apt-get update && apt-get install -y ffmpeg libssl3 libopus-dev curl ca-certificates python3 python3-pip python3-brotli python3-websockets python3-mutagen python3-certifi && rm -rf /var/lib/apt/lists/*;
 
 RUN curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp;
 RUN chmod a+rx /usr/local/bin/yt-dlp;

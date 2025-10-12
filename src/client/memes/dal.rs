@@ -3,7 +3,7 @@ use std::{
     path::PathBuf,
 };
 
-use anyhow::Context;
+use file_format::FileFormat;
 use itertools::Itertools;
 use sqlx::MySqlPool;
 
@@ -110,7 +110,7 @@ pub async fn save_meme_to_file(
     path.push(folder);
     path.push(name);
 
-    let ext = infer::get(bytes).context("invalid file type")?;
+    let ext = FileFormat::from_bytes(bytes);
     path.set_extension(ext.extension());
 
     fs::write(&path, bytes)?;

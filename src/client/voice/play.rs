@@ -12,8 +12,8 @@ use super::{
     queue::update_queue_message::update_queue_message,
     MyAuxMetadata, PeriodicHandler, TrackStartHandler,
 };
+use file_format::{FileFormat, Kind};
 use futures::{future::join_all, StreamExt};
-use infer::MatcherType;
 use itertools::Itertools;
 use rand::seq::SliceRandom;
 use reqwest::Client;
@@ -468,16 +468,15 @@ async fn get_source(query: String) -> Option<SourceType> {
 
 async fn try_get_link_input(query: &str) -> Option<SourceType> {
     let video_stream_bytes = tokio::process::Command::new("yt-dlp")
-        .args(["yt-dlp", "-o", "-", query])
+        .args(["yt-dlp", "-q", "-o", "-", query, "2>/dev/null"])
         .output()
         .await
         .unwrap()
         .stdout;
-    let file_type = infer::get(&video_stream_bytes)?;
 
-    if file_type.matcher_type() != MatcherType::Audio
-        && file_type.matcher_type() != MatcherType::Video
-    {
+    let file_type = FileFormat::from_bytes(&video_stream_bytes);
+
+    if file_type.kind() != Kind::Audio && file_type.kind() != Kind::Video {
         return None;
     }
 

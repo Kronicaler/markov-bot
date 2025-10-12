@@ -1,4 +1,6 @@
 use chrono::Utc;
+use file_format::FileFormat;
+use file_format::Kind;
 use serenity::all::CreateAttachment;
 
 use serenity::all::EditInteractionResponse;
@@ -8,10 +10,12 @@ use serenity::all::ResolvedValue;
 use serenity::all::CommandInteraction;
 
 use serenity::client::Context;
+use tracing::error;
+use tracing::info;
 use tracing::info_span;
 use tracing::Instrument;
 
-#[tracing::instrument(skip(ctx))]
+#[tracing::instrument(skip(ctx, command))]
 pub async fn download_command(ctx: Context, command: &CommandInteraction) {
     command.defer(&ctx.http).await.unwrap();
 
@@ -19,43 +23,10 @@ pub async fn download_command(ctx: Context, command: &CommandInteraction) {
         panic!("unknown command")
     };
 
-    let attachment_bytes = tokio::process::Command::new("yt-dlp")
-        .args(["yt-dlp", "-o", "-", query])
-        .output()
-        .await
-        .unwrap()
-        .stdout;
-
-    let Some(file_type) = infer::get(&attachment_bytes) else {
-        command
-            .edit_response(
-                &ctx.http,
-                EditInteractionResponse::new().content("Unsupported link"),
-            )
-            .instrument(info_span!("Sending message"))
-            .await
-            .expect("Couldn't create interaction response");
-        return;
-    };
-
-    command
-        .edit_response(
-            ctx.http,
-            EditInteractionResponse::new().new_attachment(CreateAttachment::bytes(
-                attachment_bytes,
-                format!(
-                    "doki-{}.{}",
-                    Utc::now().timestamp() - 1575072000,
-                    file_type.extension()
-                ),
-            )),
-        )
-        .instrument(info_span!("Sending message"))
-        .await
-        .expect("Couldn't create interaction response");
+    process_query(ctx, command, query).await;
 }
 
-#[tracing::instrument(skip(ctx))]
+#[tracing::instrument(skip(ctx, command))]
 pub async fn download_from_message_command(ctx: Context, command: &CommandInteraction) {
     command.defer(&ctx.http).await.unwrap();
 
@@ -84,14 +55,52 @@ pub async fn download_from_message_command(ctx: Context, command: &CommandIntera
         return;
     };
 
-    let attachment_bytes = tokio::process::Command::new("yt-dlp")
-        .args(["yt-dlp", "-o", "-", query.as_str()])
+    process_query(ctx, command, query.as_str()).await;
+}
+
+#[tracing::instrument(skip(ctx, command))]
+async fn process_query(ctx: Context, command: &CommandInteraction, query: &str) {
+    let output = tokio::process::Command::new("yt-dlp")
+        .args([
+            "yt-dlp",
+            "--no-hls-use-mpegts",
+            "-q",
+            "--remux-video",
+            "mp4",
+            "-o",
+            "-",
+            query,
+        ])
         .output()
         .await
-        .unwrap()
-        .stdout;
+        .unwrap();
 
-    let Some(file_type) = infer::get(&attachment_bytes) else {
+    info!("{}", String::from_utf8(output.stderr).unwrap_or_default());
+
+    if output.stdout.len() > 10_000_000 {
+        command
+            .edit_response(
+                &ctx.http,
+                EditInteractionResponse::new().content("Video too large"),
+            )
+            .instrument(info_span!("Sending message"))
+            .await
+            .expect("Couldn't create interaction response");
+        return;
+    }
+
+    let file_format = FileFormat::from_bytes(&output.stdout);
+    if file_format.kind() != Kind::Audio
+        && file_format.kind() != Kind::Video
+        && file_format.kind() != Kind::Image
+        && file_format.kind() != Kind::Other
+    {
+        error!(
+            name = file_format.name(),
+            kind = ?file_format.kind(),
+            ext = file_format.extension()
+        );
+
         command
             .edit_response(
                 &ctx.http,
@@ -102,16 +111,15 @@ pub async fn download_from_message_command(ctx: Context, command: &CommandIntera
             .expect("Couldn't create interaction response");
         return;
     };
-
     command
         .edit_response(
             ctx.http,
             EditInteractionResponse::new().new_attachment(CreateAttachment::bytes(
-                attachment_bytes,
+                output.stdout,
                 format!(
                     "doki-{}.{}",
                     Utc::now().timestamp() - 1575072000,
-                    file_type.extension()
+                    file_format.extension()
                 ),
             )),
         )
