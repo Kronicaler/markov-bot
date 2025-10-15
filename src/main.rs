@@ -1,4 +1,5 @@
 #![warn(clippy::all, clippy::pedantic)]
+#![feature(try_blocks)]
 
 //! A discord bot written in rust for fun
 

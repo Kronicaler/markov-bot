@@ -1,3 +1,7 @@
+use std::process::Output;
+use std::process::Stdio;
+use std::time::Duration;
+
 use chrono::Utc;
 use file_format::FileFormat;
 use file_format::Kind;
@@ -10,6 +14,8 @@ use serenity::all::ResolvedValue;
 use serenity::all::CommandInteraction;
 
 use serenity::client::Context;
+use tokio::io::AsyncWriteExt;
+use tokio::time::timeout;
 use tracing::error;
 use tracing::info;
 use tracing::info_span;
@@ -60,9 +66,8 @@ pub async fn download_from_message_command(ctx: Context, command: &CommandIntera
 
 #[tracing::instrument(skip(ctx, command))]
 async fn process_query(ctx: Context, command: &CommandInteraction, query: &str) {
-    let output = tokio::process::Command::new("yt-dlp")
+    let mut output = tokio::process::Command::new("yt-dlp")
         .args([
-            "yt-dlp",
             "--no-hls-use-mpegts",
             "-q",
             "--remux-video",
@@ -89,7 +94,7 @@ async fn process_query(ctx: Context, command: &CommandInteraction, query: &str) 
         return;
     }
 
-    let file_format = FileFormat::from_bytes(&output.stdout);
+    let mut file_format = FileFormat::from_bytes(&output.stdout);
     if file_format.kind() != Kind::Audio
         && file_format.kind() != Kind::Video
         && file_format.kind() != Kind::Image
@@ -111,6 +116,12 @@ async fn process_query(ctx: Context, command: &CommandInteraction, query: &str) 
             .expect("Couldn't create interaction response");
         return;
     };
+
+    if file_format.media_type() == "video/mp2t" {
+        output = convert_mpegts_to_mp4(output.stdout).await;
+        file_format = FileFormat::from_bytes(&output.stdout);
+    }
+
     command
         .edit_response(
             ctx.http,
@@ -126,4 +137,36 @@ async fn process_query(ctx: Context, command: &CommandInteraction, query: &str) 
         .instrument(info_span!("Sending message"))
         .await
         .expect("Couldn't create interaction response");
+}
+
+async fn convert_mpegts_to_mp4(bytes: Vec<u8>) -> Output {
+    let mut ffmpeg = tokio::process::Command::new("ffmpeg")
+        .args([
+            "-i",
+            "-",
+            "-c",
+            "copy",
+            "-bsf:a",
+            "aac_adtstoasc",
+            "-movflags",
+            "+frag_keyframe+empty_moov",
+            "-f",
+            "mp4",
+            "-",
+        ])
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap();
+
+    let mut stdin = ffmpeg.stdin.take().unwrap();
+    tokio::spawn(async move {
+        stdin.write_all(&bytes).await.unwrap();
+    });
+
+    return timeout(Duration::from_secs(60), ffmpeg.wait_with_output())
+        .await
+        .unwrap()
+        .unwrap();
 }
