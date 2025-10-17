@@ -68,21 +68,23 @@ pub async fn download_from_message_command(ctx: Context, command: &CommandIntera
 async fn process_query(ctx: Context, command: &CommandInteraction, query: &str) {
     let mut output = tokio::process::Command::new("yt-dlp")
         .args([
-            "--no-hls-use-mpegts",
-            "-q",
-            "--remux-video",
-            "mp4",
+            "-f",
+            "b[filesize<10M]/b[filesize_approx<10M]/best",
+            "--max-filesize",
+            "15M",
             "-o",
             "-",
             query,
         ])
         .output()
+        .instrument(info_span!("waiting on yt-dlp"))
         .await
         .unwrap();
 
-    info!("{}", String::from_utf8(output.stderr).unwrap_or_default());
+    let stderr_str = str::from_utf8(&output.stderr).unwrap_or_default();
 
     if output.stdout.len() > 10_000_000 {
+        error!(stderr_str);
         command
             .edit_response(
                 &ctx.http,
@@ -92,6 +94,32 @@ async fn process_query(ctx: Context, command: &CommandInteraction, query: &str) 
             .await
             .expect("Couldn't create interaction response");
         return;
+    }
+
+    if !output.status.success() {
+        error!(stderr_str);
+
+        if stderr_str.contains("Requested format is not available") {
+            command
+                .edit_response(
+                    &ctx.http,
+                    EditInteractionResponse::new().content("Video too large"),
+                )
+                .instrument(info_span!("Sending message"))
+                .await
+                .expect("Couldn't create interaction response");
+            return;
+        } else {
+            command
+                .edit_response(
+                    &ctx.http,
+                    EditInteractionResponse::new().content("Unsupported link"),
+                )
+                .instrument(info_span!("Sending message"))
+                .await
+                .expect("Couldn't create interaction response");
+            return;
+        }
     }
 
     let mut file_format = FileFormat::from_bytes(&output.stdout);
