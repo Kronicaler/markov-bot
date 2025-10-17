@@ -9,6 +9,7 @@ use serenity::all::CreateAttachment;
 
 use serenity::all::EditInteractionResponse;
 
+use serenity::all::PremiumType;
 use serenity::all::ResolvedValue;
 
 use serenity::all::CommandInteraction;
@@ -66,16 +67,19 @@ pub async fn download_from_message_command(ctx: Context, command: &CommandIntera
 
 #[tracing::instrument(skip(ctx, command))]
 async fn process_query(ctx: Context, command: &CommandInteraction, query: &str) {
+    let max_filesize = match command.user.premium_type {
+        PremiumType::None => 10,
+        PremiumType::NitroClassic => 50,
+        PremiumType::NitroBasic => 50,
+        PremiumType::Nitro => 100,
+        _ => 10,
+    };
+
+    let filesize_filter = format!("b[filesize<{max_filesize}M]/b[filesize_approx<{max_filesize}M]");
+    let args = ["-f", filesize_filter.as_str(), "-o", "-", query];
+    info!(?args);
     let mut output = tokio::process::Command::new("yt-dlp")
-        .args([
-            "-f",
-            "b[filesize<10M]/b[filesize_approx<10M]/b[filesize<20M]/b[filesize_approx<20M]",
-            "--max-filesize",
-            "15M",
-            "-o",
-            "-",
-            query,
-        ])
+        .args(args)
         .output()
         .instrument(info_span!("waiting on yt-dlp"))
         .await
@@ -83,7 +87,7 @@ async fn process_query(ctx: Context, command: &CommandInteraction, query: &str) 
 
     let stderr_str = str::from_utf8(&output.stderr).unwrap_or_default();
 
-    if output.stdout.len() > 10_000_000 {
+    if output.stdout.len() > max_filesize * 1_000_000 {
         error!(stderr_str);
         command
             .edit_response(
