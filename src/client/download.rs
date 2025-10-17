@@ -69,7 +69,7 @@ async fn process_query(ctx: Context, command: &CommandInteraction, query: &str) 
     let mut output = tokio::process::Command::new("yt-dlp")
         .args([
             "-f",
-            "b[filesize<10M]/b[filesize_approx<10M]/best",
+            "b[filesize<10M]/b[filesize_approx<10M]/b[filesize<20M]/b[filesize_approx<20M]",
             "--max-filesize",
             "15M",
             "-o",
