@@ -17,50 +17,44 @@ pub async fn shuffle_queue(ctx: &Context, guild_id: GuildId) -> anyhow::Result<&
         .context("Songbird Voice client placed in at initialization.")?
         .clone();
 
-    match manager.get(guild_id) {
-        Some(call_lock) => {
-            let call = timeout(Duration::from_secs(30), call_lock.lock()).await?;
-            let queue = call.queue();
+    let Some(call_lock) = manager.get(guild_id) else {
+        return Ok("You must be in a voice channel to use that command!");
+    };
 
-            if queue.is_empty() {
-                return Ok("The queue is empty!");
-            }
+    let call = timeout(Duration::from_secs(30), call_lock.lock()).await?;
+    let queue = call.queue();
 
-            queue.modify_queue(|q| {
-                let mut vec: Vec<Queued> = vec![];
+    queue.modify_queue(|q| {
+        let mut vec: Vec<Queued> = vec![];
 
-                while q.len() > 1 {
-                    let Some(queued_song) = q.pop_back() else {
-                        break;
-                    };
+        while q.len() > 1 {
+            let Some(queued_song) = q.pop_back() else {
+                break;
+            };
 
-                    vec.push(queued_song);
-                }
-
-                vec.shuffle(&mut rand::thread_rng());
-
-                while let Some(element) = vec.pop() {
-                    q.push_back(element);
-                }
-            });
-
-            drop(call);
-
-            let queue_data_lock = get_queue_data_lock(&ctx.data).await;
-
-            queue_data_lock
-                .write()
-                .await
-                .shuffle_queue
-                .insert(guild_id, true);
-
-            let cloned_ctx = ctx.clone();
-            tokio::spawn(async move {
-                update_queue_message(&cloned_ctx, GuildId::new(guild_id.get()), call_lock).await;
-            });
-
-            return Ok("Shuffled the queue");
+            vec.push(queued_song);
         }
-        None => return Ok("You must be in a voice channel to use that command!"),
-    }
+
+        vec.shuffle(&mut rand::thread_rng());
+
+        while let Some(element) = vec.pop() {
+            q.push_back(element);
+        }
+    });
+
+    drop(call);
+
+    let queue_data_lock = get_queue_data_lock(&ctx.data).await;
+    queue_data_lock
+        .write()
+        .await
+        .shuffle_queue
+        .insert(guild_id, true);
+
+    let cloned_ctx = ctx.clone();
+    tokio::spawn(async move {
+        update_queue_message(&cloned_ctx, GuildId::new(guild_id.get()), call_lock).await;
+    });
+
+    return Ok("Shuffled the queue");
 }

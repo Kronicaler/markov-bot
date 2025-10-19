@@ -80,7 +80,7 @@ pub enum UserCommand {
     stop,
     playing,
     queue,
-    #[strum(serialize = "queue-shuffle")]
+    #[strum(serialize = "shuffle-queue")]
     queue_shuffle,
     #[strum(serialize = "loop")]
     loop_song,
