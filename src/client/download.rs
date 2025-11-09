@@ -2,6 +2,7 @@ use std::process::Output;
 use std::process::Stdio;
 use std::time::Duration;
 
+use anyhow::bail;
 use chrono::Utc;
 use file_format::FileFormat;
 use file_format::Kind;
@@ -9,7 +10,6 @@ use serenity::all::CreateAttachment;
 
 use serenity::all::EditInteractionResponse;
 
-use serenity::all::PremiumType;
 use serenity::all::ResolvedValue;
 
 use serenity::all::CommandInteraction;
@@ -30,7 +30,7 @@ pub async fn download_command(ctx: Context, command: &CommandInteraction) {
         panic!("unknown command")
     };
 
-    process_query(ctx, command, query).await;
+    process_query(ctx, command, query).await.unwrap();
 }
 
 #[tracing::instrument(skip(ctx, command))]
@@ -62,58 +62,86 @@ pub async fn download_from_message_command(ctx: Context, command: &CommandIntera
         return;
     };
 
-    process_query(ctx, command, query.as_str()).await;
+    process_query(ctx, command, query.as_str()).await.unwrap();
 }
 
 #[tracing::instrument(skip(ctx, command))]
-async fn process_query(ctx: Context, command: &CommandInteraction, query: &str) {
-    let max_filesize = match command.user.premium_type {
-        PremiumType::None => 10,
-        PremiumType::NitroClassic => 50,
-        PremiumType::NitroBasic => 50,
-        PremiumType::Nitro => 100,
-        _ => 10,
-    };
+async fn process_query(
+    ctx: Context,
+    command: &CommandInteraction,
+    query: &str,
+) -> anyhow::Result<()> {
+    let mut max_filesize_mb: usize = 51;
 
-    let filesize_filter = format!("b[filesize<{max_filesize}M]/b[filesize_approx<{max_filesize}M]");
-    let args = ["-f", filesize_filter.as_str(), "-o", "-", query];
-    info!(?args);
-    let mut output = tokio::process::Command::new("yt-dlp")
-        .args(args)
-        .output()
-        .instrument(info_span!("waiting on yt-dlp"))
-        .await
-        .unwrap();
+    loop {
+        max_filesize_mb = match max_filesize_mb {
+            51 => 50,
+            50 => 10,
+            10 => {
+                command
+                    .edit_response(
+                        &ctx.http,
+                        EditInteractionResponse::new().content("Video too large"),
+                    )
+                    .instrument(info_span!("Sending message"))
+                    .await
+                    .expect("Couldn't create interaction response");
+                bail!("Video too large");
+            }
+            _ => bail!("unexpected max_filesize_mb"),
+        };
 
-    let stderr_str = str::from_utf8(&output.stderr).unwrap_or_default();
-
-    if output.stdout.len() > max_filesize * 1_000_000 {
-        error!(stderr_str);
-        command
-            .edit_response(
-                &ctx.http,
-                EditInteractionResponse::new().content("Video too large"),
-            )
-            .instrument(info_span!("Sending message"))
+        let filesize_filter =
+            format!("b[filesize<{max_filesize_mb}M]/b[filesize_approx<{max_filesize_mb}M]");
+        let args = ["-f", filesize_filter.as_str(), "-o", "-", query];
+        info!(?args);
+        let mut output = tokio::process::Command::new("yt-dlp")
+            .args(args)
+            .output()
+            .instrument(info_span!("waiting on yt-dlp"))
             .await
-            .expect("Couldn't create interaction response");
-        return;
-    }
+            .unwrap();
 
-    if !output.status.success() {
-        error!(stderr_str);
+        let stderr_str = str::from_utf8(&output.stderr).unwrap_or_default();
 
-        if stderr_str.contains("Requested format is not available") {
-            command
-                .edit_response(
-                    &ctx.http,
-                    EditInteractionResponse::new().content("Video too large"),
-                )
-                .instrument(info_span!("Sending message"))
-                .await
-                .expect("Couldn't create interaction response");
-            return;
-        } else {
+        if !output.status.success() {
+            error!(stderr_str);
+
+            if stderr_str.contains("Requested format is not available") {
+                command
+                    .edit_response(
+                        &ctx.http,
+                        EditInteractionResponse::new().content("Video too large"),
+                    )
+                    .instrument(info_span!("Sending message"))
+                    .await
+                    .expect("Couldn't create interaction response");
+                bail!("Video too large");
+            } else {
+                command
+                    .edit_response(
+                        &ctx.http,
+                        EditInteractionResponse::new().content("Unsupported link"),
+                    )
+                    .instrument(info_span!("Sending message"))
+                    .await
+                    .expect("Couldn't create interaction response");
+                bail!("unsupported link");
+            }
+        }
+
+        let mut file_format = FileFormat::from_bytes(&output.stdout);
+        if file_format.kind() != Kind::Audio
+            && file_format.kind() != Kind::Video
+            && file_format.kind() != Kind::Image
+            && file_format.kind() != Kind::Other
+        {
+            error!(
+                name = file_format.name(),
+                kind = ?file_format.kind(),
+                ext = file_format.extension()
+            );
+
             command
                 .edit_response(
                     &ctx.http,
@@ -122,53 +150,35 @@ async fn process_query(ctx: Context, command: &CommandInteraction, query: &str) 
                 .instrument(info_span!("Sending message"))
                 .await
                 .expect("Couldn't create interaction response");
-            return;
+            bail!("unsupported link");
+        };
+
+        if file_format.media_type() == "video/mp2t" {
+            output = convert_mpegts_to_mp4(output.stdout).await;
+            file_format = FileFormat::from_bytes(&output.stdout);
         }
-    }
 
-    let mut file_format = FileFormat::from_bytes(&output.stdout);
-    if file_format.kind() != Kind::Audio
-        && file_format.kind() != Kind::Video
-        && file_format.kind() != Kind::Image
-        && file_format.kind() != Kind::Other
-    {
-        error!(
-            name = file_format.name(),
-            kind = ?file_format.kind(),
-            ext = file_format.extension()
-        );
-
-        command
+        let res = command
             .edit_response(
                 &ctx.http,
-                EditInteractionResponse::new().content("Unsupported link"),
+                EditInteractionResponse::new().new_attachment(CreateAttachment::bytes(
+                    output.stdout,
+                    format!(
+                        "doki-{}.{}",
+                        Utc::now().timestamp() - 1575072000,
+                        file_format.extension()
+                    ),
+                )),
             )
             .instrument(info_span!("Sending message"))
-            .await
-            .expect("Couldn't create interaction response");
-        return;
-    };
+            .await;
 
-    if file_format.media_type() == "video/mp2t" {
-        output = convert_mpegts_to_mp4(output.stdout).await;
-        file_format = FileFormat::from_bytes(&output.stdout);
+        if res.is_err() {
+            continue;
+        }
+
+        return Ok(());
     }
-
-    command
-        .edit_response(
-            ctx.http,
-            EditInteractionResponse::new().new_attachment(CreateAttachment::bytes(
-                output.stdout,
-                format!(
-                    "doki-{}.{}",
-                    Utc::now().timestamp() - 1575072000,
-                    file_format.extension()
-                ),
-            )),
-        )
-        .instrument(info_span!("Sending message"))
-        .await
-        .expect("Couldn't create interaction response");
 }
 
 async fn convert_mpegts_to_mp4(bytes: Vec<u8>) -> Output {
