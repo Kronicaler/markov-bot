@@ -572,6 +572,9 @@ async fn get_spotify_playlist_inputs(query: &str, spotify: &ClientCredsSpotify) 
             rspotify::model::PlayableItem::Episode(_) => {
                 panic!("episodes arent supported")
             }
+            rspotify::model::PlayableItem::Unknown(_)=>{
+                panic!("unknown playable item")
+            }
         };
 
         let song_name = track.name;
