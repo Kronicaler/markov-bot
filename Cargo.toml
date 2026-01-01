@@ -5,7 +5,7 @@ repository = "https://github.com/TheKroni/markov-bot"
 license = "MIT"
 version = "1.4.0"
 authors = ["Kroni"]
-edition = "2021"
+edition = "2024"
 
 [dependencies]
 tokio = { version = "1.47", features = ["macros", "rt-multi-thread", "signal"] }
@@ -57,6 +57,9 @@ alphanumeric-sort = "1.5.3"
 [dependencies.symphonia]
 version = "0.5"
 features = ["all"]
+
+[patch.crates-io]
+audiopus_sys = { git = "https://github.com/amsam0/audiopus_sys.git" }
 
 [profile.dev.package.sqlx-macros]
 opt-level = 3
