@@ -1,6 +1,6 @@
 // purpose: to send videos and images to a server from a folder in alphabetical or random order when prompted
 //
-// behaviour:
+// behavior:
 // - we have a folder "my_folder" with 3 videos: A.mp4, B.mp4 and C.mp4
 // - a command is created for the folder with the same name of the folder
 // - the command is executed in server X and Y
