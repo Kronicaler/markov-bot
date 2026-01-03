@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n\t\tDELETE FROM markov_blacklisted_channels\n\t\tWHERE channel_id = $1\n\t\t",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "e0eca853382683aca98a4ed82b583804ad34bc0b9818b578f4f260bd7447271a"
+}

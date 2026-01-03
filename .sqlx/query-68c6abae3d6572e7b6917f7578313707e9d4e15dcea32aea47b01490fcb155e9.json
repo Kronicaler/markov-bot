@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE tag_channels\n        SET channel_id = $1\n        WHERE server_id = $2\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "68c6abae3d6572e7b6917f7578313707e9d4e15dcea32aea47b01490fcb155e9"
+}

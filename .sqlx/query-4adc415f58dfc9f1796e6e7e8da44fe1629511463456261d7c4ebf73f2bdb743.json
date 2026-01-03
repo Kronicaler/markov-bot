@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        DELETE FROM tag_blacklisted_users\n        WHERE user_id= $1\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "4adc415f58dfc9f1796e6e7e8da44fe1629511463456261d7c4ebf73f2bdb743"
+}

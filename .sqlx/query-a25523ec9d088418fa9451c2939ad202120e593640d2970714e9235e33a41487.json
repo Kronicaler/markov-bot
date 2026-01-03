@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n\t\tINSERT INTO tag_blacklisted_users ( user_id )\n\t\tVALUES ( $1 )\n\t\t",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "a25523ec9d088418fa9451c2939ad202120e593640d2970714e9235e33a41487"
+}

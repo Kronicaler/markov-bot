@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n\t\tINSERT INTO markov_blacklisted_users (user_id)\n\t\tVALUES ($1)\n\t\t",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "945385fd132d36c0b0b6e7f1568d5dd4f155e0e48ae2202a764397709c9fa91d"
+}

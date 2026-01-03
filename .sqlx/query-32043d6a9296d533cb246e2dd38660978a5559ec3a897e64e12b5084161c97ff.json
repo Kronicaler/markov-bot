@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n\t\tDELETE FROM markov_blacklisted_users \n\t\tWHERE user_id = $1\n\t\t",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "32043d6a9296d533cb246e2dd38660978a5559ec3a897e64e12b5084161c97ff"
+}

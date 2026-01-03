@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n\t\tINSERT INTO meme_server_categories ( server_id, category_id, file_id )\n\t\tVALUES ( $1, $2, $3 )\n        ON CONFLICT(server_id, category_id)\n        DO UPDATE SET\n            file_id = EXCLUDED.file_id\n\t\t",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int4",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "e011acbc6e765f06f8ffe51617cc2d93c271326937a358e3697d89eaa241b81c"
+}

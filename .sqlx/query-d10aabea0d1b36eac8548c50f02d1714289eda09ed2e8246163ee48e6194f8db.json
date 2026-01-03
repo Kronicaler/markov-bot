@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n\t\tINSERT INTO markov_blacklisted_channels (channel_id)\n\t\tVALUES ($1)\n\t\t",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "d10aabea0d1b36eac8548c50f02d1714289eda09ed2e8246163ee48e6194f8db"
+}

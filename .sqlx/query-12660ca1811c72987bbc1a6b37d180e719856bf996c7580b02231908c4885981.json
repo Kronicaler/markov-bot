@@ -1,0 +1,52 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT * FROM tags\n        WHERE id = $1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "listener",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "response",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "creator_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "creator_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 5,
+        "name": "server_id",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "12660ca1811c72987bbc1a6b37d180e719856bf996c7580b02231908c4885981"
+}

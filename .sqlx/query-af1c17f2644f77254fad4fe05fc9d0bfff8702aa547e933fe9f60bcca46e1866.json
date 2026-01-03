@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n\t\tINSERT INTO markov_blacklisted_servers (server_id)\n\t\tVALUES ($1)\n\t\t",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "af1c17f2644f77254fad4fe05fc9d0bfff8702aa547e933fe9f60bcca46e1866"
+}

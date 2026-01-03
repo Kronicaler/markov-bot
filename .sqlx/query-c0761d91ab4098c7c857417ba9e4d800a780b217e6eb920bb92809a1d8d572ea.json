@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n\t\tINSERT INTO meme_files ( folder, name, hash )\n\t\tVALUES ( $1, $2, $3 )\n\t\t",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "c0761d91ab4098c7c857417ba9e4d800a780b217e6eb920bb92809a1d8d572ea"
+}

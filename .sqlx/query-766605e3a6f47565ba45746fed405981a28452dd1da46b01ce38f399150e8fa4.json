@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n\t\tINSERT INTO tag_channels ( server_id, channel_id )\n\t\tVALUES ( $1, $2 )\n\t\t",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "766605e3a6f47565ba45746fed405981a28452dd1da46b01ce38f399150e8fa4"
+}
