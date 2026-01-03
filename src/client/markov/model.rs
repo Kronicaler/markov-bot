@@ -14,28 +14,28 @@ pub const MARKOV_EXPORT_PATH: &str = "data/markov data/corpus.json";
 /// User Ids that the bot will not learn from
 pub struct MarkovBlacklistedUser {
     #[allow(dead_code)]
-    pub user_id: u64,
+    pub user_id: i64,
 }
 
 /// Channel Ids that the bot will not learn from
 pub struct MarkovBlacklistedChannel {
-    pub channel_id: u64,
+    pub channel_id: i64,
 }
 
 // Server Ids that the bot will not learn from
 pub struct MarkovBlacklistedServer {
-    pub server_id: u64,
+    pub server_id: i64,
 }
 
 #[tracing::instrument(skip(data))]
 pub async fn get_markov_chain_lock(data: &Arc<RwLock<TypeMap>>) -> Arc<RwLock<MarkovChain>> {
-    let markov_chain_lock = data
+    
+    data
         .read()
         .await
         .get::<MyMarkovChain>()
         .expect("expected MarkovChain in TypeMap")
-        .clone();
-    markov_chain_lock
+        .clone()
 }
 
 #[tracing::instrument(skip(data))]

@@ -21,7 +21,7 @@ dashmap = { version = "6.1", features = ["serde"] }
 serde = "1.0"
 anyhow = "1.0"
 thiserror = "2.0"
-sqlx = { version = "0.8", features = ["runtime-tokio-native-tls", "mysql"] }
+sqlx = { version = "0.8", features = ["runtime-tokio-native-tls", "postgres"] }
 reqwest = "0.12"
 opentelemetry = "0.30"
 opentelemetry_sdk = { version = "0.30", features = ["rt-tokio"] }
@@ -43,6 +43,7 @@ serenity = { version = "0.12", features = [
 	"model",
 	"unstable_discord_api",
 	"voice",
+	"collector",
 ] }
 # requires yt-dlp and opus in order for voice commands to work
 songbird = { version = "0.5", features = ["builtin-queue", "serenity"] }

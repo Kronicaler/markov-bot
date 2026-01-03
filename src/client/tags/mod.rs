@@ -30,12 +30,12 @@ use serenity::{
     },
     prelude::Mentionable,
 };
-use sqlx::{MySql, MySqlPool, Pool};
+use sqlx::{Postgres, PgPool, Pool};
 use std::{fmt::Write, time::Duration};
 
 #[tracing::instrument(skip(ctx))]
-pub async fn list_tags(ctx: &Context, command: &CommandInteraction, pool: &Pool<MySql>) {
-    let tags = data_access::get_tags_by_server_id(command.guild_id.unwrap().get(), pool).await;
+pub async fn list_tags(ctx: &Context, command: &CommandInteraction, pool: &Pool<Postgres>) {
+    let tags = data_access::get_tags_by_server_id(command.guild_id.unwrap().get() as i64, pool).await;
 
     let mut message = String::new();
 
@@ -66,7 +66,7 @@ pub async fn blacklist_user_from_tags_command(
     ctx: &Context,
     user: &User,
     command: &CommandInteraction,
-    pool: &MySqlPool,
+    pool: &PgPool,
 ) {
     let response = blacklist_user(user, pool).await;
 
@@ -83,17 +83,17 @@ pub async fn blacklist_user_from_tags_command(
 }
 
 #[tracing::instrument(skip(pool))]
-pub async fn blacklist_user(user: &User, pool: &MySqlPool) -> String {
-    let is_user_blacklisted = get_tag_blacklisted_user(user.id.get(), pool)
+pub async fn blacklist_user(user: &User, pool: &PgPool) -> String {
+    let is_user_blacklisted = get_tag_blacklisted_user(user.id.get() as i64, pool)
         .await
         .is_some();
 
     if is_user_blacklisted {
-        delete_tag_blacklisted_user(user.id.get(), pool).await;
+        delete_tag_blacklisted_user(user.id.get() as i64, pool).await;
 
         "I will now ping you when you trip off a tag".to_string()
     } else {
-        create_tag_blacklisted_user(user.id.get(), pool).await;
+        create_tag_blacklisted_user(user.id.get() as i64, pool).await;
 
         "I won't ping you anymore when you trip off a tag".to_string()
     }
@@ -108,7 +108,7 @@ pub async fn check_for_tag_listeners(
     words_in_message: &[String],
     user_id: UserId,
     server_id: u64,
-    pool: &Pool<MySql>,
+    pool: &Pool<Postgres>,
 ) -> Option<String> {
     let alphanumeric_regex = Regex::new(r"[^A-Za-z0-9 ]").expect("Invalid regular expression");
     let words_in_message: Vec<String> = words_in_message
@@ -116,8 +116,8 @@ pub async fn check_for_tag_listeners(
         .map(|w| alphanumeric_regex.replace_all(w, " ").to_string())
         .collect();
 
-    let tags = data_access::get_tags_by_server_id(server_id, pool).await;
-    let is_user_blacklisted = get_tag_blacklisted_user(user_id.get(), pool)
+    let tags = data_access::get_tags_by_server_id(server_id as i64, pool).await;
+    let is_user_blacklisted = get_tag_blacklisted_user(user_id.get() as i64, pool)
         .await
         .is_some();
 
@@ -171,7 +171,7 @@ pub async fn check_for_tag_listeners(
 pub async fn set_tag_response_channel(
     ctx: &Context,
     command: &CommandInteraction,
-    pool: &MySqlPool,
+    pool: &PgPool,
 ) {
     let Some(guild_id) = command.guild_id else {
         command
@@ -188,14 +188,14 @@ pub async fn set_tag_response_channel(
         return;
     };
 
-    let tag_channel = get_tag_channel(guild_id.get(), pool).await;
+    let tag_channel = get_tag_channel(guild_id.get() as i64, pool).await;
 
     match tag_channel {
         Some(t) => {
-            update_tag_channel(t.server_id, command.channel_id.get(), pool).await;
+            update_tag_channel(t.server_id, command.channel_id.get() as i64, pool).await;
         }
         None => {
-            create_tag_channel(guild_id.get(), command.channel_id.get(), pool).await;
+            create_tag_channel(guild_id.get() as i64, command.channel_id.get() as i64, pool).await;
         }
     }
 
@@ -220,8 +220,8 @@ pub async fn set_tag_response_channel(
 /// If that fails then it sends the message to the tag response channel if one is set
 /// If that fails then it iterates through every channel in the guild until it finds one it can send a message in
 #[tracing::instrument(skip(ctx, pool))]
-pub async fn respond_to_tag(ctx: &Context, msg: &Message, message: &str, pool: &MySqlPool) {
-    let tag_channel = get_tag_channel(msg.guild_id.unwrap().get(), pool).await;
+pub async fn respond_to_tag(ctx: &Context, msg: &Message, message: &str, pool: &PgPool) {
+    let tag_channel = get_tag_channel(msg.guild_id.unwrap().get() as i64, pool).await;
 
     //If the guild has a tag response channel send the response there
     if let Some(tag_channel) = tag_channel {
@@ -293,10 +293,10 @@ async fn send_response_in_tag_channel(
 ) {
     let tag_response_channel = ctx
         .cache
-        .guild(tag_channel.server_id)
+        .guild(tag_channel.server_id as u64)
         .unwrap()
         .channels
-        .get(&ChannelId::new(tag_channel.channel_id))
+        .get(&ChannelId::new(tag_channel.channel_id as u64))
         .unwrap()
         .clone();
 
@@ -330,7 +330,7 @@ async fn send_response_in_tag_channel(
             });
         }
         Err(err) => eprintln!("{err}"),
-    };
+    }
 }
 
 fn stop_pinging_me_button(tag_response: CreateMessage) -> CreateMessage {

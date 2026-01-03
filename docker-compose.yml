@@ -4,27 +4,24 @@ services:
     restart: unless-stopped
     ports:
       - 16686:16686
-
-  mariadb:
-    image: mariadb
-    restart: unless-stopped
-    environment:
-      MARIADB_ROOT_PASSWORD: ${DB_PASS}
-      MARIADB_DATABASE: markov_bot
-    volumes:
-      - ./data/mariadb:/var/lib/mysql:Z
-    deploy:
-      resources:
-        limits:
-          memory: 500M
-    ports:
-      - 3306:3306
       
   adminer:
     image: adminer
-    restart: always
+    restart: unless-stopped
     ports:
       - 8080:8080
+
+  db:
+    image: postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: historian
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - 5432:5432
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
 
   markov_bot:
     image: kronicaler/markov_bot
@@ -33,7 +30,7 @@ services:
       - DISCORD_TOKEN
       - APPLICATION_ID
       - OTLP_ENDPOINT=http://jaeger:4317
-      - DATABASE_URL=mysql://root:${DB_PASS}@mariadb/markov_bot
+      - DATABASE_URL=mysql://root:${DB_PASS}@db/markov_bot
       - LOG_LEVEL=info
       - LIB_LOG_LEVEL=error
     build:

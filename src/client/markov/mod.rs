@@ -13,7 +13,7 @@ use self::{
     },
     file_operations::{get_messages_from_file, import_chain_from_file},
     markov_chain::filter_message_for_markov_file,
-    model::{get_markov_chain_lock, replace_markov_chain_lock, MARKOV_EXPORT_PATH},
+    model::{MARKOV_EXPORT_PATH, get_markov_chain_lock, replace_markov_chain_lock},
 };
 use markov_str::MarkovChain;
 use rand::Rng;
@@ -25,25 +25,27 @@ use serenity::{
     model::channel::Message,
     prelude::{RwLock, TypeMap},
 };
-use sqlx::{MySql, MySqlPool, Pool};
+use sqlx::{PgPool, Pool, Postgres};
 use std::{error::Error, fs, sync::Arc};
 use tokio::sync::RwLockWriteGuard;
-use tracing::{info_span, instrument, Instrument};
+use tracing::{Instrument, info_span, instrument};
 
 pub async fn add_message_to_chain(
     msg: &Message,
     ctx: &Context,
-    pool: &Pool<MySql>,
+    pool: &Pool<Postgres>,
 ) -> Result<bool, std::io::Error> {
     // if the message was not sent in a guild
     let Some(guild_id) = msg.guild_id else {
         return Ok(false);
     };
 
-    let markov_blacklisted_user = get_markov_blacklisted_user(msg.author.id.get(), pool).await;
+    let markov_blacklisted_user =
+        get_markov_blacklisted_user(msg.author.id.get() as i64, pool).await;
     let markov_blacklisted_channel =
-        get_markov_blacklisted_channel(msg.channel_id.get(), pool).await;
-    let markov_blacklisted_server = get_markov_blacklisted_server(guild_id.get(), pool).await;
+        get_markov_blacklisted_channel(msg.channel_id.get() as i64, pool).await;
+    let markov_blacklisted_server =
+        get_markov_blacklisted_server(guild_id.get() as i64, pool).await;
 
     if markov_blacklisted_server.is_some()
         || markov_blacklisted_channel.is_some()
@@ -140,9 +142,9 @@ pub async fn add_user_to_blacklist(
     user: &User,
     ctx: &Context,
     command: &CommandInteraction,
-    pool: &MySqlPool,
+    pool: &PgPool,
 ) {
-    let markov_blacklisted_user = get_markov_blacklisted_user(user.id.get(), pool).await;
+    let markov_blacklisted_user = get_markov_blacklisted_user(user.id.get() as i64, pool).await;
 
     if markov_blacklisted_user.is_some() {
         command
@@ -159,7 +161,7 @@ pub async fn add_user_to_blacklist(
         return;
     }
 
-    let response = match create_markov_blacklisted_user(user.id.get(), pool).await {
+    let response = match create_markov_blacklisted_user(user.id.get() as i64, pool).await {
         Ok(_) => format!(
             "Added {} to data collection blacklist",
             match command.guild_id {
@@ -191,9 +193,9 @@ pub async fn remove_user_from_blacklist(
     user: &User,
     ctx: &Context,
     command: &CommandInteraction,
-    pool: &MySqlPool,
+    pool: &PgPool,
 ) {
-    let response = match delete_markov_blacklisted_user(user.id.get(), pool).await {
+    let response = match delete_markov_blacklisted_user(user.id.get() as i64, pool).await {
         Ok(_) => format!(
             "removed {} from data collection blacklist",
             match command.guild_id {
@@ -224,10 +226,10 @@ pub async fn remove_user_from_blacklist(
 pub async fn stop_saving_messages_channel(
     ctx: &Context,
     command: &CommandInteraction,
-    pool: &Pool<MySql>,
+    pool: &Pool<Postgres>,
 ) {
     let markov_blacklisted_channel =
-        get_markov_blacklisted_channel(command.channel_id.get(), pool).await;
+        get_markov_blacklisted_channel(command.channel_id.get() as i64, pool).await;
 
     if let Some(c) = markov_blacklisted_channel {
         delete_markov_blacklisted_channel(c.channel_id, pool)
@@ -245,7 +247,7 @@ pub async fn stop_saving_messages_channel(
             .await
             .unwrap();
     } else {
-        create_markov_blacklisted_channel(command.channel_id.get(), pool)
+        create_markov_blacklisted_channel(command.channel_id.get() as i64, pool)
             .await
             .unwrap();
         command
@@ -266,7 +268,7 @@ pub async fn stop_saving_messages_channel(
 pub async fn stop_saving_messages_server(
     ctx: &Context,
     command: &CommandInteraction,
-    pool: &Pool<MySql>,
+    pool: &Pool<Postgres>,
 ) {
     let Some(guild_id) = command.guild_id else {
         command

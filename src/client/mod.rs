@@ -8,12 +8,12 @@ pub mod slash_commands;
 pub mod tags;
 pub mod voice;
 
-use global_data::{init_global_data_for_client, HELP_MESSAGE};
+use global_data::{HELP_MESSAGE, init_global_data_for_client};
 use itertools::Itertools;
 use regex::Regex;
 use slash_commands::{command_responses, create_global_commands};
-use sqlx::{MySql, Pool};
-use tracing::{info_span, Instrument};
+use sqlx::{Pool, Postgres};
+use tracing::{Instrument, info_span};
 
 use self::{
     tags::{blacklist_user, respond_to_tag},
@@ -28,17 +28,17 @@ use self::{
 };
 use super::tags::check_for_tag_listeners;
 use serenity::{
+    Client,
     all::{CreateInteractionResponseMessage, Guild, Interaction, InteractionResponseFlags},
     async_trait,
     builder::{CreateInteractionResponse, CreateMessage},
     client::{Context, EventHandler},
     model::{channel::Message, gateway::Ready, voice::VoiceState},
     prelude::GatewayIntents,
-    Client,
 };
 use songbird::{
-    driver::retry::{Retry, Strategy},
     Config, SerenityInit,
+    driver::retry::{Retry, Strategy},
 };
 use std::{env, str::FromStr, time::Duration};
 use strum_macros::{Display, EnumString};
@@ -60,7 +60,7 @@ pub enum ComponentIds {
 }
 
 struct Handler {
-    pool: Pool<MySql>,
+    pool: Pool<Postgres>,
 }
 
 #[async_trait]
@@ -221,18 +221,17 @@ and the users can choose themselves if they don't want their messages saved (/st
             return;
         }
 
-        if msg.guild_id.is_some() {
-            if let Some(response) = check_for_tag_listeners(
+        if msg.guild_id.is_some()
+            && let Some(response) = check_for_tag_listeners(
                 &words_in_message,
                 msg.author.id,
                 msg.guild_id.unwrap().get(),
                 &self.pool,
             )
             .await
-            {
-                respond_to_tag(&ctx, &msg, &response, &self.pool).await;
-                return;
-            }
+        {
+            respond_to_tag(&ctx, &msg, &response, &self.pool).await;
+            return;
         }
     }
 
@@ -270,7 +269,7 @@ pub async fn start() {
 
     let database_url =
         env::var("DATABASE_URL").expect("Expected a DATABASE_URL in the environment");
-    let pool = sqlx::MySqlPool::connect(&database_url).await.unwrap();
+    let pool = sqlx::PgPool::connect(&database_url).await.unwrap();
 
     sqlx::migrate!("./migrations").run(&pool).await.unwrap();
 
@@ -295,7 +294,7 @@ pub async fn start() {
 /// Waits for a signal that requests a graceful shutdown, like SIGTERM or SIGINT.
 #[cfg(unix)]
 async fn wait_for_signal_impl() {
-    use tokio::signal::unix::{signal, SignalKind};
+    use tokio::signal::unix::{SignalKind, signal};
 
     // Infos here:
     // https://www.gnu.org/software/libc/manual/html_node/Termination-Signals.html

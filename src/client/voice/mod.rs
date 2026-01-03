@@ -206,17 +206,14 @@ impl TrackStartHandler {
                 let mut buttons = vec![create_skip_button()];
                 if message.components.iter().any(|c| {
                     c.components.iter().any(|c| {
-                        if let ActionRowComponent::Button(b) = c {
-                            if let ButtonKind::NonLink {
+                        if let ActionRowComponent::Button(b) = c
+                            && let ButtonKind::NonLink {
                                 custom_id,
                                 style: _,
                             } = &b.data
-                            {
-                                if custom_id == &ComponentIds::Shuffle.to_string() {
+                                && custom_id == &ComponentIds::Shuffle.to_string() {
                                     return true;
                                 }
-                            }
-                        }
                         false
                     })
                 }) {

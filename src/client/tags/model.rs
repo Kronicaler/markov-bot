@@ -2,21 +2,21 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Hash, Eq, PartialEq, Clone, Serialize, Deserialize)]
 pub struct Tag {
-    pub id: u64,
+    pub id: i32,
     pub listener: String,
     pub response: String,
     pub creator_name: String,
-    pub creator_id: u64,
-    pub server_id: u64,
+    pub creator_id: i64,
+    pub server_id: i64,
 }
 
 pub struct TagBlacklistedUser {
     #[allow(dead_code)]
-    pub user_id: u64,
+    pub user_id: i64,
 }
 
 ///Guild, Channel
 pub struct TagChannel {
-    pub server_id: u64,
-    pub channel_id: u64,
+    pub server_id: i64,
+    pub channel_id: i64,
 }

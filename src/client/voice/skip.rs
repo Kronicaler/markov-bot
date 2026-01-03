@@ -78,8 +78,8 @@ pub async fn skip(ctx: &ClientContext, command: &CommandInteraction) -> anyhow::
     Ok(())
 }
 
-async fn handle_skip_type_until<'a>(
-    call: &tokio::sync::MutexGuard<'a, songbird::Call>,
+async fn handle_skip_type_until(
+    call: &tokio::sync::MutexGuard<'_, songbird::Call>,
     track_number: i64,
     ctx: &ClientContext,
     guild_id: GuildId,
@@ -113,9 +113,9 @@ async fn handle_skip_type_until<'a>(
     Ok(())
 }
 
-async fn handle_skip_type_number<'a>(
+async fn handle_skip_type_number(
     track_number: i64,
-    call: &tokio::sync::MutexGuard<'a, songbird::Call>,
+    call: &tokio::sync::MutexGuard<'_, songbird::Call>,
     ctx: &ClientContext,
     guild_id: GuildId,
 ) -> bool {
@@ -135,14 +135,14 @@ async fn handle_skip_type_number<'a>(
         return true;
     }
 
-    let success = if track_number == 1 {
+    
+    if track_number == 1 {
         call.queue().skip().is_ok()
     } else {
         call.queue()
             .dequeue((track_number - 1).try_into().unwrap())
             .is_some()
-    };
-    success
+    }
 }
 
 async fn couldnt_skip_response(

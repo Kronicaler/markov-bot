@@ -117,17 +117,16 @@ async fn process_query(
                     .await
                     .expect("Couldn't create interaction response");
                 bail!("Video too large");
-            } else {
-                command
-                    .edit_response(
-                        &ctx.http,
-                        EditInteractionResponse::new().content("Unsupported link"),
-                    )
-                    .instrument(info_span!("Sending message"))
-                    .await
-                    .expect("Couldn't create interaction response");
-                bail!("unsupported link");
             }
+            command
+                .edit_response(
+                    &ctx.http,
+                    EditInteractionResponse::new().content("Unsupported link"),
+                )
+                .instrument(info_span!("Sending message"))
+                .await
+                .expect("Couldn't create interaction response");
+            bail!("unsupported link");
         }
 
         let mut file_format = FileFormat::from_bytes(&output.stdout);
@@ -151,7 +150,7 @@ async fn process_query(
                 .await
                 .expect("Couldn't create interaction response");
             bail!("unsupported link");
-        };
+        }
 
         if file_format.media_type() == "video/mp2t" {
             output = convert_mpegts_to_mp4(output.stdout).await;
@@ -207,8 +206,8 @@ async fn convert_mpegts_to_mp4(bytes: Vec<u8>) -> Output {
         stdin.write_all(&bytes).await.unwrap();
     });
 
-    return timeout(Duration::from_secs(60), ffmpeg.wait_with_output())
+    timeout(Duration::from_secs(60), ffmpeg.wait_with_output())
         .await
         .unwrap()
-        .unwrap();
+        .unwrap()
 }

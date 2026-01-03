@@ -80,17 +80,15 @@ impl VoiceMessages {
         let now_playing = self.last_now_playing.get(&guild_id);
         let position_in_queue = self.last_position_in_queue.get(&guild_id);
 
-        if let Some(now_playing) = now_playing {
-            if is_last_message_in_channel(now_playing, ctx).await {
+        if let Some(now_playing) = now_playing
+            && is_last_message_in_channel(now_playing, ctx).await {
                 return LastMessageType::NowPlaying(now_playing.clone());
             }
-        }
 
-        if let Some(position_in_queue) = position_in_queue {
-            if is_last_message_in_channel(position_in_queue, ctx).await {
+        if let Some(position_in_queue) = position_in_queue
+            && is_last_message_in_channel(position_in_queue, ctx).await {
                 return LastMessageType::PositionInQueue(position_in_queue.clone());
             }
-        }
 
         LastMessageType::None
     }

@@ -1,7 +1,7 @@
 use anyhow::Result;
 use std::{fs, path::Path};
 
-use crate::client::memes::{MEMES_FOLDER, RANDOM_MEMES_FOLDER};
+use crate::client::memes::MEMES_FOLDER;
 
 /// Checks if a file exists and if it doesn't it initializes it.
 /// Otherwise it just returns the path back
@@ -19,11 +19,6 @@ pub fn create_data_folders() {
 
     if !Path::new(&format!("data/{MEMES_FOLDER}")).exists() {
         fs::create_dir_all(format!("data/{MEMES_FOLDER}"))
-            .expect("Couldn't create directory data/markov data");
-    }
-
-    if !Path::new(&format!("data/{RANDOM_MEMES_FOLDER}")).exists() {
-        fs::create_dir_all(format!("data/{RANDOM_MEMES_FOLDER}"))
             .expect("Couldn't create directory data/markov data");
     }
 }

@@ -21,33 +21,43 @@ use std::{
 
 use anyhow::bail;
 use itertools::Itertools;
-use rand::Rng;
 use serenity::all::Context;
-use sqlx::MySqlPool;
+use sqlx::PgPool;
 
 use crate::client::memes::dal::{
-    add_categories_to_hash, create_new_category_dirs, hash_exists, save_meme_hash,
-    save_meme_to_file,
+    create_meme_file, create_new_category_dirs, hash_exists, save_meme_to_file,
 };
 
 pub const MEMES_FOLDER: &str = "./data/memes";
-pub const RANDOM_MEMES_FOLDER: &str = "./data/random_memes";
 
 #[tracing::instrument(err, skip(pool))]
 pub async fn read_meme(
     server_id: u64,
-    folder_name: &str,
-    pool: &MySqlPool,
+    tag: &str,
+    ordered: bool,
+    pool: &PgPool,
 ) -> anyhow::Result<(DirEntry, Vec<u8>)> {
     // fetch file index from db for this folder and server
 
-    let mut index = dal::get_server_folder_index(server_id, folder_name, pool)
+    let Some(category) = dal::get_category_by_name(tag, pool).await? else {
+        bail!("category doesn't exist");
+    };
+
+    let server_category = dal::get_server_category(server_id as i64, category.id, pool)
         .await?
-        .map_or(0, |i| i.file_index);
+        .unwrap_or(dal::MemeServerCategory {
+            server_id: server_id as i64,
+            category_id: category.id,
+            file_id: 1,
+        });
+
+    let Some(mut meme_file) = dal::get_file_by_id(server_category.file_id, pool).await? else {
+        bail!("no files for category exist")
+    };
 
     // read dir and sort by name
 
-    let mut files = fs::read_dir(format!("{MEMES_FOLDER}/{folder_name}"))?
+    let mut files = fs::read_dir(format!("{MEMES_FOLDER}/{}", meme_file.folder))?
         .filter_map(std::result::Result::ok)
         .sorted_by(|a, b| {
             alphanumeric_sort::compare_str(
@@ -62,44 +72,25 @@ pub async fn read_meme(
     }
 
     // if index is out of bounds set it to 0
-    if files.len() < index as usize {
-        index = 0;
+    if files.len() < meme_file.id as usize {
+        meme_file.id = 1;
     }
 
     // find file by index
-    let file = files.swap_remove(index as usize);
+    let file = files.swap_remove(meme_file.id as usize);
 
     let file_bytes = fs::read(file.path())?;
 
     // update folder_index
-    dal::set_server_folder_index(server_id, folder_name, index + 1, pool).await?;
+    dal::set_server_category(server_id as i64, category.id, meme_file.id + 1, pool).await?;
 
     Ok((file, file_bytes))
 }
 
-#[tracing::instrument(err)]
-pub async fn read_random_meme(folder_name: &str) -> anyhow::Result<(DirEntry, Vec<u8>)> {
-    let mut files = fs::read_dir(format!("{RANDOM_MEMES_FOLDER}/{folder_name}"))?
-        .filter_map(std::result::Result::ok)
-        .collect_vec();
-
-    if files.is_empty() {
-        bail!("no files in folder");
-    }
-
-    let index = rand::thread_rng().gen_range(0..files.len());
-
-    let file = files.swap_remove(index as usize);
-
-    let file_bytes = fs::read(file.path())?;
-
-    Ok((file, file_bytes))
-}
-
-fn calculate_hash<T: Hash>(t: &T) -> u64 {
+fn calculate_hash<T: Hash>(t: &T) -> i64 {
     let mut s = DefaultHasher::new();
     t.hash(&mut s);
-    s.finish()
+    s.finish() as i64
 }
 
 /// - hash bytes and check if it already is in the DB
@@ -113,24 +104,36 @@ pub async fn save_meme(
     name: String,
     bytes: Vec<u8>,
     categories: &Vec<String>,
-    pool: &MySqlPool,
+    pool: &PgPool,
     ctx: &Context,
 ) -> anyhow::Result<()> {
     let hash = calculate_hash(&bytes);
 
+    // Avoid saving duplicates with hashing
     if hash_exists(hash, pool).await? {
-        add_categories_to_hash(categories, hash, pool).await;
+        create_meme_file_categories(categories, hash, pool).await;
         return Ok(());
     }
 
     create_new_category_dirs(categories).await?;
-    let path = save_meme_to_file(&name, &bytes, categories.first().unwrap()).await?;
-    save_meme_hash(&path, hash, categories, pool).await?;
-    create_new_category_commands(categories, ctx); // TODO: how to specify randomness?
+    create_new_categories(categories, pool).await?;
+    save_meme_to_file(&name, &bytes, categories.first().unwrap()).await?;
+    create_meme_file(categories.first().unwrap(), &name, hash, pool).await?;
 
     Ok(())
 }
 
-fn create_new_category_commands(categories: &Vec<String>, ctx: &Context) {
+async fn create_new_categories(
+    categories: &[String],
+    pool: &sqlx::Pool<sqlx::Postgres>,
+) -> anyhow::Result<()> {
+    todo!()
+}
+
+async fn create_meme_file_categories(
+    _categories: &[String],
+    _hash: i64,
+    _pool: &sqlx::Pool<sqlx::Postgres>,
+) {
     todo!()
 }

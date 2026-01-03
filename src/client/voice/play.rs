@@ -513,11 +513,10 @@ async fn get_spotify_album_inputs(query: &str, spotify: ClientCredsSpotify) -> S
             Err(err) => {
                 error!("{:?}", err);
 
-                if let ClientError::Http(err) = err {
-                    if let HttpError::StatusCode(err) = *err {
+                if let ClientError::Http(err) = err
+                    && let HttpError::StatusCode(err) = *err {
                         error!("{:?}", err.text().await);
                     }
-                }
                 continue;
             }
         };
@@ -558,11 +557,10 @@ async fn get_spotify_playlist_inputs(query: &str, spotify: &ClientCredsSpotify) 
             Err(err) => {
                 error!("{:?}", err);
 
-                if let ClientError::Http(err) = err {
-                    if let HttpError::StatusCode(err) = *err {
+                if let ClientError::Http(err) = err
+                    && let HttpError::StatusCode(err) = *err {
                         error!("{:?}", err.text().await);
                     }
-                }
                 continue;
             }
         };
@@ -628,8 +626,7 @@ async fn return_response(
     let time_before_song = durations
         .into_iter()
         .reduce(|a, f| a.checked_add(f).unwrap())
-        .unwrap_or_default()
-        - time;
+        .unwrap_or_default().checked_sub(time).unwrap();
 
     let time_before_song = format!(
         "{}:{:02}",

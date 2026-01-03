@@ -1,17 +1,17 @@
-use sqlx::{mysql::MySqlQueryResult, query, query_as, MySqlPool};
+use sqlx::{PgPool, postgres::PgQueryResult, query, query_as};
 
 use crate::client::markov::model::MarkovBlacklistedServer;
 
 use super::model::{MarkovBlacklistedChannel, MarkovBlacklistedUser};
 
 pub async fn get_markov_blacklisted_server(
-    server_id: u64,
-    pool: &MySqlPool,
+    server_id: i64,
+    pool: &PgPool,
 ) -> Option<MarkovBlacklistedServer> {
     query_as!(
         MarkovBlacklistedServer,
         "
-		SELECT * FROM markov_blacklisted_servers where server_id = ?
+		SELECT * FROM markov_blacklisted_servers where server_id = $1
 		",
         server_id
     )
@@ -21,13 +21,13 @@ pub async fn get_markov_blacklisted_server(
 }
 
 pub async fn create_markov_blacklisted_server(
-    server_id: u64,
-    pool: &MySqlPool,
-) -> anyhow::Result<MySqlQueryResult> {
+    server_id: i64,
+    pool: &PgPool,
+) -> anyhow::Result<PgQueryResult> {
     Ok(query!(
         r#"
 		INSERT INTO markov_blacklisted_servers (server_id)
-		VALUES (?)
+		VALUES ($1)
 		"#,
         server_id
     )
@@ -36,13 +36,13 @@ pub async fn create_markov_blacklisted_server(
 }
 
 pub async fn delete_markov_blacklisted_server(
-    server_id: u64,
-    pool: &MySqlPool,
-) -> anyhow::Result<MySqlQueryResult> {
+    server_id: i64,
+    pool: &PgPool,
+) -> anyhow::Result<PgQueryResult> {
     Ok(query!(
         r#"
 		DELETE FROM markov_blacklisted_servers 
-		WHERE server_id = ?
+		WHERE server_id = $1
 		"#,
         server_id
     )
@@ -51,13 +51,13 @@ pub async fn delete_markov_blacklisted_server(
 }
 
 pub async fn get_markov_blacklisted_user(
-    user_id: u64,
-    pool: &MySqlPool,
+    user_id: i64,
+    pool: &PgPool,
 ) -> Option<MarkovBlacklistedUser> {
     query_as!(
         MarkovBlacklistedUser,
         "
-		SELECT * FROM markov_blacklisted_users where user_id = ?
+		SELECT * FROM markov_blacklisted_users where user_id = $1
 		",
         user_id
     )
@@ -67,13 +67,13 @@ pub async fn get_markov_blacklisted_user(
 }
 
 pub async fn create_markov_blacklisted_user(
-    user_id: u64,
-    pool: &MySqlPool,
-) -> anyhow::Result<MySqlQueryResult> {
+    user_id: i64,
+    pool: &PgPool,
+) -> anyhow::Result<PgQueryResult> {
     Ok(query!(
         r#"
 		INSERT INTO markov_blacklisted_users (user_id)
-		VALUES (?)
+		VALUES ($1)
 		"#,
         user_id
     )
@@ -82,13 +82,13 @@ pub async fn create_markov_blacklisted_user(
 }
 
 pub async fn delete_markov_blacklisted_user(
-    user_id: u64,
-    pool: &MySqlPool,
-) -> anyhow::Result<MySqlQueryResult> {
+    user_id: i64,
+    pool: &PgPool,
+) -> anyhow::Result<PgQueryResult> {
     Ok(query!(
         r#"
 		DELETE FROM markov_blacklisted_users 
-		WHERE user_id = ?
+		WHERE user_id = $1
 		"#,
         user_id
     )
@@ -97,13 +97,13 @@ pub async fn delete_markov_blacklisted_user(
 }
 
 pub async fn get_markov_blacklisted_channel(
-    channel_id: u64,
-    pool: &MySqlPool,
+    channel_id: i64,
+    pool: &PgPool,
 ) -> Option<MarkovBlacklistedChannel> {
     query_as!(
         MarkovBlacklistedChannel,
         "
-		SELECT * FROM markov_blacklisted_channels where channel_id = ?
+		SELECT * FROM markov_blacklisted_channels where channel_id = $1
 		",
         channel_id
     )
@@ -113,13 +113,13 @@ pub async fn get_markov_blacklisted_channel(
 }
 
 pub async fn create_markov_blacklisted_channel(
-    channel_id: u64,
-    pool: &MySqlPool,
-) -> anyhow::Result<MySqlQueryResult> {
+    channel_id: i64,
+    pool: &PgPool,
+) -> anyhow::Result<PgQueryResult> {
     Ok(query!(
         r#"
 		INSERT INTO markov_blacklisted_channels (channel_id)
-		VALUES (?)
+		VALUES ($1)
 		"#,
         channel_id
     )
@@ -128,13 +128,13 @@ pub async fn create_markov_blacklisted_channel(
 }
 
 pub async fn delete_markov_blacklisted_channel(
-    channel_id: u64,
-    pool: &MySqlPool,
-) -> anyhow::Result<MySqlQueryResult> {
+    channel_id: i64,
+    pool: &PgPool,
+) -> anyhow::Result<PgQueryResult> {
     Ok(query!(
         r#"
 		DELETE FROM markov_blacklisted_channels
-		WHERE channel_id = ?
+		WHERE channel_id = $1
 		"#,
         channel_id
     )

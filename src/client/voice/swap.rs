@@ -82,12 +82,11 @@ pub async fn swap(ctx: &Context, command: &CommandInteraction) {
 
     command.defer(&ctx.http).await.unwrap();
 
-    if let Some(guild) = guild {
-        if is_bot_in_another_voice_channel(ctx, &guild, command.user.id) {
+    if let Some(guild) = guild
+        && is_bot_in_another_voice_channel(ctx, &guild, command.user.id) {
             voice_channel_not_same_response(command, ctx).await;
             return;
         }
-    }
 
     let Some(call_lock) = get_call_lock(ctx, guild_id, command).await else {
         return;

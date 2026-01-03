@@ -1,4 +1,4 @@
-use std::str::FromStr;
+use std::{str::FromStr, time::Duration};
 
 use super::{
     helper_funcs::{get_full_command_name, ping_command, user_id_command},
@@ -12,11 +12,7 @@ use super::{
 use crate::{
     client::{
         download::{download_command, download_from_message_command},
-        memes::{
-            self,
-            commands::create_memes_commands,
-            model::{get_meme_folders_lock, get_random_meme_folders_lock},
-        },
+        memes::{self, commands::create_memes_commands, model::get_meme_folders_lock},
         voice::queue::{command_response::queue, shuffle::shuffle_queue},
     },
     global_data, markov, voice,
@@ -24,15 +20,15 @@ use crate::{
 use serenity::{
     all::{
         Command, CommandInteraction, CommandOptionType, CommandType, CreateAttachment,
-        CreateInteractionResponseMessage, EditInteractionResponse, InstallationContext,
-        InteractionContext,
+        CreateInputText, CreateInteractionResponseMessage, CreateQuickModal,
+        EditInteractionResponse, InstallationContext, InteractionContext,
     },
     builder::{CreateCommand, CreateCommandOption, CreateInteractionResponse},
     client::Context,
 };
-use sqlx::{MySql, Pool};
+use sqlx::{Postgres, Pool};
 use strum_macros::{Display, EnumProperty, EnumString};
-use tracing::{error, info, info_span, Instrument};
+use tracing::{Instrument, error, info, info_span};
 
 /// All the slash commands the bot has implemented
 #[allow(non_camel_case_types)]
@@ -91,7 +87,7 @@ pub enum UserCommand {
 /// Check which slash command was triggered, call the appropriate function and return a response to the user
 #[allow(clippy::too_many_lines)]
 #[tracing::instrument(name = "Command", skip(ctx, pool))]
-pub async fn command_responses(command: &CommandInteraction, ctx: Context, pool: &Pool<MySql>) {
+pub async fn command_responses(command: &CommandInteraction, ctx: Context, pool: &Pool<Postgres>) {
     let user = &command.user;
 
     let full_command_name = get_full_command_name(command);
@@ -182,54 +178,16 @@ pub async fn command_responses(command: &CommandInteraction, ctx: Context, pool:
                 return;
             }
 
-            if handle_random_meme(command, ctx, full_command_name).await {
-                return;
-            }
-
             error!("Cannot respond to slash command {why}");
             return;
         }
     }
 }
 
-async fn handle_random_meme(
-    command: &CommandInteraction,
-    ctx: Context,
-    full_command_name: String,
-) -> bool {
-    let meme_folders_lock = get_random_meme_folders_lock(&ctx.data).await;
-    if let Some(folder_name) = meme_folders_lock
-        .read()
-        .await
-        .folders
-        .get(&full_command_name)
-        .cloned()
-    {
-        command.defer(&ctx.http).await.unwrap();
-
-        let (file, bytes) = memes::read_random_meme(&folder_name).await.unwrap();
-
-        command
-            .edit_response(
-                ctx.http,
-                EditInteractionResponse::new().new_attachment(CreateAttachment::bytes(
-                    bytes,
-                    file.file_name().to_string_lossy().to_string(),
-                )),
-            )
-            .instrument(info_span!("Sending message"))
-            .await
-            .expect("Couldn't create interaction response");
-        return true;
-    }
-
-    false
-}
-
 async fn handle_meme(
     command: &CommandInteraction,
     ctx: &Context,
-    pool: &Pool<MySql>,
+    pool: &Pool<Postgres>,
     full_command_name: &String,
 ) -> bool {
     let meme_folders_lock = get_meme_folders_lock(&ctx.data).await;
@@ -242,11 +200,23 @@ async fn handle_meme(
     {
         command.defer(&ctx.http).await.unwrap();
 
+        command.quick_modal(
+            ctx,
+            CreateQuickModal::new("Upload MEME")
+                .timeout(Duration::from_mins(5))
+                .field(CreateInputText::new(
+                    serenity::all::InputTextStyle::Short,
+                    "tags",
+                    "modal_tags",
+                )),
+        ).await.unwrap();
+
         let (file, bytes) = memes::read_meme(
             command
                 .guild_id
                 .map_or(command.channel_id.get(), serenity::all::GuildId::get),
             &folder_name,
+            true,
             pool,
         )
         .await

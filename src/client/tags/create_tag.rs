@@ -4,11 +4,11 @@ use serenity::{
     builder::CreateInteractionResponse,
     prelude::Context,
 };
-use sqlx::{MySql, Pool};
+use sqlx::{Postgres, Pool};
 use tracing::{info_span, Instrument};
 
 #[tracing::instrument(skip(ctx))]
-pub async fn create_tag(ctx: &Context, command: &CommandInteraction, pool: &Pool<MySql>) {
+pub async fn create_tag(ctx: &Context, command: &CommandInteraction, pool: &Pool<Postgres>) {
     let Some(guild_id) = command.guild_id else {
         tag_outside_server_response(command, ctx).await;
         return;
@@ -25,8 +25,8 @@ pub async fn create_tag(ctx: &Context, command: &CommandInteraction, pool: &Pool
         listener.to_lowercase().trim().to_owned(),
         response.trim().to_owned(),
         command.user.name.clone(),
-        command.user.id.get(),
-        guild_id.get(),
+        command.user.id.get() as i64,
+        guild_id.get() as i64,
         pool,
     )
     .await
@@ -39,7 +39,7 @@ pub async fn create_tag(ctx: &Context, command: &CommandInteraction, pool: &Pool
                 tag_exists_response(command, &listener, ctx).await;
             }
         },
-    };
+    }
 }
 
 async fn tag_exists_response(command: &CommandInteraction, listener: &str, ctx: &Context) {

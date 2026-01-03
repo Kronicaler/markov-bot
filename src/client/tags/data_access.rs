@@ -1,9 +1,9 @@
-use sqlx::MySqlPool;
+use sqlx::PgPool;
 use thiserror::Error;
 
 use super::{
-    model::{TagBlacklistedUser, TagChannel},
     Tag,
+    model::{TagBlacklistedUser, TagChannel},
 };
 
 #[derive(Debug, Error)]
@@ -16,14 +16,15 @@ pub async fn create_tag(
     listener: String,
     response: String,
     creator_name: String,
-    creator_id: u64,
-    server_id: u64,
-    pool: &MySqlPool,
+    creator_id: i64,
+    server_id: i64,
+    pool: &PgPool,
 ) -> Result<Tag, CreateTagError> {
     let created_tag_id = sqlx::query!(
         r#"
 		INSERT INTO tags ( listener, response, creator_name, creator_id, server_id )
-		VALUES ( ?, ?, ?, ?, ?)
+		VALUES ( $1, $2, $3, $4, $5)
+        RETURNING id
 		"#,
         listener,
         response,
@@ -31,19 +32,19 @@ pub async fn create_tag(
         creator_id,
         server_id
     )
-    .execute(pool)
+    .fetch_one(pool)
     .await
     .or(Err(CreateTagError::TagWithSameListenerExists))?
-    .last_insert_id();
+    .id;
 
     Ok(get_tag_by_id(created_tag_id, pool).await.unwrap())
 }
 
-pub async fn delete_tag(id: u64, pool: &MySqlPool) -> u64 {
+pub async fn delete_tag(id: i32, pool: &PgPool) -> u64 {
     sqlx::query!(
         r#"
         DELETE FROM tags
-        WHERE id= ?
+        WHERE id= $1
         "#,
         id
     )
@@ -53,12 +54,12 @@ pub async fn delete_tag(id: u64, pool: &MySqlPool) -> u64 {
     .rows_affected()
 }
 
-pub async fn get_tag_by_listener(listener: &str, server_id: u64, pool: &MySqlPool) -> Option<Tag> {
+pub async fn get_tag_by_listener(listener: &str, server_id: i64, pool: &PgPool) -> Option<Tag> {
     sqlx::query_as!(
         Tag,
         r#"
         SELECT * FROM tags
-        WHERE listener = ? AND server_id = ?
+        WHERE listener = $1 AND server_id = $2
         "#,
         listener,
         server_id
@@ -68,12 +69,12 @@ pub async fn get_tag_by_listener(listener: &str, server_id: u64, pool: &MySqlPoo
     .unwrap()
 }
 
-pub async fn get_tag_by_id(id: u64, pool: &MySqlPool) -> Option<Tag> {
+pub async fn get_tag_by_id(id: i32, pool: &PgPool) -> Option<Tag> {
     sqlx::query_as!(
         Tag,
         r#"
         SELECT * FROM tags
-        WHERE id = ?
+        WHERE id = $1
         "#,
         id
     )
@@ -82,12 +83,12 @@ pub async fn get_tag_by_id(id: u64, pool: &MySqlPool) -> Option<Tag> {
     .unwrap()
 }
 
-pub async fn get_tags_by_server_id(server_id: u64, pool: &MySqlPool) -> Vec<Tag> {
+pub async fn get_tags_by_server_id(server_id: i64, pool: &PgPool) -> Vec<Tag> {
     sqlx::query_as!(
         Tag,
         r#"
         SELECT * FROM tags
-        WHERE server_id = ?
+        WHERE server_id = $1
         "#,
         server_id
     )
@@ -96,15 +97,12 @@ pub async fn get_tags_by_server_id(server_id: u64, pool: &MySqlPool) -> Vec<Tag>
     .unwrap()
 }
 
-pub async fn get_tag_blacklisted_user(
-    user_id: u64,
-    pool: &MySqlPool,
-) -> Option<TagBlacklistedUser> {
+pub async fn get_tag_blacklisted_user(user_id: i64, pool: &PgPool) -> Option<TagBlacklistedUser> {
     sqlx::query_as!(
         TagBlacklistedUser,
         r#"
         SELECT * FROM tag_blacklisted_users
-        WHERE user_id = ?
+        WHERE user_id = $1
         "#,
         user_id
     )
@@ -113,11 +111,11 @@ pub async fn get_tag_blacklisted_user(
     .unwrap()
 }
 
-pub async fn delete_tag_blacklisted_user(user_id: u64, pool: &MySqlPool) -> u64 {
+pub async fn delete_tag_blacklisted_user(user_id: i64, pool: &PgPool) -> u64 {
     sqlx::query!(
         r#"
         DELETE FROM tag_blacklisted_users
-        WHERE user_id= ?
+        WHERE user_id= $1
         "#,
         user_id
     )
@@ -127,11 +125,11 @@ pub async fn delete_tag_blacklisted_user(user_id: u64, pool: &MySqlPool) -> u64 
     .rows_affected()
 }
 
-pub async fn create_tag_blacklisted_user(user_id: u64, pool: &MySqlPool) -> TagBlacklistedUser {
+pub async fn create_tag_blacklisted_user(user_id: i64, pool: &PgPool) -> TagBlacklistedUser {
     sqlx::query!(
         r#"
 		INSERT INTO tag_blacklisted_users ( user_id )
-		VALUES ( ? )
+		VALUES ( $1 )
 		"#,
         user_id
     )
@@ -142,12 +140,12 @@ pub async fn create_tag_blacklisted_user(user_id: u64, pool: &MySqlPool) -> TagB
     get_tag_blacklisted_user(user_id, pool).await.unwrap()
 }
 
-pub async fn get_tag_channel(server_id: u64, pool: &MySqlPool) -> Option<TagChannel> {
+pub async fn get_tag_channel(server_id: i64, pool: &PgPool) -> Option<TagChannel> {
     sqlx::query_as!(
         TagChannel,
         r#"
         SELECT * FROM tag_channels
-        WHERE server_id = ?
+        WHERE server_id = $1
         "#,
         server_id,
     )
@@ -156,12 +154,12 @@ pub async fn get_tag_channel(server_id: u64, pool: &MySqlPool) -> Option<TagChan
     .unwrap()
 }
 
-pub async fn update_tag_channel(server_id: u64, channel_id: u64, pool: &MySqlPool) -> u64 {
+pub async fn update_tag_channel(server_id: i64, channel_id: i64, pool: &PgPool) -> u64 {
     sqlx::query!(
         r#"
         UPDATE tag_channels
-        SET channel_id = ?
-        WHERE server_id = ?
+        SET channel_id = $1
+        WHERE server_id = $2
         "#,
         channel_id,
         server_id,
@@ -172,11 +170,11 @@ pub async fn update_tag_channel(server_id: u64, channel_id: u64, pool: &MySqlPoo
     .rows_affected()
 }
 
-pub async fn create_tag_channel(server_id: u64, channel_id: u64, pool: &MySqlPool) -> TagChannel {
+pub async fn create_tag_channel(server_id: i64, channel_id: i64, pool: &PgPool) -> TagChannel {
     sqlx::query!(
         r#"
 		INSERT INTO tag_channels ( server_id, channel_id )
-		VALUES ( ?, ? )
+		VALUES ( $1, $2 )
 		"#,
         server_id,
         channel_id

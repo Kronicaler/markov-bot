@@ -3,13 +3,13 @@ use serenity::{
     builder::CreateInteractionResponse,
     prelude::Context,
 };
-use sqlx::{MySql, Pool};
+use sqlx::{Postgres, Pool};
 use tracing::{info_span, Instrument};
 
 use super::data_access;
 
 #[tracing::instrument(skip(ctx))]
-pub async fn remove_tag(ctx: &Context, command: &CommandInteraction, pool: &Pool<MySql>) {
+pub async fn remove_tag(ctx: &Context, command: &CommandInteraction, pool: &Pool<Postgres>) {
     let listener = get_listener(command);
 
     let tag = data_access::get_tag_by_listener(
@@ -17,7 +17,7 @@ pub async fn remove_tag(ctx: &Context, command: &CommandInteraction, pool: &Pool
         command
             .guild_id
             .expect("This command can't be called outside guilds")
-            .get(),
+            .get() as i64,
         pool,
     )
     .await;

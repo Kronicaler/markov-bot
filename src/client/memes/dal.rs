@@ -5,37 +5,78 @@ use std::{
 
 use file_format::FileFormat;
 use itertools::Itertools;
-use sqlx::MySqlPool;
+use sqlx::PgPool;
 
-use crate::client::memes::{MEMES_FOLDER, RANDOM_MEMES_FOLDER};
+use crate::client::memes::MEMES_FOLDER;
 
 #[derive(Debug)]
-pub struct ServerFolderIndex {
-    #[allow(dead_code)]
-    pub server_id: u64,
-    #[allow(dead_code)]
-    pub folder_name: String,
-    pub file_index: u32,
+pub struct MemeServerCategory {
+    pub server_id: i64,
+    pub category_id: i32,
+    pub file_id: i32,
 }
 
-pub struct FileHash {
-    hash: u64,
-    path: String,
+pub struct MemeFile {
+    pub id: i32,
+    pub folder: String,
+    pub name: String,
+    pub hash: i64,
+}
+
+pub struct MemeFileCategory {
+    pub category_id: i32,
+    pub file_id: i32,
+}
+
+pub struct MemeCategory {
+    pub id: i32,
+    pub category: String,
 }
 
 #[tracing::instrument(err, skip(pool))]
-pub async fn get_server_folder_index(
-    server_id: u64,
-    folder_name: &str,
-    pool: &MySqlPool,
-) -> anyhow::Result<Option<ServerFolderIndex>> {
+pub async fn get_file_by_id(id: i32, pool: &PgPool) -> anyhow::Result<Option<MemeFile>> {
     Ok(sqlx::query_as!(
-        ServerFolderIndex,
+        MemeFile,
         r#"
-            SELECT * FROM server_folder_indexes
-            WHERE folder_name = ? AND server_id = ?
+            SELECT * FROM meme_files
+            WHERE id = $1
             "#,
-        folder_name,
+        id,
+    )
+    .fetch_optional(pool)
+    .await?)
+}
+
+#[tracing::instrument(err, skip(pool))]
+pub async fn get_category_by_name(
+    category: &str,
+    pool: &PgPool,
+) -> anyhow::Result<Option<MemeCategory>> {
+    Ok(sqlx::query_as!(
+        MemeCategory,
+        r#"
+            SELECT * FROM meme_categories
+            WHERE category = $1
+            "#,
+        category,
+    )
+    .fetch_optional(pool)
+    .await?)
+}
+
+#[tracing::instrument(err, skip(pool))]
+pub async fn get_server_category(
+    server_id: i64,
+    category_id: i32,
+    pool: &PgPool,
+) -> anyhow::Result<Option<MemeServerCategory>> {
+    Ok(sqlx::query_as!(
+        MemeServerCategory,
+        r#"
+            SELECT * FROM meme_server_categories
+            WHERE category_id = $1 AND server_id = $2
+            "#,
+        category_id,
         server_id
     )
     .fetch_optional(pool)
@@ -43,20 +84,23 @@ pub async fn get_server_folder_index(
 }
 
 #[tracing::instrument(err, skip(pool))]
-pub async fn set_server_folder_index(
-    server_id: u64,
-    folder_name: &str,
-    file_index: u32,
-    pool: &MySqlPool,
+pub async fn set_server_category(
+    server_id: i64,
+    category_id: i32,
+    file_id: i32,
+    pool: &PgPool,
 ) -> anyhow::Result<()> {
     sqlx::query!(
         r#"
-		REPLACE INTO server_folder_indexes ( server_id, folder_name, file_index )
-		VALUES ( ?, ?, ? )
+		INSERT INTO meme_server_categories ( server_id, category_id, file_id )
+		VALUES ( $1, $2, $3 )
+        ON CONFLICT(server_id, category_id)
+        DO UPDATE SET
+            file_id = EXCLUDED.file_id
 		"#,
         server_id,
-        folder_name,
-        file_index
+        category_id,
+        file_id
     )
     .execute(pool)
     .await?;
@@ -64,48 +108,7 @@ pub async fn set_server_folder_index(
     Ok(())
 }
 
-pub async fn save_meme_hash(
-    path: &str,
-    hash: u64,
-    categories: &Vec<String>,
-    pool: &MySqlPool,
-) -> anyhow::Result<()> {
-    let mut tx = pool.begin().await?;
-
-    sqlx::query!(
-        r#"
-		INSERT INTO file_hashes( hash, path )
-		VALUES ( ?, ? )
-		"#,
-        hash,
-        path,
-    )
-    .execute(&mut *tx)
-    .await?;
-
-    for category in categories {
-        sqlx::query!(
-            r#"
-		INSERT INTO file_categories( category, file_hash)
-		VALUES ( ?, ? )
-		"#,
-            category,
-            hash,
-        )
-        .execute(&mut *tx)
-        .await?;
-    }
-
-    tx.commit().await?;
-
-    Ok(())
-}
-
-pub async fn save_meme_to_file(
-    name: &str,
-    bytes: &Vec<u8>,
-    folder: &str,
-) -> anyhow::Result<String> {
+pub async fn save_meme_to_file(name: &str, bytes: &Vec<u8>, folder: &str) -> anyhow::Result<()> {
     let mut path = PathBuf::new();
     path.push(folder);
     path.push(name);
@@ -115,7 +118,7 @@ pub async fn save_meme_to_file(
 
     fs::write(&path, bytes)?;
 
-    Ok(path.to_str().unwrap().to_string())
+    Ok(())
 }
 
 pub async fn create_new_category_dirs(categories: &Vec<String>) -> anyhow::Result<()> {
@@ -127,20 +130,12 @@ pub async fn create_new_category_dirs(categories: &Vec<String>) -> anyhow::Resul
     Ok(())
 }
 
-pub async fn add_categories_to_hash(categories: &Vec<String>, hash: u64, pool: &MySqlPool) {
-    todo!()
-}
+pub async fn hash_exists(hash: i64, pool: &PgPool) -> anyhow::Result<bool> {
+    let file = sqlx::query_as!(MemeFile, "select * from meme_files where hash = $1", hash)
+        .fetch_optional(pool)
+        .await?;
 
-pub async fn hash_exists(hash: u64, pool: &MySqlPool) -> anyhow::Result<bool> {
-    let hash = sqlx::query_as!(
-        FileHash,
-        "select hash, path from file_hashes where hash = ?",
-        hash
-    )
-    .fetch_optional(pool)
-    .await?;
-
-    Ok(hash.is_some())
+    Ok(file.is_some())
 }
 
 #[tracing::instrument(ret)]
@@ -155,14 +150,23 @@ pub fn get_meme_folders() -> Vec<DirEntry> {
         .collect_vec()
 }
 
-#[tracing::instrument(ret)]
-pub fn get_random_meme_folders() -> Vec<DirEntry> {
-    let Ok(folders) = fs::read_dir(RANDOM_MEMES_FOLDER) else {
-        return vec![];
-    };
+pub async fn create_meme_file(
+    folder: &str,
+    name: &str,
+    hash: i64,
+    pool: &sqlx::Pool<sqlx::Postgres>,
+) -> anyhow::Result<()> {
+    sqlx::query!(
+        r#"
+		INSERT INTO meme_files ( folder, name, hash )
+		VALUES ( $1, $2, $3 )
+		"#,
+        folder,
+        name,
+        hash
+    )
+    .execute(pool)
+    .await?;
 
-    folders
-        .filter_map(std::result::Result::ok)
-        .filter(|f| f.file_type().is_ok_and(|f| f.is_dir()))
-        .collect_vec()
+    Ok(())
 }
