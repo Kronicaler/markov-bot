@@ -5,10 +5,12 @@ CREATE TABLE IF NOT EXISTS meme_categories (
 
 CREATE TABLE IF NOT EXISTS meme_files (
     id SERIAL PRIMARY KEY,
-    folder TEXT UNIQUE NOT NULL,
-    name TEXT UNIQUE NOT NULL,
+    folder TEXT NOT NULL,
+    name TEXT NOT NULL,
     hash BIGINT UNIQUE NOT NULL
 );
+
+CREATE UNIQUE INDEX mf_folder_name on meme_files (folder, name);
 
 -- track the last file of a category posted to a discord server
 CREATE TABLE IF NOT EXISTS meme_server_categories (

@@ -5,7 +5,7 @@ use std::{
 
 use file_format::FileFormat;
 use itertools::Itertools;
-use sqlx::PgPool;
+use sqlx::PgConnection;
 
 use crate::client::memes::MEMES_FOLDER;
 
@@ -33,8 +33,8 @@ pub struct MemeCategory {
     pub category: String,
 }
 
-#[tracing::instrument(err, skip(pool))]
-pub async fn get_file_by_id(id: i32, pool: &PgPool) -> anyhow::Result<Option<MemeFile>> {
+#[tracing::instrument(err, skip(conn))]
+pub async fn get_file_by_id(id: i32, conn: &mut PgConnection) -> anyhow::Result<Option<MemeFile>> {
     Ok(sqlx::query_as!(
         MemeFile,
         r#"
@@ -43,32 +43,32 @@ pub async fn get_file_by_id(id: i32, pool: &PgPool) -> anyhow::Result<Option<Mem
             "#,
         id,
     )
-    .fetch_optional(pool)
+    .fetch_optional(conn)
     .await?)
 }
 
-#[tracing::instrument(err, skip(pool))]
-pub async fn get_category_by_name(
-    category: &str,
-    pool: &PgPool,
-) -> anyhow::Result<Option<MemeCategory>> {
+#[tracing::instrument(err, skip(conn))]
+pub async fn get_categories_by_name(
+    categories: &[String],
+    conn: &mut PgConnection,
+) -> anyhow::Result<Vec<MemeCategory>> {
     Ok(sqlx::query_as!(
         MemeCategory,
         r#"
             SELECT * FROM meme_categories
-            WHERE category = $1
+            WHERE category = any($1)
             "#,
-        category,
+        &categories,
     )
-    .fetch_optional(pool)
+    .fetch_all(conn)
     .await?)
 }
 
-#[tracing::instrument(err, skip(pool))]
+#[tracing::instrument(err, skip(conn))]
 pub async fn get_server_category(
     server_id: i64,
     category_id: i32,
-    pool: &PgPool,
+    conn: &mut PgConnection,
 ) -> anyhow::Result<Option<MemeServerCategory>> {
     Ok(sqlx::query_as!(
         MemeServerCategory,
@@ -79,16 +79,16 @@ pub async fn get_server_category(
         category_id,
         server_id
     )
-    .fetch_optional(pool)
+    .fetch_optional(conn)
     .await?)
 }
 
-#[tracing::instrument(err, skip(pool))]
+#[tracing::instrument(err, skip(conn))]
 pub async fn set_server_category(
     server_id: i64,
     category_id: i32,
     file_id: i32,
-    pool: &PgPool,
+    conn: &mut PgConnection,
 ) -> anyhow::Result<()> {
     sqlx::query!(
         r#"
@@ -102,7 +102,7 @@ pub async fn set_server_category(
         category_id,
         file_id
     )
-    .execute(pool)
+    .execute(conn)
     .await?;
 
     Ok(())
@@ -110,6 +110,7 @@ pub async fn set_server_category(
 
 pub async fn save_meme_to_file(name: &str, bytes: &Vec<u8>, folder: &str) -> anyhow::Result<()> {
     let mut path = PathBuf::new();
+    path.push(MEMES_FOLDER);
     path.push(folder);
     path.push(name);
 
@@ -130,12 +131,15 @@ pub async fn create_new_category_dirs(categories: &Vec<String>) -> anyhow::Resul
     Ok(())
 }
 
-pub async fn hash_exists(hash: i64, pool: &PgPool) -> anyhow::Result<bool> {
+pub async fn get_file_by_hash(
+    hash: i64,
+    conn: &mut PgConnection,
+) -> anyhow::Result<Option<MemeFile>> {
     let file = sqlx::query_as!(MemeFile, "select * from meme_files where hash = $1", hash)
-        .fetch_optional(pool)
+        .fetch_optional(conn)
         .await?;
 
-    Ok(file.is_some())
+    Ok(file)
 }
 
 #[tracing::instrument(ret)]
@@ -154,7 +158,7 @@ pub async fn create_meme_file(
     folder: &str,
     name: &str,
     hash: i64,
-    pool: &sqlx::Pool<sqlx::Postgres>,
+    conn: &mut PgConnection,
 ) -> anyhow::Result<()> {
     sqlx::query!(
         r#"
@@ -165,8 +169,53 @@ pub async fn create_meme_file(
         name,
         hash
     )
-    .execute(pool)
+    .execute(conn)
     .await?;
+
+    Ok(())
+}
+
+pub async fn create_new_categories(
+    categories: &[String],
+    conn: &mut PgConnection,
+) -> anyhow::Result<()> {
+    for category in categories {
+        sqlx::query!(
+            r#"
+        INSERT INTO meme_categories ( category )
+        VALUES ( $1 )
+        ON CONFLICT(category) DO NOTHING
+        "#,
+            category
+        )
+        .execute(&mut *conn)
+        .await?;
+    }
+
+    Ok(())
+}
+
+pub async fn create_meme_file_categories(
+    categories: &[String],
+    meme_file_id: i32,
+    conn: &mut PgConnection,
+) -> anyhow::Result<()> {
+    let categories = get_categories_by_name(categories, conn).await?;
+
+    for category in categories {
+        sqlx::query!(
+            r#"
+            INSERT INTO meme_file_categories ( category_id, file_id )
+            VALUES ( $1, $2 )
+            ON CONFLICT(category_id, file_id)
+            DO NOTHING
+            "#,
+            category.id,
+            meme_file_id
+        )
+        .execute(&mut *conn)
+        .await?;
+    }
 
     Ok(())
 }

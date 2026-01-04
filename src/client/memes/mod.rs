@@ -26,7 +26,8 @@ use sqlx::PgPool;
 use tracing::{Instrument, info_span};
 
 use crate::client::memes::dal::{
-    create_meme_file, create_new_category_dirs, hash_exists, save_meme_to_file,
+    create_meme_file, create_meme_file_categories, create_new_categories, create_new_category_dirs,
+    get_file_by_hash, save_meme_to_file,
 };
 
 pub const MEMES_FOLDER: &str = "./data/memes";
@@ -40,11 +41,16 @@ pub async fn read_meme(
 ) -> anyhow::Result<(DirEntry, Vec<u8>)> {
     // fetch file index from db for this folder and server
 
-    let Some(category) = dal::get_category_by_name(tag, pool).await? else {
+    let mut tx = pool.begin().await?;
+
+    let Some(category) = dal::get_categories_by_name(&vec![tag.to_string()], &mut tx)
+        .await?
+        .pop()
+    else {
         bail!("category doesn't exist");
     };
 
-    let server_category = dal::get_server_category(server_id as i64, category.id, pool)
+    let server_category = dal::get_server_category(server_id as i64, category.id, &mut tx)
         .await?
         .unwrap_or(dal::MemeServerCategory {
             server_id: server_id as i64,
@@ -52,7 +58,7 @@ pub async fn read_meme(
             file_id: 1,
         });
 
-    let Some(mut meme_file) = dal::get_file_by_id(server_category.file_id, pool).await? else {
+    let Some(mut meme_file) = dal::get_file_by_id(server_category.file_id, &mut tx).await? else {
         bail!("no files for category exist")
     };
 
@@ -83,7 +89,7 @@ pub async fn read_meme(
     let file_bytes = fs::read(file.path())?;
 
     // update folder_index
-    dal::set_server_category(server_id as i64, category.id, meme_file.id + 1, pool).await?;
+    dal::set_server_category(server_id as i64, category.id, meme_file.id + 1, &mut tx).await?;
 
     Ok((file, file_bytes))
 }
@@ -95,7 +101,7 @@ fn calculate_hash<T: Hash>(t: &T) -> i64 {
 }
 
 /// - hash bytes and check if it already is in the DB
-///     - if it exists in the DB then just add new categories and return
+///     - if it exists in the DB then just add new categories in the db and return
 /// - if not then:
 /// - if there's a new category make a new directory for it and make a new command for the category
 /// - save to folder name of first category
@@ -110,33 +116,26 @@ pub async fn save_meme(
 ) -> anyhow::Result<()> {
     let hash = calculate_hash(&bytes);
 
+    let mut tx = pool.begin().await?;
+
+    let meme_file = get_file_by_hash(hash, &mut tx).await?;
+
     // Avoid saving duplicates with hashing
-    if hash_exists(hash, pool).await? {
-        create_meme_file_categories(categories, hash, pool).await;
+    if let Some(meme_file) = meme_file {
+        create_new_categories(categories, &mut tx).await?;
+        create_meme_file_categories(categories, meme_file.id, &mut tx).await?;
         return Ok(());
     }
 
+    let folder = categories.first().unwrap();
+
+    save_meme_to_file(&name, &bytes, &folder).await?;
     create_new_category_dirs(categories).await?;
-    create_new_categories(categories, pool).await?;
-    save_meme_to_file(&name, &bytes, categories.first().unwrap()).await?;
-    create_meme_file(categories.first().unwrap(), &name, hash, pool).await?;
+
+    create_new_categories(categories, &mut tx).await?;
+    create_meme_file(&folder, &name, hash, &mut tx).await?;
 
     Ok(())
-}
-
-async fn create_new_categories(
-    _categories: &[String],
-    _pool: &sqlx::Pool<sqlx::Postgres>,
-) -> anyhow::Result<()> {
-    todo!()
-}
-
-async fn create_meme_file_categories(
-    _categories: &[String],
-    _hash: i64,
-    _pool: &sqlx::Pool<sqlx::Postgres>,
-) {
-    todo!()
 }
 
 pub async fn post_meme(ctx: &Context, command: &CommandInteraction) -> anyhow::Result<()> {
