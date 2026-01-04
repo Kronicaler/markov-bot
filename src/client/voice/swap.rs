@@ -11,13 +11,13 @@ use serenity::{
 use songbird::tracks::TrackQueue;
 use thiserror::Error;
 use tokio::time::timeout;
-use tracing::{info_span, Instrument};
+use tracing::{Instrument, info_span};
 
 use super::{
+    MyAuxMetadata,
     helper_funcs::{
         get_call_lock, is_bot_in_another_voice_channel, voice_channel_not_same_response,
     },
-    MyAuxMetadata,
 };
 
 pub trait Swapable {
@@ -83,10 +83,11 @@ pub async fn swap(ctx: &Context, command: &CommandInteraction) {
     command.defer(&ctx.http).await.unwrap();
 
     if let Some(guild) = guild
-        && is_bot_in_another_voice_channel(ctx, &guild, command.user.id) {
-            voice_channel_not_same_response(command, ctx).await;
-            return;
-        }
+        && is_bot_in_another_voice_channel(ctx, &guild, command.user.id)
+    {
+        voice_channel_not_same_response(command, ctx).await;
+        return;
+    }
 
     let Some(call_lock) = get_call_lock(ctx, guild_id, command).await else {
         return;

@@ -5,7 +5,7 @@ use serenity::client::Context;
 use serenity::model::id::GuildId;
 use songbird::Call;
 use tokio::{sync::Mutex, time::timeout};
-use tracing::{info_span, instrument, Instrument};
+use tracing::{Instrument, info_span, instrument};
 
 use crate::client::voice::model::get_voice_messages_lock;
 

@@ -11,8 +11,8 @@ mod skip;
 mod stop;
 mod swap;
 
-use self::model::get_voice_messages_lock;
 use self::model::MyAuxMetadata;
+use self::model::get_voice_messages_lock;
 use self::queue::command_response::get_song_metadata_from_queue;
 use super::ComponentIds;
 use crate::client::voice::play::create_track_embed;
@@ -40,19 +40,19 @@ use serenity::model::id::ChannelId;
 use serenity::model::id::GuildId;
 use serenity::model::prelude::Message;
 pub use skip::skip;
-use songbird::tracks::TrackQueue;
 use songbird::EventHandler;
+use songbird::tracks::TrackQueue;
 use std::cmp::max;
 use std::cmp::min;
 use std::time::Duration;
 pub use stop::stop;
 pub use swap::swap;
 use tokio::time::timeout;
+use tracing::Instrument;
 use tracing::info;
 use tracing::info_span;
 use tracing::instrument;
 use tracing::warn;
-use tracing::Instrument;
 
 /*
  * voice.rs, LasagnaBoi 2022
@@ -211,9 +211,10 @@ impl TrackStartHandler {
                                 custom_id,
                                 style: _,
                             } = &b.data
-                                && custom_id == &ComponentIds::Shuffle.to_string() {
-                                    return true;
-                                }
+                            && custom_id == &ComponentIds::Shuffle.to_string()
+                        {
+                            return true;
+                        }
                         false
                     })
                 }) {

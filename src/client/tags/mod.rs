@@ -9,7 +9,7 @@ use model::TagChannel;
 use regex::Regex;
 pub use remove_tag::remove_tag;
 use tokio::task;
-use tracing::{info_span, Instrument};
+use tracing::{Instrument, info_span};
 
 use self::data_access::{
     create_tag_blacklisted_user, create_tag_channel, delete_tag_blacklisted_user,
@@ -30,12 +30,13 @@ use serenity::{
     },
     prelude::Mentionable,
 };
-use sqlx::{Postgres, PgPool, Pool};
+use sqlx::{PgPool, Pool, Postgres};
 use std::{fmt::Write, time::Duration};
 
 #[tracing::instrument(skip(ctx))]
 pub async fn list_tags(ctx: &Context, command: &CommandInteraction, pool: &Pool<Postgres>) {
-    let tags = data_access::get_tags_by_server_id(command.guild_id.unwrap().get() as i64, pool).await;
+    let tags =
+        data_access::get_tags_by_server_id(command.guild_id.unwrap().get() as i64, pool).await;
 
     let mut message = String::new();
 
@@ -168,11 +169,7 @@ pub async fn check_for_tag_listeners(
 }
 
 #[tracing::instrument(skip(ctx))]
-pub async fn set_tag_response_channel(
-    ctx: &Context,
-    command: &CommandInteraction,
-    pool: &PgPool,
-) {
+pub async fn set_tag_response_channel(ctx: &Context, command: &CommandInteraction, pool: &PgPool) {
     let Some(guild_id) = command.guild_id else {
         command
             .create_response(
@@ -273,11 +270,11 @@ async fn tag_response(
         .send_message(
             &ctx.http,
             CreateMessage::new()
-                .components(vec![CreateActionRow::Buttons(vec![CreateButton::new(
-                    ComponentIds::BlacklistMeFromTags.to_string(),
-                )
-                .label("Stop pinging me")
-                .style(ButtonStyle::Primary)])])
+                .components(vec![CreateActionRow::Buttons(vec![
+                    CreateButton::new(ComponentIds::BlacklistMeFromTags.to_string())
+                        .label("Stop pinging me")
+                        .style(ButtonStyle::Primary),
+                ])])
                 .allowed_mentions(CreateAllowedMentions::new().all_users(true))
                 .content(msg.author.mention().to_string() + " " + message),
         )
@@ -334,9 +331,9 @@ async fn send_response_in_tag_channel(
 }
 
 fn stop_pinging_me_button(tag_response: CreateMessage) -> CreateMessage {
-    tag_response.components(vec![CreateActionRow::Buttons(vec![CreateButton::new(
-        ComponentIds::BlacklistMeFromTags.to_string(),
-    )
-    .label("Stop pinging me")
-    .style(ButtonStyle::Primary)])])
+    tag_response.components(vec![CreateActionRow::Buttons(vec![
+        CreateButton::new(ComponentIds::BlacklistMeFromTags.to_string())
+            .label("Stop pinging me")
+            .style(ButtonStyle::Primary),
+    ])])
 }

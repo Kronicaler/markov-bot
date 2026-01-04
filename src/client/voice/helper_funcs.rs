@@ -7,7 +7,7 @@ use serenity::{
         id::{ChannelId, UserId},
     },
 };
-use tracing::{info_span, Instrument};
+use tracing::{Instrument, info_span};
 
 use crate::client::helper_funcs::get_guild_channel;
 

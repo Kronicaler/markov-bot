@@ -3,7 +3,7 @@ use serenity::{
     builder::{CreateEmbed, EditInteractionResponse},
     client::Context,
 };
-use tracing::{info_span, Instrument};
+use tracing::{Instrument, info_span};
 
 use super::MyAuxMetadata;
 

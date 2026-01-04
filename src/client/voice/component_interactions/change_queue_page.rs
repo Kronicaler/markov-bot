@@ -1,16 +1,16 @@
 use std::time::Duration;
 
 use super::super::model::get_voice_messages_lock;
+use crate::client::ComponentIds;
 use crate::client::voice::queue::command_response::{
     create_queue_response, get_queue_start_from_button,
 };
-use crate::client::ComponentIds;
 use serenity::all::ComponentInteraction;
 use serenity::builder::EditInteractionResponse;
 use serenity::client::Context;
 use tokio::time::timeout;
 use tracing;
-use tracing::{info_span, Instrument};
+use tracing::{Instrument, info_span};
 
 #[tracing::instrument(skip(ctx))]
 pub async fn change_queue_page(

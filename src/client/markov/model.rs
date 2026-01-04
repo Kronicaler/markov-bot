@@ -29,9 +29,7 @@ pub struct MarkovBlacklistedServer {
 
 #[tracing::instrument(skip(data))]
 pub async fn get_markov_chain_lock(data: &Arc<RwLock<TypeMap>>) -> Arc<RwLock<MarkovChain>> {
-    
-    data
-        .read()
+    data.read()
         .await
         .get::<MyMarkovChain>()
         .expect("expected MarkovChain in TypeMap")

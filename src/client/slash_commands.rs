@@ -12,7 +12,10 @@ use super::{
 use crate::{
     client::{
         download::{download_command, download_from_message_command},
-        memes::{self, commands::create_memes_commands, model::get_meme_folders_lock},
+        memes::{
+            self, commands::create_memes_commands, model::get_meme_folders_lock, post_meme,
+            upload_meme,
+        },
         voice::queue::{command_response::queue, shuffle::shuffle_queue},
     },
     global_data, markov, voice,
@@ -26,7 +29,7 @@ use serenity::{
     builder::{CreateCommand, CreateCommandOption, CreateInteractionResponse},
     client::Context,
 };
-use sqlx::{Postgres, Pool};
+use sqlx::{Pool, Postgres};
 use strum_macros::{Display, EnumProperty, EnumString};
 use tracing::{Instrument, error, info, info_span};
 
@@ -82,6 +85,12 @@ pub enum UserCommand {
     loop_song,
     #[strum(serialize = "swap-songs")]
     swap_songs,
+
+    // =====MEME=====
+    #[strum(serialize = "upload meme")]
+    upload_meme,
+    #[strum(props(SubCommand = "post"), serialize = "meme post")]
+    post_meme,
 }
 
 /// Check which slash command was triggered, call the appropriate function and return a response to the user
@@ -114,7 +123,6 @@ pub async fn command_responses(command: &CommandInteraction, ctx: Context, pool:
             UserCommand::blacklist_me_from_tags => {
                 blacklist_user_from_tags_command(&ctx, user, command, pool).await;
             }
-
             UserCommand::tag_response_channel => {
                 set_tag_response_channel(&ctx, command, pool).await;
             }
@@ -149,8 +157,6 @@ pub async fn command_responses(command: &CommandInteraction, ctx: Context, pool:
             UserCommand::stop_saving_messages_server => {
                 markov::stop_saving_messages_server(&ctx, command, pool).await;
             }
-
-            // ===== VOICE =====
             UserCommand::play => voice::play(&ctx, command).await,
             UserCommand::play_from_attachment => voice::play_from_attachment(&ctx, command).await,
             UserCommand::skip => voice::skip(&ctx, command).await.unwrap(),
@@ -172,13 +178,11 @@ pub async fn command_responses(command: &CommandInteraction, ctx: Context, pool:
                     .await
                     .expect("Error creating interaction response");
             }
+            UserCommand::upload_meme => upload_meme(&ctx, command).await.unwrap(),
+            UserCommand::post_meme => post_meme(&ctx, command).await.unwrap(),
         },
         Err(why) => {
-            if handle_meme(command, &ctx, pool, &full_command_name).await {
-                return;
-            }
-
-            error!("Cannot respond to slash command {why}");
+            error!("Cannot respond to slash command {why:?}");
             return;
         }
     }
@@ -200,16 +204,19 @@ async fn handle_meme(
     {
         command.defer(&ctx.http).await.unwrap();
 
-        command.quick_modal(
-            ctx,
-            CreateQuickModal::new("Upload MEME")
-                .timeout(Duration::from_mins(5))
-                .field(CreateInputText::new(
-                    serenity::all::InputTextStyle::Short,
-                    "tags",
-                    "modal_tags",
-                )),
-        ).await.unwrap();
+        command
+            .quick_modal(
+                ctx,
+                CreateQuickModal::new("Upload MEME")
+                    .timeout(Duration::from_mins(5))
+                    .field(CreateInputText::new(
+                        serenity::all::InputTextStyle::Short,
+                        "tags",
+                        "modal_tags",
+                    )),
+            )
+            .await
+            .unwrap();
 
         let (file, bytes) = memes::read_meme(
             command

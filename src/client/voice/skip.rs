@@ -8,7 +8,7 @@ use serenity::{
 };
 use strum_macros::EnumString;
 use tokio::time::timeout;
-use tracing::{info_span, Instrument};
+use tracing::{Instrument, info_span};
 
 use crate::client::voice::model::get_queue_data_lock;
 
@@ -135,7 +135,6 @@ async fn handle_skip_type_number(
         return true;
     }
 
-    
     if track_number == 1 {
         call.queue().skip().is_ok()
     } else {

@@ -3,7 +3,7 @@ use serenity::{
     builder::{CreateEmbed, EditInteractionResponse},
     client::Context,
 };
-use tracing::{info_span, Instrument};
+use tracing::{Instrument, info_span};
 
 use super::{
     helper_funcs::{is_bot_in_another_voice_channel, voice_channel_not_same_response},
@@ -19,10 +19,11 @@ pub async fn stop(ctx: &Context, command: &CommandInteraction) {
     command.defer(&ctx.http).await.unwrap();
 
     if let Some(guild) = guild
-        && is_bot_in_another_voice_channel(ctx, &guild, command.user.id) {
-            voice_channel_not_same_response(command, ctx).await;
-            return;
-        }
+        && is_bot_in_another_voice_channel(ctx, &guild, command.user.id)
+    {
+        voice_channel_not_same_response(command, ctx).await;
+        return;
+    }
 
     let manager = songbird::get(ctx)
         .await

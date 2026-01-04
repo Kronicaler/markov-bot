@@ -8,7 +8,7 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::Mutex;
 use tokio::time::timeout;
-use tracing::{self, info, Instrument};
+use tracing::{self, Instrument, info};
 use tracing::{info_span, warn};
 
 #[tracing::instrument(skip(ctx))]

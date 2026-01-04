@@ -21,8 +21,9 @@ use std::{
 
 use anyhow::bail;
 use itertools::Itertools;
-use serenity::all::Context;
+use serenity::all::{CommandInteraction, Context, EditInteractionResponse};
 use sqlx::PgPool;
+use tracing::{Instrument, info_span};
 
 use crate::client::memes::dal::{
     create_meme_file, create_new_category_dirs, hash_exists, save_meme_to_file,
@@ -124,8 +125,8 @@ pub async fn save_meme(
 }
 
 async fn create_new_categories(
-    categories: &[String],
-    pool: &sqlx::Pool<sqlx::Postgres>,
+    _categories: &[String],
+    _pool: &sqlx::Pool<sqlx::Postgres>,
 ) -> anyhow::Result<()> {
     todo!()
 }
@@ -135,5 +136,43 @@ async fn create_meme_file_categories(
     _hash: i64,
     _pool: &sqlx::Pool<sqlx::Postgres>,
 ) {
+    todo!()
+}
+
+pub async fn post_meme(ctx: &Context, command: &CommandInteraction) -> anyhow::Result<()> {
+    command.defer(&ctx.http).await.unwrap();
+
+    todo!()
+}
+
+pub async fn upload_meme(ctx: &Context, command: &CommandInteraction) -> anyhow::Result<()> {
+    command.defer(&ctx.http).await.unwrap();
+
+    let message_id = command.data.target_id.unwrap();
+
+    let message = command
+        .data
+        .resolved
+        .messages
+        .get(&message_id.into())
+        .unwrap();
+
+    let link_regex =
+        regex::Regex::new(r#"(?:(?:https?|ftp)://|\b(?:[a-z\d]+\.))(?:(?:[^\s()<>]+|\((?:[^\s()<>]+|(?:\([^\s()<>]+\)))?\))+(?:\((?:[^\s()<>]+|(?:\(?:[^\s()<>]+\)))?\)|[^\s`!()\[\]{};:'".,<>?«»“”‘’]))?"#)
+        .expect("Invalid regular expression");
+
+    let Some(_query) = link_regex.find(&message.content) else {
+        command
+            .edit_response(
+                &ctx.http,
+                EditInteractionResponse::new().content("Unsupported or no link found"),
+            )
+            .instrument(info_span!("Sending message"))
+            .await
+            .expect("Couldn't create interaction response");
+
+        return Ok(());
+    };
+
     todo!()
 }

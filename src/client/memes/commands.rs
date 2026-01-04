@@ -2,9 +2,12 @@ use serenity::all::{
     CommandOptionType, CommandType, CreateCommand, CreateCommandOption, InstallationContext,
     InteractionContext,
 };
+use strum::EnumProperty;
+
+use crate::client::slash_commands::UserCommand;
 
 pub fn create_memes_commands() -> Vec<CreateCommand> {
-    let upload_meme_command = CreateCommand::new("Upload meme")
+    let upload_meme_command = CreateCommand::new(UserCommand::upload_meme.to_string())
         .add_integration_type(InstallationContext::User)
         .add_integration_type(InstallationContext::Guild)
         .add_context(InteractionContext::Guild)
@@ -14,8 +17,8 @@ pub fn create_memes_commands() -> Vec<CreateCommand> {
     let post_meme_command = CreateCommand::new("meme").add_option(
         CreateCommandOption::new(
             CommandOptionType::SubCommand,
-            "post",
-            "Post a meme from the desired tag",
+            UserCommand::post_meme.get_str("SubCommand").unwrap(),
+            "Post a meme from a desired tag",
         )
         .add_sub_option(CreateCommandOption::new(
             CommandOptionType::String,
@@ -26,7 +29,7 @@ pub fn create_memes_commands() -> Vec<CreateCommand> {
             CreateCommandOption::new(
                 CommandOptionType::Boolean,
                 "ordered",
-                "wether to send a random meme or send from oldest to newest",
+                "whether to send a random meme or send from oldest to newest in this server",
             )
             .required(false),
         ),

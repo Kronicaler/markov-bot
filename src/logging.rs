@@ -6,10 +6,10 @@ use opentelemetry::trace::TracerProvider;
 use opentelemetry_otlp::{ExporterBuildError, WithExportConfig};
 use opentelemetry_sdk::Resource;
 use tokio::time::interval;
-use tracing::{error, level_filters::LevelFilter, subscriber::set_global_default, Level};
+use tracing::{Level, error, level_filters::LevelFilter, subscriber::set_global_default};
+use tracing_subscriber::Layer;
 use tracing_subscriber::filter::Filtered;
 use tracing_subscriber::reload::Handle;
-use tracing_subscriber::Layer;
 use tracing_subscriber::{
     filter::Targets,
     fmt::{format::FmtSpan, time::ChronoLocal},

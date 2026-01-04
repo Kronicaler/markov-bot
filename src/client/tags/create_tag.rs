@@ -4,8 +4,8 @@ use serenity::{
     builder::CreateInteractionResponse,
     prelude::Context,
 };
-use sqlx::{Postgres, Pool};
-use tracing::{info_span, Instrument};
+use sqlx::{Pool, Postgres};
+use tracing::{Instrument, info_span};
 
 #[tracing::instrument(skip(ctx))]
 pub async fn create_tag(ctx: &Context, command: &CommandInteraction, pool: &Pool<Postgres>) {

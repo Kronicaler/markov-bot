@@ -4,24 +4,23 @@ use crate::client::{
 };
 
 use super::{
-    create_shuffle_button, create_skip_button,
+    MyAuxMetadata, PeriodicHandler, TrackStartHandler, create_shuffle_button, create_skip_button,
     helper_funcs::{
         get_voice_channel_of_user, is_bot_in_another_voice_channel, voice_channel_not_same_response,
     },
     model::get_queue_data_lock,
     queue::update_queue_message::update_queue_message,
-    MyAuxMetadata, PeriodicHandler, TrackStartHandler,
 };
 use file_format::{FileFormat, Kind};
-use futures::{future::join_all, StreamExt};
+use futures::{StreamExt, future::join_all};
 use itertools::Itertools;
 use rand::seq::SliceRandom;
 use reqwest::Client;
 use rspotify::{
+    ClientCredsSpotify, ClientError, Credentials,
     http::HttpError,
     model::{AlbumId, Country, Market, PlaylistId},
     prelude::BaseClient,
-    ClientCredsSpotify, ClientError, Credentials,
 };
 use serenity::{
     all::{Colour, CommandDataOptionValue, CommandInteraction, GuildId},
@@ -30,13 +29,13 @@ use serenity::{
     prelude::Mutex,
 };
 use songbird::{
+    TrackEvent,
     input::{AuxMetadata, Input, YoutubeDl},
     tracks::{Track, TrackQueue},
-    TrackEvent,
 };
 use std::{cmp::min, collections::VecDeque, sync::Arc, time::Duration};
 use tokio::time::timeout;
-use tracing::{error, info, info_span, warn, Instrument};
+use tracing::{Instrument, error, info, info_span, warn};
 use url::Url;
 
 ///play song from youtube
@@ -514,9 +513,10 @@ async fn get_spotify_album_inputs(query: &str, spotify: ClientCredsSpotify) -> S
                 error!("{:?}", err);
 
                 if let ClientError::Http(err) = err
-                    && let HttpError::StatusCode(err) = *err {
-                        error!("{:?}", err.text().await);
-                    }
+                    && let HttpError::StatusCode(err) = *err
+                {
+                    error!("{:?}", err.text().await);
+                }
                 continue;
             }
         };
@@ -558,9 +558,10 @@ async fn get_spotify_playlist_inputs(query: &str, spotify: &ClientCredsSpotify) 
                 error!("{:?}", err);
 
                 if let ClientError::Http(err) = err
-                    && let HttpError::StatusCode(err) = *err {
-                        error!("{:?}", err.text().await);
-                    }
+                    && let HttpError::StatusCode(err) = *err
+                {
+                    error!("{:?}", err.text().await);
+                }
                 continue;
             }
         };
@@ -570,7 +571,7 @@ async fn get_spotify_playlist_inputs(query: &str, spotify: &ClientCredsSpotify) 
             rspotify::model::PlayableItem::Episode(_) => {
                 panic!("episodes arent supported")
             }
-            rspotify::model::PlayableItem::Unknown(_)=>{
+            rspotify::model::PlayableItem::Unknown(_) => {
                 panic!("unknown playable item")
             }
         };
@@ -626,7 +627,9 @@ async fn return_response(
     let time_before_song = durations
         .into_iter()
         .reduce(|a, f| a.checked_add(f).unwrap())
-        .unwrap_or_default().checked_sub(time).unwrap();
+        .unwrap_or_default()
+        .checked_sub(time)
+        .unwrap();
 
     let time_before_song = format!(
         "{}:{:02}",

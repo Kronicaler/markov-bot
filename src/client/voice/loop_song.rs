@@ -3,7 +3,7 @@ use std::time::Duration;
 use serenity::{all::CommandInteraction, builder::EditInteractionResponse, client::Context};
 use songbird::tracks::LoopState;
 use tokio::time::timeout;
-use tracing::{info_span, Instrument};
+use tracing::{Instrument, info_span};
 
 use super::helper_funcs::{is_bot_in_another_voice_channel, voice_channel_not_same_response};
 

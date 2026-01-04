@@ -1,7 +1,14 @@
+use std::{
+    process::{Output, Stdio},
+    time::Duration,
+};
+
+use chrono::Utc;
+use file_format::{FileFormat, Kind};
 use serenity::{
     all::{
-        CommandDataOptionValue, CommandInteraction, CommandOptionType,
-        CreateInteractionResponseMessage,
+        CommandDataOptionValue, CommandInteraction, CommandOptionType, CreateAttachment,
+        CreateInteractionResponseMessage, EditInteractionResponse, Message,
     },
     builder::CreateInteractionResponse,
     client::Context,
@@ -11,7 +18,9 @@ use serenity::{
         id::{ChannelId, GuildId},
     },
 };
-use tracing::{info_span, Instrument};
+use thiserror::Error;
+use tokio::{io::AsyncWriteExt, time::timeout};
+use tracing::{Instrument, error, info, info_span};
 
 #[tracing::instrument(skip(ctx))]
 pub async fn user_id_command(ctx: Context, command: &CommandInteraction) {
@@ -124,4 +133,189 @@ pub fn get_full_command_name(command: &CommandInteraction) -> String {
         (Some(a), None) => command.data.name.clone() + " " + a,
         (Some(a), Some(b)) => command.data.name.clone() + " " + a + " " + b,
     }
+}
+
+#[tracing::instrument(skip(ctx, command, message))]
+pub async fn post_file_from_message(ctx: Context, command: &CommandInteraction, message: &Message) {
+    let mut max_filesize_mb = 50;
+    loop {
+        let res = download_file_from_message(message, max_filesize_mb).await;
+
+        let (file_bytes, file_format) = match res {
+            Ok(file) => file,
+            Err(e) => {
+                command
+                    .edit_response(
+                        &ctx.http,
+                        EditInteractionResponse::new().content(e.to_string()),
+                    )
+                    .instrument(info_span!("Sending message"))
+                    .await
+                    .expect("Couldn't create interaction response");
+                return;
+            }
+        };
+
+        let res = command
+            .edit_response(
+                &ctx.http,
+                EditInteractionResponse::new().new_attachment(CreateAttachment::bytes(
+                    file_bytes,
+                    format!(
+                        "doki-{}.{}",
+                        Utc::now().timestamp() - 1575072000,
+                        file_format.extension()
+                    ),
+                )),
+            )
+            .instrument(info_span!("Sending message"))
+            .await;
+
+        if res.is_err() {
+            max_filesize_mb = match max_filesize_mb {
+                50 => 10,
+                10 => {
+                    command
+                        .edit_response(
+                            &ctx.http,
+                            EditInteractionResponse::new().content("Video too large"),
+                        )
+                        .instrument(info_span!("Sending message"))
+                        .await
+                        .expect("Couldn't create interaction response");
+                    return;
+                }
+                _ => panic!("unexpected max_filesize_mb"),
+            };
+            continue;
+        }
+    }
+}
+
+#[derive(Error, Debug)]
+pub enum DownloadFileFromMessageError {
+    #[error("No link or file found")]
+    NoLinkFound,
+    #[error("Unsupported link or file")]
+    UnsupportedLink,
+    #[error("File too large")]
+    FileTooLarge,
+}
+
+#[tracing::instrument(skip(message))]
+pub async fn download_file_from_message(
+    message: &Message,
+    max_filesize_mb: usize,
+) -> Result<(Vec<u8>, FileFormat), DownloadFileFromMessageError> {
+    let link_regex =
+        regex::Regex::new(r#"(?:(?:https?|ftp)://|\b(?:[a-z\d]+\.))(?:(?:[^\s()<>]+|\((?:[^\s()<>]+|(?:\([^\s()<>]+\)))?\))+(?:\((?:[^\s()<>]+|(?:\(?:[^\s()<>]+\)))?\)|[^\s`!()\[\]{};:'".,<>?«»“”‘’]))?"#)
+        .expect("Invalid regular expression");
+
+    let Some(query) = link_regex.find(&message.content) else {
+        let Some(attachment) = message.attachments.first() else {
+            return Err(DownloadFileFromMessageError::NoLinkFound);
+        };
+        let mut attachment_bytes = attachment
+            .download()
+            .await
+            .map_err(|_| DownloadFileFromMessageError::UnsupportedLink)?;
+
+        let mut file_format = FileFormat::from_bytes(&attachment_bytes);
+        if file_format.kind() != Kind::Audio
+            && file_format.kind() != Kind::Video
+            && file_format.kind() != Kind::Image
+            && file_format.kind() != Kind::Other
+        {
+            error!(
+                name = file_format.name(),
+                kind = ?file_format.kind(),
+                ext = file_format.extension()
+            );
+
+            return Err(DownloadFileFromMessageError::UnsupportedLink);
+        }
+
+        if file_format.media_type() == "video/mp2t" {
+            attachment_bytes = convert_mpegts_to_mp4(attachment_bytes).await.stdout;
+            file_format = FileFormat::from_bytes(&attachment_bytes);
+        }
+
+        return Ok((attachment_bytes, file_format));
+    };
+
+    let filesize_filter =
+        format!("b[filesize<{max_filesize_mb}M]/b[filesize_approx<{max_filesize_mb}M]");
+    let args = ["-f", filesize_filter.as_str(), "-o", "-", query.as_str()];
+    info!(?args);
+    let mut output = tokio::process::Command::new("yt-dlp")
+        .args(args)
+        .output()
+        .instrument(info_span!("waiting on yt-dlp"))
+        .await
+        .unwrap();
+
+    let stderr_str = str::from_utf8(&output.stderr).unwrap_or_default();
+
+    if !output.status.success() {
+        error!(stderr_str);
+
+        if stderr_str.contains("Requested format is not available") {
+            return Err(DownloadFileFromMessageError::FileTooLarge);
+        }
+        return Err(DownloadFileFromMessageError::UnsupportedLink);
+    }
+
+    let mut file_format = FileFormat::from_bytes(&output.stdout);
+    if file_format.kind() != Kind::Audio
+        && file_format.kind() != Kind::Video
+        && file_format.kind() != Kind::Image
+        && file_format.kind() != Kind::Other
+    {
+        error!(
+            name = file_format.name(),
+            kind = ?file_format.kind(),
+            ext = file_format.extension()
+        );
+
+        return Err(DownloadFileFromMessageError::UnsupportedLink);
+    }
+
+    if file_format.media_type() == "video/mp2t" {
+        output = convert_mpegts_to_mp4(output.stdout).await;
+        file_format = FileFormat::from_bytes(&output.stdout);
+    }
+
+    Ok((output.stdout, file_format))
+}
+
+pub async fn convert_mpegts_to_mp4(bytes: Vec<u8>) -> Output {
+    let mut ffmpeg = tokio::process::Command::new("ffmpeg")
+        .args([
+            "-i",
+            "-",
+            "-c",
+            "copy",
+            "-bsf:a",
+            "aac_adtstoasc",
+            "-movflags",
+            "+frag_keyframe+empty_moov",
+            "-f",
+            "mp4",
+            "-",
+        ])
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap();
+
+    let mut stdin = ffmpeg.stdin.take().unwrap();
+    tokio::spawn(async move {
+        stdin.write_all(&bytes).await.unwrap();
+    });
+
+    timeout(Duration::from_secs(60), ffmpeg.wait_with_output())
+        .await
+        .unwrap()
+        .unwrap()
 }

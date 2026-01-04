@@ -3,8 +3,8 @@ use serenity::{
     builder::CreateInteractionResponse,
     prelude::Context,
 };
-use sqlx::{Postgres, Pool};
-use tracing::{info_span, Instrument};
+use sqlx::{Pool, Postgres};
+use tracing::{Instrument, info_span};
 
 use super::data_access;
 

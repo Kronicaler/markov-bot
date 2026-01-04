@@ -32,8 +32,10 @@ async fn update_ytdlp_loop() -> ! {
         info_span!("updating_ytdlp").in_scope(|| {
             match Command::new("yt-dlp").args(["--update"]).output() {
                 Ok(o) => {
-                    let stdout = String::from_utf8(o.stdout).unwrap_or(String::from("invalid stdout bytes"));
-                    let stderr = String::from_utf8(o.stderr).unwrap_or(String::from("invalid stderr bytes"));
+                    let stdout =
+                        String::from_utf8(o.stdout).unwrap_or(String::from("invalid stdout bytes"));
+                    let stderr =
+                        String::from_utf8(o.stderr).unwrap_or(String::from("invalid stderr bytes"));
                     if !stdout.is_empty() {
                         info!(stdout);
                     }

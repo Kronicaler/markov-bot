@@ -1,10 +1,10 @@
 use crate::client::{
+    ComponentIds,
     voice::{
         create_bring_to_front_select_menu, create_emoji_shuffle_button,
         create_play_now_select_menu,
-        model::{get_voice_messages_lock, MyAuxMetadata},
+        model::{MyAuxMetadata, get_voice_messages_lock},
     },
-    ComponentIds,
 };
 use itertools::Itertools;
 use serenity::{
@@ -20,7 +20,7 @@ use std::{
     time::Duration,
 };
 use tokio::time::timeout;
-use tracing::{info_span, Instrument};
+use tracing::{Instrument, info_span};
 
 #[tracing::instrument(skip(ctx))]
 pub async fn queue(ctx: &Context, command: &CommandInteraction) {
