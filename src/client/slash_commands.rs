@@ -178,8 +178,8 @@ pub async fn command_responses(command: &CommandInteraction, ctx: Context, pool:
                     .await
                     .expect("Error creating interaction response");
             }
-            UserCommand::upload_meme => upload_meme(&ctx, command).await.unwrap(),
-            UserCommand::post_meme => post_meme(&ctx, command).await.unwrap(),
+            UserCommand::upload_meme => upload_meme(&ctx, command, pool).await.unwrap(),
+            UserCommand::post_meme => post_meme(&ctx, command, pool).await.unwrap(),
         },
         Err(why) => {
             error!("Cannot respond to slash command {why:?}");

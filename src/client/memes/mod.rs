@@ -25,9 +25,13 @@ use serenity::all::{CommandInteraction, Context, EditInteractionResponse};
 use sqlx::PgPool;
 use tracing::{Instrument, info_span};
 
-use crate::client::memes::dal::{
-    create_meme_file, create_meme_file_categories, create_new_categories, create_new_category_dirs,
-    get_file_by_hash, save_meme_to_file,
+use crate::client::{
+    helper_funcs::download_file_from_message,
+    memes::dal::{
+        create_meme_file, create_meme_file_categories, create_new_categories,
+        create_new_category_dirs, get_file_by_hash, get_meme_file_count_by_folder,
+        save_meme_to_file,
+    },
 };
 
 pub const MEMES_FOLDER: &str = "./data/memes";
@@ -128,6 +132,8 @@ pub async fn save_meme(
     }
 
     let folder = categories.first().unwrap();
+    let count = get_meme_file_count_by_folder(&folder, &mut tx).await?;
+    let name = format!("{folder}_{count}");
 
     save_meme_to_file(&name, &bytes, &folder).await?;
     create_new_category_dirs(categories).await?;
@@ -138,13 +144,21 @@ pub async fn save_meme(
     Ok(())
 }
 
-pub async fn post_meme(ctx: &Context, command: &CommandInteraction) -> anyhow::Result<()> {
+pub async fn post_meme(
+    ctx: &Context,
+    command: &CommandInteraction,
+    pool: &PgPool,
+) -> anyhow::Result<()> {
     command.defer(&ctx.http).await.unwrap();
 
     todo!()
 }
 
-pub async fn upload_meme(ctx: &Context, command: &CommandInteraction) -> anyhow::Result<()> {
+pub async fn upload_meme(
+    ctx: &Context,
+    command: &CommandInteraction,
+    pool: &PgPool,
+) -> anyhow::Result<()> {
     command.defer(&ctx.http).await.unwrap();
 
     let message_id = command.data.target_id.unwrap();
@@ -155,6 +169,12 @@ pub async fn upload_meme(ctx: &Context, command: &CommandInteraction) -> anyhow:
         .messages
         .get(&message_id.into())
         .unwrap();
+
+    let (file_bytes, _) = download_file_from_message(message, 50).await?;
+
+    let categories = vec!["TestCategory".to_string()];
+
+    save_meme("TestName".to_string(), file_bytes, &categories, pool, ctx).await?;
 
     let link_regex =
         regex::Regex::new(r#"(?:(?:https?|ftp)://|\b(?:[a-z\d]+\.))(?:(?:[^\s()<>]+|\((?:[^\s()<>]+|(?:\([^\s()<>]+\)))?\))+(?:\((?:[^\s()<>]+|(?:\(?:[^\s()<>]+\)))?\)|[^\s`!()\[\]{};:'".,<>?«»“”‘’]))?"#)

@@ -219,3 +219,19 @@ pub async fn create_meme_file_categories(
 
     Ok(())
 }
+
+pub async fn get_meme_file_count_by_folder(
+    folder: &str,
+    conn: &mut PgConnection,
+) -> anyhow::Result<i64> {
+    Ok(sqlx::query!(
+        r#"
+            select count(*) from meme_files where folder = $1
+            "#,
+        folder
+    )
+    .fetch_one(&mut *conn)
+    .await?
+    .count
+    .unwrap_or(0))
+}
