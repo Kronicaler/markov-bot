@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO meme_categories ( category )\n        VALUES ( $1 )\n        ON CONFLICT(category) DO NOTHING\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "1dc51279da6ce2b8d66df73a2ead92cc4f8a82aabae9e5424ca6e8b2038cc4f8"
+}

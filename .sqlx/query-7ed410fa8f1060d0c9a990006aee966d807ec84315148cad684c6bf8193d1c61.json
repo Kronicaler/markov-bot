@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO meme_file_categories ( category_id, file_id )\n            VALUES ( $1, $2 )\n            ON CONFLICT(category_id, file_id)\n            DO NOTHING\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "7ed410fa8f1060d0c9a990006aee966d807ec84315148cad684c6bf8193d1c61"
+}
