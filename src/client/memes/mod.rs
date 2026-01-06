@@ -110,7 +110,7 @@ fn calculate_hash<T: Hash>(t: &T) -> i64 {
 /// - if there's a new category make a new directory for it and make a new command for the category
 /// - save to folder name of first category
 /// - save hash, path and categories to DB
-#[tracing::instrument(err, skip(pool, bytes, ctx))]
+#[tracing::instrument(err, skip(pool, bytes))]
 pub async fn save_meme(
     name: String,
     bytes: Vec<u8>,
@@ -177,7 +177,7 @@ pub async fn upload_meme(
     save_meme("TestName".to_string(), file_bytes, &categories, pool).await?;
 
     command
-        .edit_response(&ctx.http, EditInteractionResponse::new().content("Test"))
+        .edit_response(&ctx.http, EditInteractionResponse::new().content("Saved meme"))
         .instrument(info_span!("Sending message"))
         .await
         .expect("Couldn't create interaction response");
