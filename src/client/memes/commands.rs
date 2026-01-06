@@ -14,26 +14,28 @@ pub fn create_memes_commands() -> Vec<CreateCommand> {
         .add_context(InteractionContext::PrivateChannel)
         .kind(CommandType::Message);
 
-    let post_meme_command = CreateCommand::new("meme").add_option(
-        CreateCommandOption::new(
-            CommandOptionType::SubCommand,
-            UserCommand::post_meme.get_str("SubCommand").unwrap(),
-            "Post a meme from a desired tag",
-        )
-        .add_sub_option(CreateCommandOption::new(
-            CommandOptionType::String,
-            "tag",
-            "Select a tag",
-        ))
-        .add_sub_option(
+    let post_meme_command = CreateCommand::new("meme")
+        .description("description")
+        .add_option(
             CreateCommandOption::new(
-                CommandOptionType::Boolean,
-                "ordered",
-                "whether to send a random meme or send from oldest to newest in this server",
+                CommandOptionType::SubCommand,
+                UserCommand::post_meme.get_str("SubCommand").unwrap(),
+                "Post a meme from a desired tag",
             )
-            .required(false),
-        ),
-    );
+            .add_sub_option(CreateCommandOption::new(
+                CommandOptionType::String,
+                "tag",
+                "Select a tag",
+            ))
+            .add_sub_option(
+                CreateCommandOption::new(
+                    CommandOptionType::Boolean,
+                    "ordered",
+                    "whether to send a random meme or send from oldest to newest in this server",
+                )
+                .required(false),
+            ),
+        );
 
     vec![upload_meme_command, post_meme_command]
 }

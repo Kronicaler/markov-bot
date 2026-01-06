@@ -108,6 +108,7 @@ pub async fn set_server_category(
     Ok(())
 }
 
+#[tracing::instrument(err, skip(bytes))]
 pub async fn save_meme_to_file(name: &str, bytes: &Vec<u8>, folder: &str) -> anyhow::Result<()> {
     let mut path = PathBuf::new();
     path.push(MEMES_FOLDER);
@@ -122,10 +123,13 @@ pub async fn save_meme_to_file(name: &str, bytes: &Vec<u8>, folder: &str) -> any
     Ok(())
 }
 
+#[tracing::instrument(err)]
 pub async fn create_new_category_dirs(categories: &Vec<String>) -> anyhow::Result<()> {
     for category in categories {
         let category_dir = format!("{MEMES_FOLDER}/{category}");
-        fs::create_dir(&category_dir)?;
+        if !fs::exists(&category_dir)? {
+            fs::create_dir(&category_dir)?;
+        }
     }
 
     Ok(())

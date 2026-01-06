@@ -254,15 +254,47 @@ pub async fn download_file_from_message(
         .await
         .unwrap();
 
-    let stderr_str = str::from_utf8(&output.stderr).unwrap_or_default();
+    let stderr_str = str::from_utf8(&output.stderr)
+        .unwrap_or_default()
+        .to_string();
 
     if !output.status.success() {
-        error!(stderr_str);
-
         if stderr_str.contains("Requested format is not available") {
-            return Err(DownloadFileFromMessageError::FileTooLarge);
+            let formats = tokio::process::Command::new("yt-dlp")
+                .args(["--list-formats", query.as_str()])
+                .output()
+                .instrument(info_span!("waiting on yt-dlp"))
+                .await
+                .unwrap();
+
+            let formats = String::from_utf8(formats.stdout).unwrap();
+
+            if formats.contains("FILESIZE") {
+                error!(stderr_str);
+                return Err(DownloadFileFromMessageError::FileTooLarge);
+            }
+
+            output = tokio::process::Command::new("yt-dlp")
+                .args([
+                    "-o",
+                    "-",
+                    "--max-filesize",
+                    &format!("{max_filesize_mb}M"),
+                    query.as_str(),
+                ])
+                .output()
+                .instrument(info_span!("waiting on yt-dlp"))
+                .await
+                .map_err(|_| DownloadFileFromMessageError::FileTooLarge)?;
+
+            if output.stdout.len() > max_filesize_mb * 1_000_000 {
+                error!(stderr_str);
+                return Err(DownloadFileFromMessageError::FileTooLarge);
+            }
+        } else {
+            error!(stderr_str);
+            return Err(DownloadFileFromMessageError::UnsupportedLink);
         }
-        return Err(DownloadFileFromMessageError::UnsupportedLink);
     }
 
     let mut file_format = FileFormat::from_bytes(&output.stdout);

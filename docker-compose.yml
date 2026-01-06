@@ -16,7 +16,7 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: historian
+      POSTGRES_DB: markov_bot
       PGDATA: /var/lib/postgresql/data/pgdata
     ports:
       - 5432:5432
@@ -30,7 +30,7 @@ services:
       - DISCORD_TOKEN
       - APPLICATION_ID
       - OTLP_ENDPOINT=http://jaeger:4317
-      - DATABASE_URL=mysql://root:${DB_PASS}@db/markov_bot
+      - DATABASE_URL=postgresql://postgres:postgres@db/markov_bot
       - LOG_LEVEL=info
       - LIB_LOG_LEVEL=error
     build:

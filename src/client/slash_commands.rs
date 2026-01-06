@@ -95,8 +95,9 @@ pub enum UserCommand {
 
 /// Check which slash command was triggered, call the appropriate function and return a response to the user
 #[allow(clippy::too_many_lines)]
-#[tracing::instrument(name = "Command", skip(ctx, pool))]
+#[tracing::instrument(name = "Command", skip(ctx, pool, command))]
 pub async fn command_responses(command: &CommandInteraction, ctx: Context, pool: &Pool<Postgres>) {
+    info!(?command);
     let user = &command.user;
 
     let full_command_name = get_full_command_name(command);

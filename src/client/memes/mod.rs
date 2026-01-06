@@ -110,13 +110,12 @@ fn calculate_hash<T: Hash>(t: &T) -> i64 {
 /// - if there's a new category make a new directory for it and make a new command for the category
 /// - save to folder name of first category
 /// - save hash, path and categories to DB
-#[tracing::instrument(err, skip(pool))]
+#[tracing::instrument(err, skip(pool, bytes, ctx))]
 pub async fn save_meme(
     name: String,
     bytes: Vec<u8>,
     categories: &Vec<String>,
     pool: &PgPool,
-    ctx: &Context,
 ) -> anyhow::Result<()> {
     let hash = calculate_hash(&bytes);
 
@@ -132,11 +131,11 @@ pub async fn save_meme(
     }
 
     let folder = categories.first().unwrap();
-    let count = get_meme_file_count_by_folder(&folder, &mut tx).await?;
-    let name = format!("{folder}_{count}");
+    let number = get_meme_file_count_by_folder(&folder, &mut tx).await? + 1;
+    let name = format!("{folder}_{number}");
 
-    save_meme_to_file(&name, &bytes, &folder).await?;
     create_new_category_dirs(categories).await?;
+    save_meme_to_file(&name, &bytes, &folder).await?;
 
     create_new_categories(categories, &mut tx).await?;
     create_meme_file(&folder, &name, hash, &mut tx).await?;
@@ -154,12 +153,13 @@ pub async fn post_meme(
     todo!()
 }
 
+#[tracing::instrument(err, skip(ctx, command, pool))]
 pub async fn upload_meme(
     ctx: &Context,
     command: &CommandInteraction,
     pool: &PgPool,
 ) -> anyhow::Result<()> {
-    command.defer(&ctx.http).await.unwrap();
+    command.defer_ephemeral(&ctx.http).await.unwrap();
 
     let message_id = command.data.target_id.unwrap();
 
@@ -174,24 +174,14 @@ pub async fn upload_meme(
 
     let categories = vec!["TestCategory".to_string()];
 
-    save_meme("TestName".to_string(), file_bytes, &categories, pool, ctx).await?;
+    save_meme("TestName".to_string(), file_bytes, &categories, pool).await?;
 
-    let link_regex =
-        regex::Regex::new(r#"(?:(?:https?|ftp)://|\b(?:[a-z\d]+\.))(?:(?:[^\s()<>]+|\((?:[^\s()<>]+|(?:\([^\s()<>]+\)))?\))+(?:\((?:[^\s()<>]+|(?:\(?:[^\s()<>]+\)))?\)|[^\s`!()\[\]{};:'".,<>?«»“”‘’]))?"#)
-        .expect("Invalid regular expression");
+    command
+        .edit_response(&ctx.http, EditInteractionResponse::new().content("Test"))
+        .instrument(info_span!("Sending message"))
+        .await
+        .expect("Couldn't create interaction response");
 
-    let Some(_query) = link_regex.find(&message.content) else {
-        command
-            .edit_response(
-                &ctx.http,
-                EditInteractionResponse::new().content("Unsupported or no link found"),
-            )
-            .instrument(info_span!("Sending message"))
-            .await
-            .expect("Couldn't create interaction response");
-
-        return Ok(());
-    };
-
+    // TODO: show modal with a text field for tags
     todo!()
 }

@@ -1,0 +1,1 @@
+docker build . --tag kronicaler/markov_bot && docker compose up markov_bot -d && docker compose logs markov_bot --follow
