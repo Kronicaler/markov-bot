@@ -17,8 +17,7 @@ pub fn create_data_folders() {
         fs::create_dir_all("data/markov data").expect("Couldn't create directory data/markov data");
     }
 
-    if !Path::new(&format!("data/{MEMES_FOLDER}")).exists() {
-        fs::create_dir_all(format!("data/{MEMES_FOLDER}"))
-            .expect("Couldn't create directory data/markov data");
+    if !Path::new(MEMES_FOLDER).exists() {
+        fs::create_dir_all(MEMES_FOLDER).expect("Couldn't create directory data/markov data");
     }
 }

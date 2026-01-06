@@ -224,6 +224,7 @@ pub async fn create_meme_file_categories(
     Ok(())
 }
 
+#[tracing::instrument(ret, err, skip(conn))]
 pub async fn get_meme_file_count_by_folder(
     folder: &str,
     conn: &mut PgConnection,

@@ -1,4 +1,4 @@
-use std::{str::FromStr, time::Duration};
+use std::str::FromStr;
 
 use super::{
     helper_funcs::{get_full_command_name, ping_command, user_id_command},
@@ -12,19 +12,16 @@ use super::{
 use crate::{
     client::{
         download::{download_command, download_from_message_command},
-        memes::{
-            self, commands::create_memes_commands, model::get_meme_folders_lock, post_meme,
-            upload_meme,
-        },
+        memes::{commands::create_memes_commands, post_meme, upload_meme},
         voice::queue::{command_response::queue, shuffle::shuffle_queue},
     },
     global_data, markov, voice,
 };
 use serenity::{
     all::{
-        Command, CommandInteraction, CommandOptionType, CommandType, CreateAttachment,
-        CreateInputText, CreateInteractionResponseMessage, CreateQuickModal,
-        EditInteractionResponse, InstallationContext, InteractionContext,
+        Command, CommandInteraction, CommandOptionType, CommandType,
+        CreateInteractionResponseMessage, EditInteractionResponse, InstallationContext,
+        InteractionContext,
     },
     builder::{CreateCommand, CreateCommandOption, CreateInteractionResponse},
     client::Context,
@@ -187,64 +184,6 @@ pub async fn command_responses(command: &CommandInteraction, ctx: Context, pool:
             return;
         }
     }
-}
-
-async fn handle_meme(
-    command: &CommandInteraction,
-    ctx: &Context,
-    pool: &Pool<Postgres>,
-    full_command_name: &String,
-) -> bool {
-    let meme_folders_lock = get_meme_folders_lock(&ctx.data).await;
-    if let Some(folder_name) = meme_folders_lock
-        .read()
-        .await
-        .folders
-        .get(full_command_name)
-        .cloned()
-    {
-        command.defer(&ctx.http).await.unwrap();
-
-        command
-            .quick_modal(
-                ctx,
-                CreateQuickModal::new("Upload MEME")
-                    .timeout(Duration::from_mins(5))
-                    .field(CreateInputText::new(
-                        serenity::all::InputTextStyle::Short,
-                        "tags",
-                        "modal_tags",
-                    )),
-            )
-            .await
-            .unwrap();
-
-        let (file, bytes) = memes::read_meme(
-            command
-                .guild_id
-                .map_or(command.channel_id.get(), serenity::all::GuildId::get),
-            &folder_name,
-            true,
-            pool,
-        )
-        .await
-        .unwrap();
-
-        command
-            .edit_response(
-                &ctx.http,
-                EditInteractionResponse::new().new_attachment(CreateAttachment::bytes(
-                    bytes,
-                    file.file_name().to_string_lossy().to_string(),
-                )),
-            )
-            .instrument(info_span!("Sending message"))
-            .await
-            .expect("Couldn't create interaction response");
-        return true;
-    }
-
-    false
 }
 
 /// Create the slash commands

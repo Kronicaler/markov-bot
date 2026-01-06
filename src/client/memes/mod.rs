@@ -12,7 +12,6 @@
 
 pub mod commands;
 mod dal;
-pub mod model;
 
 use std::{
     fs::{self, DirEntry},
@@ -47,7 +46,7 @@ pub async fn read_meme(
 
     let mut tx = pool.begin().await?;
 
-    let Some(category) = dal::get_categories_by_name(&vec![tag.to_string()], &mut tx)
+    let Some(category) = dal::get_categories_by_name(&[tag.to_string()], &mut tx)
         .await?
         .pop()
     else {
@@ -131,14 +130,16 @@ pub async fn save_meme(
     }
 
     let folder = categories.first().unwrap();
-    let number = get_meme_file_count_by_folder(&folder, &mut tx).await? + 1;
+    let number = get_meme_file_count_by_folder(folder, &mut tx).await? + 1;
     let name = format!("{folder}_{number}");
 
     create_new_category_dirs(categories).await?;
-    save_meme_to_file(&name, &bytes, &folder).await?;
+    save_meme_to_file(&name, &bytes, folder).await?;
 
     create_new_categories(categories, &mut tx).await?;
-    create_meme_file(&folder, &name, hash, &mut tx).await?;
+    create_meme_file(folder, &name, hash, &mut tx).await?;
+
+    tx.commit().await?;
 
     Ok(())
 }
@@ -146,7 +147,7 @@ pub async fn save_meme(
 pub async fn post_meme(
     ctx: &Context,
     command: &CommandInteraction,
-    pool: &PgPool,
+    _pool: &PgPool,
 ) -> anyhow::Result<()> {
     command.defer(&ctx.http).await.unwrap();
 
@@ -177,7 +178,10 @@ pub async fn upload_meme(
     save_meme("TestName".to_string(), file_bytes, &categories, pool).await?;
 
     command
-        .edit_response(&ctx.http, EditInteractionResponse::new().content("Saved meme"))
+        .edit_response(
+            &ctx.http,
+            EditInteractionResponse::new().content("Saved meme"),
+        )
         .instrument(info_span!("Sending message"))
         .await
         .expect("Couldn't create interaction response");
