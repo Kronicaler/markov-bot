@@ -16,13 +16,14 @@ mod dal;
 use std::{
     fs::{self, DirEntry},
     hash::{DefaultHasher, Hash, Hasher},
+    time::Duration,
 };
 
 use anyhow::bail;
 use itertools::Itertools;
-use serenity::all::{CommandInteraction, Context, EditInteractionResponse};
+use serenity::all::{CommandInteraction, Context, CreateQuickModal, EditInteractionResponse};
 use sqlx::PgPool;
-use tracing::{Instrument, info_span};
+use tracing::{Instrument, info, info_span};
 
 use crate::client::{
     helper_funcs::download_file_from_message,
@@ -111,8 +112,9 @@ fn calculate_hash<T: Hash>(t: &T) -> i64 {
 /// - save hash, path and categories to DB
 #[tracing::instrument(err, skip(pool, bytes))]
 pub async fn save_meme(
-    name: String,
+    name: &str,
     bytes: Vec<u8>,
+    extension: &str,
     categories: &Vec<String>,
     pool: &PgPool,
 ) -> anyhow::Result<()> {
@@ -133,8 +135,8 @@ pub async fn save_meme(
     let number = get_meme_file_count_by_folder(folder, &mut tx).await? + 1;
     let name = format!("{folder}_{number}");
 
-    create_new_category_dirs(categories).await?;
-    save_meme_to_file(&name, &bytes, folder).await?;
+    create_new_category_dirs(&vec![folder.to_string()]).await?;
+    save_meme_to_file(&name, extension, &bytes, folder).await?;
 
     create_new_categories(categories, &mut tx).await?;
     create_meme_file(folder, &name, hash, &mut tx).await?;
@@ -160,8 +162,6 @@ pub async fn upload_meme(
     command: &CommandInteraction,
     pool: &PgPool,
 ) -> anyhow::Result<()> {
-    command.defer_ephemeral(&ctx.http).await.unwrap();
-
     let message_id = command.data.target_id.unwrap();
 
     let message = command
@@ -171,13 +171,74 @@ pub async fn upload_meme(
         .get(&message_id.into())
         .unwrap();
 
-    let (file_bytes, _) = download_file_from_message(message, 50).await?;
+    let modal_response = command
+        .quick_modal(
+            ctx,
+            CreateQuickModal::new("Upload meme")
+                .timeout(Duration::from_mins(10))
+                .short_field("Tags"),
+        )
+        .await?;
 
-    let categories = vec!["TestCategory".to_string()];
+    let Some(modal_response) = modal_response else {
+        return Ok(());
+    };
 
-    save_meme("TestName".to_string(), file_bytes, &categories, pool).await?;
+    modal_response.interaction.defer_ephemeral(ctx).await?;
 
-    command
+    let (file_bytes, extension) = download_file_from_message(message, 50).await?;
+
+    let categories = match modal_response
+        .interaction
+        .data
+        .components
+        .first()
+        .unwrap()
+        .components
+        .first()
+        .unwrap()
+    {
+        serenity::all::ActionRowComponent::Button(_) => todo!(),
+        serenity::all::ActionRowComponent::SelectMenu(_) => todo!(),
+        serenity::all::ActionRowComponent::InputText(input_text) => {
+            input_text.value.as_ref().map(|s| {
+                s.split(" ")
+                    .map(|s| s.to_lowercase().to_string())
+                    .collect_vec()
+            })
+        }
+        _ => todo!(),
+    };
+
+    if categories.is_none() || categories.as_ref().is_some_and(|c| c.len() == 0) {
+        info!(?categories);
+
+        modal_response
+            .interaction
+            .edit_response(
+                &ctx.http,
+                EditInteractionResponse::new().content("No tags provided"),
+            )
+            .instrument(info_span!("Sending message"))
+            .await
+            .expect("Couldn't create interaction response");
+
+        return Ok(());
+    }
+
+    let categories = categories.unwrap();
+
+    save_meme(
+        categories.first().unwrap(),
+        file_bytes,
+        &extension,
+        &categories,
+        pool,
+    )
+    .await?;
+
+    modal_response
+        .interaction
         .edit_response(
             &ctx.http,
             EditInteractionResponse::new().content("Saved meme"),

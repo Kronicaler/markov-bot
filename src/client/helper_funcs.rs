@@ -1,4 +1,5 @@
 use std::{
+    path::Path,
     process::{Output, Stdio},
     time::Duration,
 };
@@ -141,7 +142,7 @@ pub async fn post_file_from_message(ctx: Context, command: &CommandInteraction, 
     loop {
         let res = download_file_from_message(message, max_filesize_mb).await;
 
-        let (file_bytes, file_format) = match res {
+        let (file_bytes, extension) = match res {
             Ok(file) => file,
             Err(e) => {
                 command
@@ -161,11 +162,7 @@ pub async fn post_file_from_message(ctx: Context, command: &CommandInteraction, 
                 &ctx.http,
                 EditInteractionResponse::new().new_attachment(CreateAttachment::bytes(
                     file_bytes,
-                    format!(
-                        "doki-{}.{}",
-                        Utc::now().timestamp() - 1575072000,
-                        file_format.extension()
-                    ),
+                    format!("doki-{}.{}", Utc::now().timestamp() - 1575072000, extension),
                 )),
             )
             .instrument(info_span!("Sending message"))
@@ -206,7 +203,7 @@ pub enum DownloadFileFromMessageError {
 pub async fn download_file_from_message(
     message: &Message,
     max_filesize_mb: usize,
-) -> Result<(Vec<u8>, FileFormat), DownloadFileFromMessageError> {
+) -> Result<(Vec<u8>, String), DownloadFileFromMessageError> {
     let link_regex =
         regex::Regex::new(r#"(?:(?:https?|ftp)://|\b(?:[a-z\d]+\.))(?:(?:[^\s()<>]+|\((?:[^\s()<>]+|(?:\([^\s()<>]+\)))?\))+(?:\((?:[^\s()<>]+|(?:\(?:[^\s()<>]+\)))?\)|[^\s`!()\[\]{};:'".,<>?«»“”‘’]))?"#)
         .expect("Invalid regular expression");
@@ -219,8 +216,13 @@ pub async fn download_file_from_message(
             .download()
             .await
             .map_err(|_| DownloadFileFromMessageError::UnsupportedLink)?;
+        let mut extension = Path::new(&attachment.filename)
+            .extension()
+            .unwrap()
+            .to_string_lossy()
+            .to_string();
 
-        let mut file_format = FileFormat::from_bytes(&attachment_bytes);
+        let file_format = FileFormat::from_bytes(&attachment_bytes);
         if file_format.kind() != Kind::Audio
             && file_format.kind() != Kind::Video
             && file_format.kind() != Kind::Image
@@ -237,10 +239,10 @@ pub async fn download_file_from_message(
 
         if file_format.media_type() == "video/mp2t" {
             attachment_bytes = convert_mpegts_to_mp4(attachment_bytes).await.stdout;
-            file_format = FileFormat::from_bytes(&attachment_bytes);
+            extension = "mp4".to_string();
         }
 
-        return Ok((attachment_bytes, file_format));
+        return Ok((attachment_bytes, extension));
     };
 
     let filesize_filter =
@@ -317,7 +319,7 @@ pub async fn download_file_from_message(
         file_format = FileFormat::from_bytes(&output.stdout);
     }
 
-    Ok((output.stdout, file_format))
+    Ok((output.stdout, file_format.extension().to_string()))
 }
 
 pub async fn convert_mpegts_to_mp4(bytes: Vec<u8>) -> Output {

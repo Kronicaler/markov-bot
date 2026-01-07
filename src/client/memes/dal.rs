@@ -3,7 +3,6 @@ use std::{
     path::PathBuf,
 };
 
-use file_format::FileFormat;
 use itertools::Itertools;
 use sqlx::PgConnection;
 
@@ -109,14 +108,17 @@ pub async fn set_server_category(
 }
 
 #[tracing::instrument(err, skip(bytes))]
-pub async fn save_meme_to_file(name: &str, bytes: &Vec<u8>, folder: &str) -> anyhow::Result<()> {
+pub async fn save_meme_to_file(
+    name: &str,
+    extension: &str,
+    bytes: &Vec<u8>,
+    folder: &str,
+) -> anyhow::Result<()> {
     let mut path = PathBuf::new();
     path.push(MEMES_FOLDER);
     path.push(folder);
     path.push(name);
-
-    let ext = FileFormat::from_bytes(bytes);
-    path.set_extension(ext.extension());
+    path.set_extension(extension);
 
     fs::write(&path, bytes)?;
 

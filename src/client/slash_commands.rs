@@ -84,7 +84,7 @@ pub enum UserCommand {
     swap_songs,
 
     // =====MEME=====
-    #[strum(serialize = "upload meme")]
+    #[strum(serialize = "Upload meme")]
     upload_meme,
     #[strum(props(SubCommand = "post"), serialize = "meme post")]
     post_meme,
