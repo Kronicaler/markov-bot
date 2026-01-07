@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT * FROM meme_file_categories\n            WHERE category_id = $1 AND file_id > $2\n            ORDER BY file_id\n            LIMIT 1;\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "category_id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "file_id",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Int4"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "9e485292dfcf46fc430302d4e1bf3ce643f1a9ae26ee7eb74c011e58a4dad722"
+}

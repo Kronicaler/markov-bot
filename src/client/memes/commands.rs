@@ -31,7 +31,15 @@ pub fn create_memes_commands() -> Vec<CreateCommand> {
                 CreateCommandOption::new(
                     CommandOptionType::Boolean,
                     "ordered",
-                    "whether to send a random meme or send from oldest to newest in this server",
+                    "send from oldest to newest in this server for this tag",
+                )
+                .required(false),
+            )
+            .add_sub_option(
+                CreateCommandOption::new(
+                    CommandOptionType::Boolean,
+                    "ephemeral",
+                    "send the meme in an ephemeral message only you can see",
                 )
                 .required(false),
             ),

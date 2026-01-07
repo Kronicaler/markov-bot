@@ -1,5 +1,6 @@
 pub mod download;
 pub mod file_operations;
+pub mod get_option_from_command;
 pub mod global_data;
 pub mod helper_funcs;
 pub mod markov;

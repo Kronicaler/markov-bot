@@ -12,7 +12,7 @@ use super::{
 use crate::{
     client::{
         download::{download_command, download_from_message_command},
-        memes::{commands::create_memes_commands, post_meme, upload_meme},
+        memes::{commands::create_memes_commands, post_meme_command, upload_meme},
         voice::queue::{command_response::queue, shuffle::shuffle_queue},
     },
     global_data, markov, voice,
@@ -177,7 +177,7 @@ pub async fn command_responses(command: &CommandInteraction, ctx: Context, pool:
                     .expect("Error creating interaction response");
             }
             UserCommand::upload_meme => upload_meme(&ctx, command, pool).await.unwrap(),
-            UserCommand::post_meme => post_meme(&ctx, command, pool).await.unwrap(),
+            UserCommand::post_meme => post_meme_command(&ctx, command, pool).await.unwrap(),
         },
         Err(why) => {
             error!("Cannot respond to slash command {why:?}");

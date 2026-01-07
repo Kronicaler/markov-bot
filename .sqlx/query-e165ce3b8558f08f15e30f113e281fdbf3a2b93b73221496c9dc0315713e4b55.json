@@ -20,6 +20,11 @@
       },
       {
         "ordinal": 3,
+        "name": "extension",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
         "name": "hash",
         "type_info": "Int8"
       }
@@ -30,6 +35,7 @@
       ]
     },
     "nullable": [
+      false,
       false,
       false,
       false,

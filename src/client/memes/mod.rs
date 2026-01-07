@@ -14,89 +14,28 @@ pub mod commands;
 mod dal;
 
 use std::{
-    fs::{self, DirEntry},
     hash::{DefaultHasher, Hash, Hasher},
     time::Duration,
 };
 
-use anyhow::bail;
 use itertools::Itertools;
-use serenity::all::{CommandInteraction, Context, CreateQuickModal, EditInteractionResponse};
-use sqlx::PgPool;
+use serenity::all::{
+    CommandInteraction, Context, CreateAttachment, CreateQuickModal, EditInteractionResponse,
+};
+use sqlx::{PgConnection, PgPool};
 use tracing::{Instrument, info, info_span};
 
 use crate::client::{
+    get_option_from_command::GetOptionFromCommand,
     helper_funcs::download_file_from_message,
     memes::dal::{
-        create_meme_file, create_meme_file_categories, create_new_categories,
-        create_new_category_dirs, get_file_by_hash, get_meme_file_count_by_folder,
-        save_meme_to_file,
+        MemeFileCategory, MemeServerCategory, create_meme_file, create_meme_file_categories,
+        create_new_categories, create_new_category_dirs, get_file_by_hash,
+        get_meme_file_count_by_folder, save_meme_to_file,
     },
 };
 
 pub const MEMES_FOLDER: &str = "./data/memes";
-
-#[tracing::instrument(err, skip(pool))]
-pub async fn read_meme(
-    server_id: u64,
-    tag: &str,
-    ordered: bool,
-    pool: &PgPool,
-) -> anyhow::Result<(DirEntry, Vec<u8>)> {
-    // fetch file index from db for this folder and server
-
-    let mut tx = pool.begin().await?;
-
-    let Some(category) = dal::get_categories_by_name(&[tag.to_string()], &mut tx)
-        .await?
-        .pop()
-    else {
-        bail!("category doesn't exist");
-    };
-
-    let server_category = dal::get_server_category(server_id as i64, category.id, &mut tx)
-        .await?
-        .unwrap_or(dal::MemeServerCategory {
-            server_id: server_id as i64,
-            category_id: category.id,
-            file_id: 1,
-        });
-
-    let Some(mut meme_file) = dal::get_file_by_id(server_category.file_id, &mut tx).await? else {
-        bail!("no files for category exist")
-    };
-
-    // read dir and sort by name
-
-    let mut files = fs::read_dir(format!("{MEMES_FOLDER}/{}", meme_file.folder))?
-        .filter_map(std::result::Result::ok)
-        .sorted_by(|a, b| {
-            alphanumeric_sort::compare_str(
-                a.file_name().to_string_lossy(),
-                b.file_name().to_string_lossy(),
-            )
-        })
-        .collect_vec();
-
-    if files.is_empty() {
-        bail!("no files in folder");
-    }
-
-    // if index is out of bounds set it to 0
-    if files.len() < meme_file.id as usize {
-        meme_file.id = 1;
-    }
-
-    // find file by index
-    let file = files.swap_remove(meme_file.id as usize);
-
-    let file_bytes = fs::read(file.path())?;
-
-    // update folder_index
-    dal::set_server_category(server_id as i64, category.id, meme_file.id + 1, &mut tx).await?;
-
-    Ok((file, file_bytes))
-}
 
 fn calculate_hash<T: Hash>(t: &T) -> i64 {
     let mut s = DefaultHasher::new();
@@ -135,25 +74,187 @@ pub async fn save_meme(
     let number = get_meme_file_count_by_folder(folder, &mut tx).await? + 1;
     let name = format!("{folder}_{number}");
 
-    create_new_category_dirs(&vec![folder.to_string()]).await?;
+    create_new_category_dirs(&vec![folder.clone()]).await?;
     save_meme_to_file(&name, extension, &bytes, folder).await?;
 
     create_new_categories(categories, &mut tx).await?;
-    create_meme_file(folder, &name, hash, &mut tx).await?;
+    let meme_file_id = create_meme_file(folder, &name, extension, hash, &mut tx).await?;
+    create_meme_file_categories(categories, meme_file_id, &mut tx).await?;
 
     tx.commit().await?;
 
     Ok(())
 }
 
-pub async fn post_meme(
+#[tracing::instrument(err, skip(ctx, command, pool))]
+pub async fn post_meme_command(
     ctx: &Context,
     command: &CommandInteraction,
-    _pool: &PgPool,
+    pool: &PgPool,
 ) -> anyhow::Result<()> {
-    command.defer(&ctx.http).await.unwrap();
+    let category = command.data.get_string("tag");
+    let is_ordered = command
+        .data
+        .get_optional_bool("ordered")
+        .unwrap_or_default();
+    let is_ephemeral = command
+        .data
+        .get_optional_bool("ephemeral")
+        .unwrap_or_default();
 
-    todo!()
+    if is_ephemeral {
+        command.defer_ephemeral(&ctx.http).await.unwrap();
+    } else {
+        command.defer(&ctx.http).await.unwrap();
+    }
+
+    let mut tx = pool.begin().await?;
+
+    if is_ordered {
+        post_ordered_meme(ctx, command, &category, &mut tx).await?;
+    } else {
+        post_random_meme(ctx, command, category, &mut tx).await?;
+    }
+
+    tx.commit().await?;
+
+    Ok(())
+}
+
+#[tracing::instrument(err, skip(ctx, command, conn))]
+async fn post_random_meme(
+    ctx: &Context,
+    command: &CommandInteraction,
+    category: String,
+    conn: &mut PgConnection,
+) -> Result<(), anyhow::Error> {
+    let mfc = dal::get_random_meme_file_category_by_category(&category, conn).await?;
+    let Some(mfc) = mfc else {
+        command
+            .edit_response(
+                &ctx,
+                EditInteractionResponse::new().content("Tag doesn't exist"),
+            )
+            .await?;
+        return Ok(());
+    };
+    post_meme(ctx, command, conn, mfc.file_id).await?;
+    Ok(())
+}
+
+#[tracing::instrument(err, skip(ctx, command, conn))]
+async fn post_ordered_meme(
+    ctx: &Context,
+    command: &CommandInteraction,
+    category: &String,
+    conn: &mut PgConnection,
+) -> Result<(), anyhow::Error> {
+    let category = dal::get_categories_by_name(&[category.to_string()], conn)
+        .await?
+        .pop();
+
+    let Some(category) = category else {
+        command
+            .edit_response(
+                &ctx,
+                EditInteractionResponse::new().content("Tag doesn't exist"),
+            )
+            .await?;
+        return Ok(());
+    };
+
+    let server_id = command
+        .guild_id
+        .map(|g| g.get())
+        .unwrap_or_else(|| command.channel_id.get()) as i64;
+    let mut server_category = dal::get_server_category(server_id, category.id, conn)
+        .await?
+        .unwrap_or_else(|| MemeServerCategory {
+            category_id: category.id,
+            file_id: 1,
+            server_id: server_id,
+        });
+
+    if dal::get_file_by_id(server_category.file_id, conn)
+        .await?
+        .is_none()
+    {
+        let oldest_mfc = dal::get_oldest_meme_file_category(category.id, conn)
+            .await?
+            .unwrap();
+
+        server_category.file_id = oldest_mfc.file_id;
+
+        dal::set_server_category(
+            server_category.server_id,
+            oldest_mfc.category_id,
+            oldest_mfc.file_id,
+            conn,
+        )
+        .await?;
+    }
+
+    post_meme(ctx, command, conn, server_category.file_id).await?;
+
+    let next_mfc =
+        dal::get_next_meme_file_category(category.id, server_category.file_id, conn).await?;
+
+    let Some(next_mfc) = next_mfc else {
+        info!("reached the oldest meme file category, resetting to beginning");
+        let oldest_mfc = dal::get_oldest_meme_file_category(category.id, conn)
+            .await?
+            .unwrap();
+
+        dal::set_server_category(
+            server_category.server_id,
+            server_category.category_id,
+            oldest_mfc.file_id,
+            conn,
+        )
+        .await?;
+
+        return Ok(());
+    };
+
+    dal::set_server_category(
+        server_category.server_id,
+        server_category.category_id,
+        next_mfc.file_id,
+        conn,
+    )
+    .await?;
+
+    Ok(())
+}
+
+#[tracing::instrument(err, skip(ctx, command, tx))]
+async fn post_meme(
+    ctx: &Context,
+    command: &CommandInteraction,
+    mut tx: &mut PgConnection,
+    file_id: i32,
+) -> Result<(), anyhow::Error> {
+    let meme_file = dal::get_file_by_id(file_id, &mut tx).await?;
+    let Some(meme_file) = meme_file else {
+        command
+            .edit_response(
+                &ctx,
+                EditInteractionResponse::new().content("Tag doesn't exist"),
+            )
+            .await?;
+        return Ok(());
+    };
+    let file_bytes = dal::read_file(&meme_file)?;
+    command
+        .edit_response(
+            &ctx,
+            EditInteractionResponse::new().new_attachment(CreateAttachment::bytes(
+                file_bytes,
+                format!("{}.{}", meme_file.name, meme_file.extension),
+            )),
+        )
+        .await?;
+    Ok(())
 }
 
 #[tracing::instrument(err, skip(ctx, command, pool))]
@@ -200,17 +301,14 @@ pub async fn upload_meme(
     {
         serenity::all::ActionRowComponent::Button(_) => todo!(),
         serenity::all::ActionRowComponent::SelectMenu(_) => todo!(),
-        serenity::all::ActionRowComponent::InputText(input_text) => {
-            input_text.value.as_ref().map(|s| {
-                s.split(" ")
-                    .map(|s| s.to_lowercase().to_string())
-                    .collect_vec()
-            })
-        }
+        serenity::all::ActionRowComponent::InputText(input_text) => input_text
+            .value
+            .as_ref()
+            .map(|s| s.split(' ').map(|s| s.to_lowercase().clone()).collect_vec()),
         _ => todo!(),
     };
 
-    if categories.is_none() || categories.as_ref().is_some_and(|c| c.len() == 0) {
+    if categories.is_none() || categories.as_ref().is_some_and(|c| c.is_empty()) {
         info!(?categories);
 
         modal_response
@@ -247,6 +345,5 @@ pub async fn upload_meme(
         .await
         .expect("Couldn't create interaction response");
 
-    // TODO: show modal with a text field for tags
-    todo!()
+    Ok(())
 }

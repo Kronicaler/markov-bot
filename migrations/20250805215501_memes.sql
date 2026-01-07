@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS meme_files (
     id SERIAL PRIMARY KEY,
     folder TEXT NOT NULL,
     name TEXT NOT NULL,
+    extension TEXT NOT NULL,
     hash BIGINT UNIQUE NOT NULL
 );
 
