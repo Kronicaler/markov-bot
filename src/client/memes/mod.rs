@@ -166,7 +166,9 @@ async fn post_ordered_meme(
     };
 
     let server_id = command
-        .guild_id.map_or_else(|| command.channel_id.get(), serenity::all::GuildId::get) as i64;
+        .guild_id
+        .map_or_else(|| command.channel_id.get(), serenity::all::GuildId::get)
+        as i64;
     let mut server_category = dal::get_server_category(server_id, category.id, conn)
         .await?
         .unwrap_or(MemeServerCategory {
@@ -263,15 +265,6 @@ pub async fn upload_meme(
     command: &CommandInteraction,
     pool: &PgPool,
 ) -> anyhow::Result<()> {
-    let message_id = command.data.target_id.unwrap();
-
-    let message = command
-        .data
-        .resolved
-        .messages
-        .get(&message_id.into())
-        .unwrap();
-
     let modal_response = command
         .quick_modal(
             ctx,
@@ -287,29 +280,24 @@ pub async fn upload_meme(
 
     modal_response.interaction.defer_ephemeral(ctx).await?;
 
+    let message_id = command.data.target_id.unwrap();
+
+    let message = command
+        .data
+        .resolved
+        .messages
+        .get(&message_id.into())
+        .unwrap();
+
     let (file_bytes, extension) = download_file_from_message(message, 50).await?;
 
-    let categories = match modal_response
-        .interaction
-        .data
-        .components
-        .first()
-        .unwrap()
-        .components
-        .first()
-        .unwrap()
-    {
-        serenity::all::ActionRowComponent::Button(_) => todo!(),
-        serenity::all::ActionRowComponent::SelectMenu(_) => todo!(),
-        serenity::all::ActionRowComponent::InputText(input_text) => input_text
-            .value
-            .as_ref()
-            .map(|s| s.split(' ').map(|s| s.to_lowercase().clone()).collect_vec()),
-        _ => todo!(),
-    };
+    let categories = modal_response.inputs[0]
+        .split(' ')
+        .map(|s| s.to_lowercase().clone())
+        .collect_vec();
 
-    if categories.is_none() || categories.as_ref().is_some_and(std::vec::Vec::is_empty) {
-        info!(?categories);
+    if categories.is_empty() {
+        info!("no categories provided");
 
         modal_response
             .interaction
@@ -324,15 +312,13 @@ pub async fn upload_meme(
         return Ok(());
     }
 
-    let categories = categories.unwrap();
-
     save_meme(&file_bytes, &extension, &categories, pool).await?;
 
     modal_response
         .interaction
         .edit_response(
             &ctx.http,
-            EditInteractionResponse::new().content("Saved meme"),
+            EditInteractionResponse::new().content("Saved meme. I can now post it when someone runs ``/meme post`` with one of the tags you provided!"),
         )
         .instrument(info_span!("Sending message"))
         .await
