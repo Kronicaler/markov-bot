@@ -1,9 +1,8 @@
 use std::{
-    fs::{self, DirEntry},
+    fs::{self},
     path::PathBuf,
 };
 
-use itertools::Itertools;
 use sqlx::PgConnection;
 use tracing::info;
 
@@ -60,6 +59,7 @@ pub async fn set_server_category(
     Ok(())
 }
 
+#[allow(unused)]
 pub struct MemeFile {
     pub id: i32,
     pub folder: String,
@@ -211,7 +211,7 @@ pub async fn get_oldest_meme_file_category(
     .fetch_optional(&mut *conn)
     .await?;
 
-    return Ok(meme_file_category);
+    Ok(meme_file_category)
 }
 
 pub async fn get_next_meme_file_category(
@@ -233,9 +233,10 @@ pub async fn get_next_meme_file_category(
     .fetch_optional(&mut *conn)
     .await?;
 
-    return Ok(meme_file_category);
+    Ok(meme_file_category)
 }
 
+#[allow(unused)]
 pub struct MemeCategory {
     pub id: i32,
     pub category: String,
@@ -292,7 +293,7 @@ pub fn read_file(meme_file: &MemeFile) -> Result<Vec<u8>, anyhow::Error> {
 pub async fn save_meme_to_file(
     name: &str,
     extension: &str,
-    bytes: &Vec<u8>,
+    bytes: &[u8],
     folder: &str,
 ) -> anyhow::Result<()> {
     let mut path = PathBuf::new();
@@ -316,16 +317,4 @@ pub async fn create_new_category_dirs(categories: &Vec<String>) -> anyhow::Resul
     }
 
     Ok(())
-}
-
-#[tracing::instrument(ret)]
-pub fn get_meme_folders() -> Vec<DirEntry> {
-    let Ok(folders) = fs::read_dir(MEMES_FOLDER) else {
-        return vec![];
-    };
-
-    folders
-        .filter_map(std::result::Result::ok)
-        .filter(|f| f.file_type().is_ok_and(|f| f.is_dir()))
-        .collect_vec()
 }

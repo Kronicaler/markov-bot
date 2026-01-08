@@ -22,11 +22,10 @@ pub fn create_memes_commands() -> Vec<CreateCommand> {
                 UserCommand::post_meme.get_str("SubCommand").unwrap(),
                 "Post a meme from a desired tag",
             )
-            .add_sub_option(CreateCommandOption::new(
-                CommandOptionType::String,
-                "tag",
-                "Select a tag",
-            ))
+            .add_sub_option(
+                CreateCommandOption::new(CommandOptionType::String, "tag", "Select a tag")
+                    .required(true),
+            )
             .add_sub_option(
                 CreateCommandOption::new(
                     CommandOptionType::Boolean,

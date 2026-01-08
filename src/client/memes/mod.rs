@@ -29,9 +29,9 @@ use crate::client::{
     get_option_from_command::GetOptionFromCommand,
     helper_funcs::download_file_from_message,
     memes::dal::{
-        MemeFileCategory, MemeServerCategory, create_meme_file, create_meme_file_categories,
-        create_new_categories, create_new_category_dirs, get_file_by_hash,
-        get_meme_file_count_by_folder, save_meme_to_file,
+        MemeServerCategory, create_meme_file, create_meme_file_categories, create_new_categories,
+        create_new_category_dirs, get_file_by_hash, get_meme_file_count_by_folder,
+        save_meme_to_file,
     },
 };
 
@@ -51,12 +51,14 @@ fn calculate_hash<T: Hash>(t: &T) -> i64 {
 /// - save hash, path and categories to DB
 #[tracing::instrument(err, skip(pool, bytes))]
 pub async fn save_meme(
-    name: &str,
-    bytes: Vec<u8>,
+    bytes: &[u8],
     extension: &str,
-    categories: &Vec<String>,
+    categories: &[String],
     pool: &PgPool,
 ) -> anyhow::Result<()> {
+    let extension = &extension.to_lowercase();
+    let categories = &categories.iter().map(|e| e.to_lowercase()).collect_vec();
+
     let hash = calculate_hash(&bytes);
 
     let mut tx = pool.begin().await?;
@@ -75,7 +77,7 @@ pub async fn save_meme(
     let name = format!("{folder}_{number}");
 
     create_new_category_dirs(&vec![folder.clone()]).await?;
-    save_meme_to_file(&name, extension, &bytes, folder).await?;
+    save_meme_to_file(&name, extension, bytes, folder).await?;
 
     create_new_categories(categories, &mut tx).await?;
     let meme_file_id = create_meme_file(folder, &name, extension, hash, &mut tx).await?;
@@ -149,7 +151,7 @@ async fn post_ordered_meme(
     category: &String,
     conn: &mut PgConnection,
 ) -> Result<(), anyhow::Error> {
-    let category = dal::get_categories_by_name(&[category.to_string()], conn)
+    let category = dal::get_categories_by_name(&[category.clone()], conn)
         .await?
         .pop();
 
@@ -164,15 +166,13 @@ async fn post_ordered_meme(
     };
 
     let server_id = command
-        .guild_id
-        .map(|g| g.get())
-        .unwrap_or_else(|| command.channel_id.get()) as i64;
+        .guild_id.map_or_else(|| command.channel_id.get(), serenity::all::GuildId::get) as i64;
     let mut server_category = dal::get_server_category(server_id, category.id, conn)
         .await?
-        .unwrap_or_else(|| MemeServerCategory {
+        .unwrap_or(MemeServerCategory {
             category_id: category.id,
             file_id: 1,
-            server_id: server_id,
+            server_id,
         });
 
     if dal::get_file_by_id(server_category.file_id, conn)
@@ -231,10 +231,10 @@ async fn post_ordered_meme(
 async fn post_meme(
     ctx: &Context,
     command: &CommandInteraction,
-    mut tx: &mut PgConnection,
+    tx: &mut PgConnection,
     file_id: i32,
 ) -> Result<(), anyhow::Error> {
-    let meme_file = dal::get_file_by_id(file_id, &mut tx).await?;
+    let meme_file = dal::get_file_by_id(file_id, tx).await?;
     let Some(meme_file) = meme_file else {
         command
             .edit_response(
@@ -308,7 +308,7 @@ pub async fn upload_meme(
         _ => todo!(),
     };
 
-    if categories.is_none() || categories.as_ref().is_some_and(|c| c.is_empty()) {
+    if categories.is_none() || categories.as_ref().is_some_and(std::vec::Vec::is_empty) {
         info!(?categories);
 
         modal_response
@@ -326,14 +326,7 @@ pub async fn upload_meme(
 
     let categories = categories.unwrap();
 
-    save_meme(
-        categories.first().unwrap(),
-        file_bytes,
-        &extension,
-        &categories,
-        pool,
-    )
-    .await?;
+    save_meme(&file_bytes, &extension, &categories, pool).await?;
 
     modal_response
         .interaction
