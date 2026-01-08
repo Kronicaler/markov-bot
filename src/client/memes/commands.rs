@@ -16,6 +16,10 @@ pub fn create_memes_commands() -> Vec<CreateCommand> {
 
     let post_meme_command = CreateCommand::new("meme")
         .description("description")
+        .add_integration_type(InstallationContext::User)
+        .add_integration_type(InstallationContext::Guild)
+        .add_context(InteractionContext::Guild)
+        .add_context(InteractionContext::PrivateChannel)
         .add_option(
             CreateCommandOption::new(
                 CommandOptionType::SubCommand,
