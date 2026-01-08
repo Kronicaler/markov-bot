@@ -94,7 +94,7 @@ pub async fn post_meme_command(
     command: &CommandInteraction,
     pool: &PgPool,
 ) -> anyhow::Result<()> {
-    let category = command.data.get_string("tag");
+    let category = command.data.get_string("tag").to_lowercase();
     let is_ordered = command
         .data
         .get_optional_bool("ordered")
