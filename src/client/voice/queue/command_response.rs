@@ -1,22 +1,26 @@
 use crate::client::{
     ComponentIds,
+    global_data::GetBotState,
     voice::{
         create_bring_to_front_select_menu, create_emoji_shuffle_button,
-        create_play_now_select_menu,
-        model::{MyAuxMetadata, get_voice_messages_lock},
+        create_play_now_select_menu, model::MyAuxMetadata,
     },
 };
 use itertools::Itertools;
 use serenity::{
-    all::{ButtonStyle, CommandInteraction, ReactionType},
+    all::{
+        ButtonStyle, CommandInteraction, Context, CreateComponent, ReactionType,
+    },
     builder::{CreateActionRow, CreateButton, CreateEmbed, EditInteractionResponse, EditMessage},
-    client::Context,
     model::prelude::Colour,
+    small_fixed_array::FixedString,
 };
 use songbird::tracks::TrackQueue;
 use std::{
+    borrow::Cow,
     cmp::{max, min},
     convert::TryInto,
+    str::FromStr,
     time::Duration,
 };
 use tokio::time::timeout;
@@ -24,10 +28,7 @@ use tracing::{Instrument, info_span};
 
 #[tracing::instrument(skip(ctx))]
 pub async fn queue(ctx: &Context, command: &CommandInteraction) {
-    let manager = songbird::get(ctx)
-        .await
-        .expect("Songbird Voice client placed in at initialization.")
-        .clone();
+    let manager = ctx.bot_state().read().await.songbird.clone();
 
     command.defer(&ctx.http).await.unwrap();
 
@@ -58,9 +59,10 @@ pub async fn queue(ctx: &Context, command: &CommandInteraction) {
             .await
             .expect("Error creating interaction response");
 
-        let voice_messages_lock = get_voice_messages_lock(&ctx.data).await;
-        let mut voice_messages = voice_messages_lock.write().await;
-        voice_messages
+        let state_lock = &ctx.bot_state();
+        let mut state = state_lock.write().await;
+        state
+            .voice_messages
             .queue
             .insert(command.guild_id.unwrap(), queue_message);
     } else {
@@ -101,23 +103,23 @@ fn get_queue_duration(queue: &songbird::tracks::TrackQueue) -> String {
     duration
 }
 
-async fn create_queue_components(queue: &TrackQueue, queue_start: usize) -> Vec<CreateActionRow> {
+async fn create_queue_components(queue: &TrackQueue, queue_start: usize) -> Vec<CreateActionRow<'_>> {
     vec![
-        CreateActionRow::Buttons(vec![
+        CreateActionRow::Buttons(Cow::Owned(vec![
             CreateButton::new(ComponentIds::QueueStart.to_string())
-                .emoji(ReactionType::Unicode("⏪".to_string()))
+                .emoji(ReactionType::Unicode(FixedString::from_str("⏪").unwrap()))
                 .style(ButtonStyle::Primary),
             CreateButton::new(ComponentIds::QueuePrevious.to_string())
-                .emoji(ReactionType::Unicode("◀".to_string()))
+                .emoji(ReactionType::Unicode(FixedString::from_str("◀").unwrap()))
                 .style(ButtonStyle::Primary),
             CreateButton::new(ComponentIds::QueueNext.to_string())
-                .emoji(ReactionType::Unicode("▶".to_string()))
+                .emoji(ReactionType::Unicode(FixedString::from_str("▶").unwrap()))
                 .style(ButtonStyle::Primary),
             CreateButton::new(ComponentIds::QueueEnd.to_string())
-                .emoji(ReactionType::Unicode("⏩".to_string()))
+                .emoji(ReactionType::Unicode(FixedString::from_str("⏩").unwrap()))
                 .style(ButtonStyle::Primary),
             create_emoji_shuffle_button(),
-        ]),
+        ])),
         CreateActionRow::SelectMenu(create_bring_to_front_select_menu(queue, queue_start).await),
         CreateActionRow::SelectMenu(create_play_now_select_menu(queue, queue_start).await),
     ]
@@ -126,27 +128,39 @@ async fn create_queue_components(queue: &TrackQueue, queue_start: usize) -> Vec<
 pub async fn create_queue_response(
     queue_start: usize,
     queue: &songbird::tracks::TrackQueue,
-) -> EditInteractionResponse {
+) -> EditInteractionResponse<'_> {
     EditInteractionResponse::new()
         .content(format!("Page {}", queue_start / 10 + 1))
         .embed(create_queue_embed(queue, queue_start - 1).await)
-        .components(create_queue_components(queue, queue_start).await)
+        .components(Cow::Owned(
+            create_queue_components(queue, queue_start)
+                .await
+                .into_iter()
+                .map(CreateComponent::ActionRow)
+                .collect_vec(),
+        ))
 }
 
 pub async fn create_queue_edit_message(
     queue_start: usize,
     queue: &songbird::tracks::TrackQueue,
-) -> EditMessage {
+) -> EditMessage<'_> {
     EditMessage::new()
         .content(format!("Page {}", queue_start / 10 + 1))
         .embed(create_queue_embed(queue, queue_start - 1).await)
-        .components(create_queue_components(queue, queue_start).await)
+        .components(Cow::Owned(
+            create_queue_components(queue, queue_start)
+                .await
+                .into_iter()
+                .map(CreateComponent::ActionRow)
+                .collect_vec(),
+        ))
 }
 
 async fn create_queue_embed(
     queue: &songbird::tracks::TrackQueue,
     queue_start_index: usize,
-) -> serenity::builder::CreateEmbed {
+) -> serenity::builder::CreateEmbed<'_> {
     let duration = get_queue_duration(queue);
     let colour = Colour::from_rgb(149, 8, 2);
 

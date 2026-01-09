@@ -1,9 +1,11 @@
 use serenity::{
+    all::Context,
     all::{Colour, CommandInteraction},
     builder::{CreateEmbed, EditInteractionResponse},
-    client::Context,
 };
 use tracing::{Instrument, info_span};
+
+use crate::client::global_data::GetBotState;
 
 use super::MyAuxMetadata;
 
@@ -17,10 +19,7 @@ pub async fn playing(ctx: &Context, command: &CommandInteraction) {
 
     command.defer(&ctx.http).await.unwrap();
 
-    let manager = songbird::get(ctx)
-        .await
-        .expect("Songbird Voice client placed in at initialization.")
-        .clone();
+    let manager = ctx.bot_state().read().await.songbird.clone();
 
     //get the queue
     if let Some(handler_lock) = manager.get(guild_id) {
@@ -56,25 +55,23 @@ async fn nothing_playing_response(command: &CommandInteraction, ctx: &Context) {
         .expect("Error creating interaction response");
 }
 
-async fn create_playing_embed(
-    queue: &songbird::tracks::TrackQueue,
-) -> serenity::builder::CreateEmbed {
+async fn create_playing_embed<'a>(queue: &songbird::tracks::TrackQueue) -> CreateEmbed<'a> {
     let track_handle = queue.current().unwrap();
 
     let song = track_handle.data::<MyAuxMetadata>().aux_metadata.clone();
     //create embed
     //title
-    let title = &song.title.unwrap_or_else(|| "Unknown".to_string());
+    let title = song.title.unwrap_or_else(|| "Unknown".to_string());
     //channel
-    let channel = &song.channel.unwrap_or_else(|| "Unknown".to_string());
+    let channel = song.channel.unwrap_or_else(|| "Unknown".to_string());
     //image
-    let thumbnail_option = &song.thumbnail;
+    let thumbnail_option = song.thumbnail;
     //embed
-    let url_option = &song.source_url;
+    let url_option = song.source_url;
     //color
     let colour = Colour::from_rgb(149, 8, 2);
 
-    let time = &song.duration.unwrap_or_default();
+    let time = song.duration.unwrap_or_default();
     let minutes = time.as_secs() / 60;
     let seconds = time.as_secs() % 60;
     let duration = format!("{minutes}:{seconds:02}");

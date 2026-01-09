@@ -18,12 +18,14 @@ use self::data_access::{
 use super::ComponentIds;
 pub use model::Tag;
 use serenity::{
-    all::{ButtonStyle, CommandInteraction, CreateInteractionResponseMessage, GuildChannel, User},
+    all::{
+        ButtonStyle, CommandInteraction, Context, CreateComponent,
+        CreateInteractionResponseMessage, GuildChannel, GuildId, User,
+    },
     builder::{
         CreateActionRow, CreateAllowedMentions, CreateButton, CreateInteractionResponse,
         CreateMessage, EditMessage,
     },
-    client::Context,
     model::{
         channel::Message,
         id::{ChannelId, UserId},
@@ -31,7 +33,7 @@ use serenity::{
     prelude::Mentionable,
 };
 use sqlx::{PgPool, Pool, Postgres};
-use std::{fmt::Write, time::Duration};
+use std::{borrow::Cow, fmt::Write, time::Duration};
 
 #[tracing::instrument(skip(ctx))]
 pub async fn list_tags(ctx: &Context, command: &CommandInteraction, pool: &Pool<Postgres>) {
@@ -235,13 +237,11 @@ pub async fn respond_to_tag(ctx: &Context, msg: &Message, message: &str, pool: &
         .is_err()
     {
         //If sending a message fails iterate through the guild channels until it manages to send a message
-        let channels: Vec<GuildChannel> = msg
+        let channels = &msg
             .guild(&ctx.cache)
             .expect("Couldn't retrieve guild from cache")
             .channels
-            .values()
-            .cloned()
-            .collect();
+            .clone();
 
         for channel in channels {
             if let Ok(mut msg) = tag_response(channel, ctx, msg, message).await {
@@ -260,21 +260,24 @@ pub async fn respond_to_tag(ctx: &Context, msg: &Message, message: &str, pool: &
 }
 
 async fn tag_response(
-    channel: GuildChannel,
+    channel: &GuildChannel,
     ctx: &Context,
     msg: &Message,
     message: &str,
 ) -> Result<Message, serenity::Error> {
     channel
         .id
+        .widen()
         .send_message(
             &ctx.http,
             CreateMessage::new()
-                .components(vec![CreateActionRow::Buttons(vec![
-                    CreateButton::new(ComponentIds::BlacklistMeFromTags.to_string())
-                        .label("Stop pinging me")
-                        .style(ButtonStyle::Primary),
-                ])])
+                .components(Cow::Owned(vec![CreateComponent::ActionRow(
+                    CreateActionRow::Buttons(Cow::Owned(vec![
+                        CreateButton::new(ComponentIds::BlacklistMeFromTags.to_string())
+                            .label("Stop pinging me")
+                            .style(ButtonStyle::Primary),
+                    ])),
+                )]))
                 .allowed_mentions(CreateAllowedMentions::new().all_users(true))
                 .content(msg.author.mention().to_string() + " " + message),
         )
@@ -290,7 +293,7 @@ async fn send_response_in_tag_channel(
 ) {
     let tag_response_channel = ctx
         .cache
-        .guild(tag_channel.server_id as u64)
+        .guild(GuildId::new(tag_channel.server_id as u64))
         .unwrap()
         .channels
         .get(&ChannelId::new(tag_channel.channel_id as u64))
@@ -299,7 +302,7 @@ async fn send_response_in_tag_channel(
 
     let mut tag_response = CreateMessage::new();
 
-    let response_content = if msg.channel_id == tag_response_channel.id {
+    let response_content = if msg.channel_id == tag_response_channel.id.widen() {
         message.to_owned()
     } else {
         // Create this button only if the user is pinged
@@ -331,9 +334,11 @@ async fn send_response_in_tag_channel(
 }
 
 fn stop_pinging_me_button(tag_response: CreateMessage) -> CreateMessage {
-    tag_response.components(vec![CreateActionRow::Buttons(vec![
-        CreateButton::new(ComponentIds::BlacklistMeFromTags.to_string())
-            .label("Stop pinging me")
-            .style(ButtonStyle::Primary),
-    ])])
+    tag_response.components(Cow::Owned(vec![CreateComponent::ActionRow(
+        CreateActionRow::Buttons(Cow::Owned(vec![
+            CreateButton::new(Cow::Owned(ComponentIds::BlacklistMeFromTags.to_string()))
+                .label("Stop pinging me")
+                .style(ButtonStyle::Primary),
+        ])),
+    )]))
 }

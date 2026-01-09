@@ -9,7 +9,7 @@ mod logging;
 use std::process::Command;
 
 use chrono::Duration;
-use client::{file_operations, global_data, markov, start, tags, voice};
+use client::{file_operations, global_data, markov, start, tags};
 use logging::setup_logging;
 use tokio::{spawn, time::interval};
 use tracing::{error, info, info_span};

@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use crate::client::global_data::GetBotState;
 use crate::client::voice::helper_funcs::{
     get_voice_channel_of_user, is_bot_in_another_voice_channel, voice_channel_not_same_response,
 };
@@ -7,6 +8,7 @@ use crate::client::voice::play::{add_track_start_event, voice_channel_not_found_
 use serenity::all::CommandInteraction;
 use serenity::builder::EditInteractionResponse;
 use serenity::prelude::Context;
+use serenity::small_fixed_array::FixedString;
 use songbird::tracks::Track;
 use tracing::info_span;
 use tracing::{self, Instrument};
@@ -33,10 +35,7 @@ pub async fn play_from_attachment(ctx: &Context, command: &CommandInteraction) {
         return;
     }
 
-    let manager = songbird::get(ctx)
-        .await
-        .expect("Songbird Voice client placed in at initialization.")
-        .clone();
+    let manager = ctx.bot_state().read().await.songbird.clone();
 
     let message_id = command.data.target_id.unwrap();
 
@@ -64,12 +63,12 @@ pub async fn play_from_attachment(ctx: &Context, command: &CommandInteraction) {
     if !attachment
         .content_type
         .as_ref()
-        .unwrap_or(&String::new())
+        .unwrap_or(&FixedString::new())
         .contains("video")
         && !attachment
             .content_type
             .as_ref()
-            .unwrap_or(&String::new())
+            .unwrap_or(&FixedString::new())
             .contains("audio")
     {
         command

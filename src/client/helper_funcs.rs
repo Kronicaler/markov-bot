@@ -8,11 +8,10 @@ use chrono::Utc;
 use file_format::{FileFormat, Kind};
 use serenity::{
     all::{
-        CommandDataOptionValue, CommandInteraction, CommandOptionType, CreateAttachment,
+        CommandDataOptionValue, CommandInteraction, CommandOptionType, Context, CreateAttachment,
         CreateInteractionResponseMessage, EditInteractionResponse, Message,
     },
     builder::CreateInteractionResponse,
-    client::Context,
     model::{
         channel::GuildChannel,
         guild::Guild,
@@ -24,7 +23,7 @@ use tokio::{io::AsyncWriteExt, time::timeout};
 use tracing::{Instrument, error, info, info_span};
 
 #[tracing::instrument(skip(ctx))]
-pub async fn user_id_command(ctx: Context, command: &CommandInteraction) {
+pub async fn user_id_command(ctx: &Context, command: &CommandInteraction) {
     let options = &command
         .data
         .options
@@ -44,7 +43,7 @@ pub async fn user_id_command(ctx: Context, command: &CommandInteraction) {
 
     command
         .create_response(
-            ctx.http,
+            &ctx.http,
             CreateInteractionResponse::Message(
                 CreateInteractionResponseMessage::new().content(response),
             ),
@@ -55,10 +54,10 @@ pub async fn user_id_command(ctx: Context, command: &CommandInteraction) {
 }
 
 #[tracing::instrument(skip(ctx))]
-pub async fn ping_command(ctx: Context, command: &CommandInteraction) {
+pub async fn ping_command(ctx: &Context, command: &CommandInteraction) {
     command
         .create_response(
-            ctx.http,
+            &ctx.http,
             CreateInteractionResponse::Message(
                 CreateInteractionResponseMessage::new().content("Pong!"),
             ),
@@ -129,15 +128,19 @@ pub fn get_full_command_name(command: &CommandInteraction) -> String {
     }
 
     match (sub_command_group, sub_command) {
-        (None, None) => command.data.name.clone(),
-        (None, Some(b)) => command.data.name.clone() + " " + b,
-        (Some(a), None) => command.data.name.clone() + " " + a,
-        (Some(a), Some(b)) => command.data.name.clone() + " " + a + " " + b,
+        (None, None) => command.data.name.to_string(),
+        (None, Some(b)) => command.data.name.to_string() + " " + b,
+        (Some(a), None) => command.data.name.to_string() + " " + a,
+        (Some(a), Some(b)) => command.data.name.to_string() + " " + a + " " + b,
     }
 }
 
 #[tracing::instrument(skip(ctx, command, message))]
-pub async fn post_file_from_message(ctx: Context, command: &CommandInteraction, message: &Message) {
+pub async fn post_file_from_message(
+    ctx: &Context,
+    command: &CommandInteraction,
+    message: &Message,
+) {
     let mut max_filesize_mb = 50;
     loop {
         let res = download_file_from_message(message, max_filesize_mb).await;

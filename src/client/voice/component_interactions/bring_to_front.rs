@@ -1,4 +1,5 @@
 use super::super::helper_funcs::is_bot_in_another_voice_channel;
+use crate::client::global_data::GetBotState;
 use crate::client::voice::model::HasAuxMetadata;
 use crate::client::voice::queue::update_queue_message::update_queue_message;
 use serenity::all::{ComponentInteraction, ComponentInteractionDataKind};
@@ -30,10 +31,7 @@ pub async fn bring_to_front(ctx: &Context, component: &ComponentInteraction) {
         return;
     }
 
-    let manager = songbird::get(ctx)
-        .await
-        .expect("Songbird Voice client placed in at initialization.")
-        .clone();
+    let manager = ctx.bot_state().read().await.songbird.clone();
 
     let Some(call_lock) = manager.get(guild_id) else {
         warn!("Couldn't get call lock");

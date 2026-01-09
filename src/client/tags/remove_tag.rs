@@ -76,7 +76,7 @@ fn get_listener(command: &CommandInteraction) -> String {
     };
 
     match listener {
-        CommandDataOptionValue::String(l) => l,
+        CommandDataOptionValue::String(l) => l.to_string(),
         _ => panic!("Listener was expected to be a string"),
     }
 }

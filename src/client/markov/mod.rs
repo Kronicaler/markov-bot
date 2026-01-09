@@ -2,7 +2,9 @@ pub mod commands;
 mod data_access;
 mod file_operations;
 mod markov_chain;
-mod model;
+pub mod model;
+
+use crate::client::global_data::GetBotState;
 
 use self::{
     data_access::{
@@ -13,21 +15,19 @@ use self::{
     },
     file_operations::{get_messages_from_file, import_chain_from_file},
     markov_chain::filter_message_for_markov_file,
-    model::{MARKOV_EXPORT_PATH, get_markov_chain_lock, replace_markov_chain_lock},
+    model::{MARKOV_EXPORT_PATH, replace_markov_chain_lock},
 };
 use markov_str::MarkovChain;
 use rand::Rng;
 use regex::Regex;
 use serenity::{
+    all::Context,
     all::{CommandInteraction, CreateInteractionResponseMessage, User},
     builder::CreateInteractionResponse,
-    client::Context,
     model::channel::Message,
-    prelude::{RwLock, TypeMap},
 };
 use sqlx::{PgPool, Pool, Postgres};
-use std::{error::Error, fs, sync::Arc};
-use tokio::sync::RwLockWriteGuard;
+use std::fs;
 use tracing::{Instrument, info_span, instrument};
 
 pub async fn add_message_to_chain(
@@ -59,11 +59,11 @@ pub async fn add_message_to_chain(
     if let Some(filtered_message) = filtered_message {
         file_operations::append_to_markov_file(&filtered_message)?;
 
-        let data = ctx.data.clone();
+        let state_lock = ctx.bot_state();
 
         if rand::random::<f32>() < 0.001 {
             tokio::spawn(async move {
-                replace_markov_chain_lock(&data).await;
+                replace_markov_chain_lock(state_lock).await;
             });
         }
 
@@ -75,19 +75,18 @@ pub async fn add_message_to_chain(
 
 #[tracing::instrument(skip(ctx))]
 pub async fn generate_sentence(ctx: &Context, start: Option<&str>) -> String {
-    let markov_lock = get_markov_chain_lock(&ctx.data).await;
-
-    let markov_chain = markov_lock.read().await;
+    let lock = ctx.bot_state();
+    let chain = &lock.read().await.markov_chain;
 
     let output = match start {
-        Some(start) => markov_chain
+        Some(start) => chain
             .generate_start(
                 &(start.to_owned() + " "),
                 rand::thread_rng().gen_range(2..50),
                 &mut rand::thread_rng(),
             )
             .map(|o| start.to_owned() + " " + &o),
-        None => markov_chain.generate(rand::thread_rng().gen_range(2..50), &mut rand::thread_rng()),
+        None => chain.generate(rand::thread_rng().gen_range(2..50), &mut rand::thread_rng()),
     };
 
     match output {
@@ -104,7 +103,7 @@ pub async fn generate_sentence(ctx: &Context, start: Option<&str>) -> String {
 
 #[instrument]
 /// Initializes the Markov chain from [`MARKOV_EXPORT_PATH`][model::MARKOV_EXPORT_PATH]
-pub fn init() -> Result<MarkovChain, Box<dyn Error>> {
+pub fn init() -> anyhow::Result<MarkovChain> {
     let mut markov_chain = create_default_chain();
 
     if !std::path::Path::new(MARKOV_EXPORT_PATH).exists() {
@@ -168,9 +167,9 @@ pub async fn add_user_to_blacklist(
                 Some(guild_id) => user
                     .nick_in(&ctx.http, guild_id)
                     .await
-                    .or_else(|| Some(user.name.clone()))
+                    .or_else(|| Some(user.name.to_string()))
                     .expect("Should always have Some value"),
-                None => user.name.clone(),
+                None => user.name.to_string(),
             }
         ),
         Err(_) => "Something went wrong while adding you to the blacklist :(".to_owned(),
@@ -202,9 +201,9 @@ pub async fn remove_user_from_blacklist(
                 Some(guild_id) => user
                     .nick_in(&ctx.http, guild_id)
                     .await
-                    .or_else(|| Some(user.name.clone()))
+                    .or_else(|| Some(user.name.to_string()))
                     .expect("Should always have Some value"),
-                None => user.name.clone(),
+                None => user.name.to_string(),
             }
         ),
         Err(_) => "Something went wrong while removing you from the blacklist :(".to_owned(),
@@ -320,10 +319,9 @@ pub async fn stop_saving_messages_server(
     }
 }
 
-#[instrument(skip(data))]
-pub fn init_markov_data(data: &mut RwLockWriteGuard<TypeMap>) -> Result<(), Box<dyn Error>> {
+#[instrument()]
+pub fn init_markov_data() -> anyhow::Result<MarkovChain> {
     let markov = init()?;
 
-    data.insert::<model::MyMarkovChain>(Arc::new(RwLock::new(markov)));
-    Ok(())
+    Ok(markov)
 }

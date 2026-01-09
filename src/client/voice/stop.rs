@@ -1,14 +1,13 @@
 use serenity::{
+    all::Context,
     all::{Colour, CommandInteraction},
     builder::{CreateEmbed, EditInteractionResponse},
-    client::Context,
 };
 use tracing::{Instrument, info_span};
 
-use super::{
-    helper_funcs::{is_bot_in_another_voice_channel, voice_channel_not_same_response},
-    model::get_queue_data_lock,
-};
+use crate::client::global_data::GetBotState;
+
+use super::helper_funcs::{is_bot_in_another_voice_channel, voice_channel_not_same_response};
 
 ///stop playing
 #[tracing::instrument(skip(ctx))]
@@ -25,18 +24,16 @@ pub async fn stop(ctx: &Context, command: &CommandInteraction) {
         return;
     }
 
-    let manager = songbird::get(ctx)
-        .await
-        .expect("Songbird Voice client placed in at initialization.")
-        .clone();
+    let manager = ctx.bot_state().read().await.songbird.clone();
 
     if let Some(handler_lock) = manager.get(guild_id) {
         let handler = handler_lock.lock().await;
         let queue = handler.queue();
         queue.stop();
-        let queue_lock = get_queue_data_lock(&ctx.data).await;
-        let mut queue = queue_lock.write().await;
+        let state_lock = ctx.bot_state();
+        let mut queue = state_lock.write().await;
         queue
+            .queue_data
             .filling_queue
             .entry(command.guild_id.unwrap())
             .and_modify(|f| *f = false);

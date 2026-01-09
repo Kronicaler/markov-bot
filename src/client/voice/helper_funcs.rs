@@ -1,7 +1,6 @@
 use serenity::{
-    all::{CommandInteraction, VoiceState},
+    all::{CommandInteraction, Context, GuildId, VoiceState},
     builder::EditInteractionResponse,
-    client::Context,
     model::{
         guild::Guild,
         id::{ChannelId, UserId},
@@ -9,7 +8,7 @@ use serenity::{
 };
 use tracing::{Instrument, info_span};
 
-use crate::client::helper_funcs::get_guild_channel;
+use crate::client::{global_data::GetBotState, helper_funcs::get_guild_channel};
 
 pub fn get_voice_channel_of_user(guild: &Guild, user_id: UserId) -> Option<ChannelId> {
     guild
@@ -59,13 +58,10 @@ pub async fn voice_channel_not_same_response(command: &CommandInteraction, ctx: 
 
 pub async fn get_call_lock(
     ctx: &Context,
-    guild_id: serenity::model::id::GuildId,
+    guild_id: GuildId,
     command: &CommandInteraction,
 ) -> Option<std::sync::Arc<serenity::prelude::Mutex<songbird::Call>>> {
-    let manager = songbird::get(ctx)
-        .await
-        .expect("Songbird Voice client placed in at initialization.")
-        .clone();
+    let manager = ctx.bot_state().read().await.songbird.clone();
 
     let Some(call_lock) = manager.get(guild_id) else {
         command
@@ -83,7 +79,7 @@ pub async fn get_call_lock(
     Some(call_lock)
 }
 
-pub async fn leave_vc_if_alone(old: Option<VoiceState>, ctx: &Context) {
+pub async fn leave_vc_if_alone(old: &Option<VoiceState>, ctx: &Context) {
     let Some(old) = old else { return };
 
     let Some(guild_id) = old.guild_id else { return };
@@ -92,10 +88,7 @@ pub async fn leave_vc_if_alone(old: Option<VoiceState>, ctx: &Context) {
         return;
     };
 
-    let manager = songbird::get(ctx)
-        .await
-        .expect("Songbird Voice client placed in at initialization.")
-        .clone();
+    let manager = ctx.bot_state().read().await.songbird.clone();
 
     let call_mutex = manager.get(guild_id);
     if call_mutex.is_none() {
@@ -113,7 +106,7 @@ pub async fn leave_vc_if_alone(old: Option<VoiceState>, ctx: &Context) {
 
     let changed_voice_channel = get_guild_channel(guild_id, ctx, channel_id).await.unwrap();
 
-    if changed_voice_channel.id.get() != bot_voice_channel.0.get() {
+    if changed_voice_channel.id.get() != bot_voice_channel.get() {
         return;
     }
 

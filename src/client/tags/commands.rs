@@ -6,7 +6,7 @@ use strum::EnumProperty;
 
 use crate::client::slash_commands::UserCommand;
 
-pub fn create_tag_commands() -> CreateCommand {
+pub fn create_tag_commands() -> CreateCommand<'static> {
     let command = CreateCommand::new("tag");
 
     command
@@ -35,7 +35,7 @@ pub fn create_tag_commands() -> CreateCommand {
         ))
 }
 
-fn create_tag_creation_option() -> CreateCommandOption {
+fn create_tag_creation_option() -> CreateCommandOption<'static> {
     CreateCommandOption::new(
         CommandOptionType::SubCommand,
         UserCommand::create_tag.get_str("SubCommand").unwrap(),
@@ -55,7 +55,7 @@ fn create_tag_creation_option() -> CreateCommandOption {
     )
 }
 
-fn create_tag_removal_option() -> CreateCommandOption {
+fn create_tag_removal_option() -> CreateCommandOption<'static> {
     CreateCommandOption::new(
         CommandOptionType::SubCommand,
         UserCommand::remove_tag.get_str("SubCommand").unwrap(),

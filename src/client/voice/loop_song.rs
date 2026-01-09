@@ -1,9 +1,11 @@
 use std::time::Duration;
 
-use serenity::{all::CommandInteraction, builder::EditInteractionResponse, client::Context};
+use serenity::{all::CommandInteraction, all::Context, builder::EditInteractionResponse};
 use songbird::tracks::LoopState;
 use tokio::time::timeout;
 use tracing::{Instrument, info_span};
+
+use crate::client::global_data::GetBotState;
 
 use super::helper_funcs::{is_bot_in_another_voice_channel, voice_channel_not_same_response};
 
@@ -23,10 +25,7 @@ pub async fn loop_song(ctx: &Context, command: &CommandInteraction) {
         return;
     }
 
-    let manager = songbird::get(ctx)
-        .await
-        .expect("Songbird Voice client placed in at initialization.")
-        .clone();
+    let manager = ctx.bot_state().read().await.songbird.clone();
 
     // Get call
     let Some(call_lock) = manager.get(guild_id) else {

@@ -24,7 +24,7 @@ pub async fn create_tag(ctx: &Context, command: &CommandInteraction, pool: &Pool
     match super::data_access::create_tag(
         listener.to_lowercase().trim().to_owned(),
         response.trim().to_owned(),
-        command.user.name.clone(),
+        command.user.name.to_string(),
         command.user.id.get() as i64,
         guild_id.get() as i64,
         pool,
@@ -117,7 +117,7 @@ fn get_listener_and_response(command: &CommandInteraction) -> (String, String) {
         panic!("Expected listener to be a string")
     };
 
-    (listener, response)
+    (listener.to_string(), response.to_string())
 }
 
 fn is_tag_valid(response: &str, listener: &str) -> bool {

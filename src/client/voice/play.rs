@@ -1,6 +1,7 @@
 use crate::client::{
+    global_data::GetBotState,
     helper_funcs::get_guild_channel,
-    voice::{create_bring_to_front_button, create_play_now_button, model::get_voice_messages_lock},
+    voice::{create_bring_to_front_button, create_play_now_button},
 };
 
 use super::{
@@ -8,7 +9,6 @@ use super::{
     helper_funcs::{
         get_voice_channel_of_user, is_bot_in_another_voice_channel, voice_channel_not_same_response,
     },
-    model::get_queue_data_lock,
     queue::update_queue_message::update_queue_message,
 };
 use file_format::{FileFormat, Kind};
@@ -23,9 +23,8 @@ use rspotify::{
     prelude::BaseClient,
 };
 use serenity::{
-    all::{Colour, CommandDataOptionValue, CommandInteraction, GuildId},
+    all::{Colour, CommandDataOptionValue, CommandInteraction, Context, CreateComponent, GuildId},
     builder::{CreateActionRow, CreateEmbed, EditInteractionResponse},
-    client::Context,
     prelude::Mutex,
 };
 use songbird::{
@@ -33,7 +32,7 @@ use songbird::{
     input::{AuxMetadata, Input, YoutubeDl},
     tracks::{Track, TrackQueue},
 };
-use std::{cmp::min, collections::VecDeque, sync::Arc, time::Duration};
+use std::{borrow::Cow, cmp::min, collections::VecDeque, sync::Arc, time::Duration};
 use tokio::time::timeout;
 use tracing::{Instrument, error, info, info_span, warn};
 use url::Url;
@@ -57,7 +56,7 @@ pub async fn play(ctx: &Context, command: &CommandInteraction) {
         return;
     };
 
-    let manager = songbird::get(ctx).await.expect("songbird error").clone();
+    let manager = ctx.bot_state().read().await.songbird.clone();
 
     let queue = match manager.get(guild_id) {
         Some(e) => Some(e.lock().await.queue().clone()),
@@ -106,7 +105,7 @@ pub async fn play(ctx: &Context, command: &CommandInteraction) {
     }
 }
 
-#[tracing::instrument(skip(input, ctx, call_lock))]
+#[tracing::instrument(skip(input, metadata, command, ctx, call_lock))]
 pub async fn handle_video(
     input: Input,
     metadata: AuxMetadata,
@@ -119,7 +118,7 @@ pub async fn handle_video(
         .unwrap();
     let my_metadata = MyAuxMetadata {
         aux_metadata: metadata.clone(),
-        queued_by: command.user.name.clone(),
+        queued_by: command.user.name.to_string(),
     };
     let track = Track::new_with_data(input, Arc::new(my_metadata));
     call.enqueue(track).await;
@@ -150,7 +149,7 @@ async fn handle_playlist(
 
             let my_metadata = MyAuxMetadata {
                 aux_metadata: metadata.clone(),
-                queued_by: command.user.name.clone(),
+                queued_by: command.user.name.to_string(),
             };
             let track = Track::new_with_data(input, Arc::new(my_metadata));
             call.enqueue(track).await;
@@ -166,7 +165,7 @@ async fn handle_playlist(
         call_lock,
         ctx,
         command.guild_id.unwrap(),
-        command.user.name.clone(),
+        command.user.name.to_string(),
     )
     .await;
 }
@@ -179,11 +178,12 @@ async fn fill_queue(
     guild_id: GuildId,
     queued_by: String,
 ) {
-    let queue_data_lock = get_queue_data_lock(&ctx.data).await;
+    let state_lock = &ctx.bot_state();
 
-    queue_data_lock
+    state_lock
         .write()
         .await
+        .queue_data
         .filling_queue
         .insert(guild_id, true);
 
@@ -191,9 +191,10 @@ async fn fill_queue(
 
     let mut fetch_aux_metadata_futures: Vec<_> = vec![];
     for i in 0..(inputs.len() - 1) {
-        let shuffle_queue = queue_data_lock
+        let shuffle_queue = state_lock
             .read()
             .await
+            .queue_data
             .shuffle_queue
             .get(&guild_id)
             .copied()
@@ -202,16 +203,18 @@ async fn fill_queue(
         if shuffle_queue {
             inputs.make_contiguous().shuffle(&mut rand::thread_rng());
 
-            queue_data_lock
+            state_lock
                 .write()
                 .await
+                .queue_data
                 .shuffle_queue
                 .insert(guild_id, false);
         }
 
-        let skip_queue = queue_data_lock
+        let skip_queue = state_lock
             .read()
             .await
+            .queue_data
             .skip_queue
             .get(&guild_id)
             .cloned();
@@ -244,13 +247,18 @@ async fn fill_queue(
                 }
             }
 
-            queue_data_lock.write().await.skip_queue.remove(&guild_id);
+            state_lock
+                .write()
+                .await
+                .queue_data
+                .skip_queue
+                .remove(&guild_id);
         }
 
         let mut input = inputs.pop_front().unwrap();
 
         let call_lock = call_lock.clone();
-        let queue_data_lock = queue_data_lock.clone();
+        let queue_data_lock = state_lock.clone();
 
         let call = timeout(Duration::from_secs(30), call_lock.lock())
             .await
@@ -263,7 +271,7 @@ async fn fill_queue(
 
         drop(call);
 
-        let voice_channel = get_guild_channel(guild_id, ctx, current_channel.0.into())
+        let voice_channel = get_guild_channel(guild_id, ctx, current_channel.get().into())
             .await
             .unwrap();
 
@@ -319,6 +327,7 @@ async fn fill_queue(
                 let queue_filling_stopped = !queue_data_lock
                     .read()
                     .await
+                    .queue_data
                     .filling_queue
                     .get(&guild_id)
                     .unwrap();
@@ -394,7 +403,7 @@ fn get_query(command: &CommandInteraction) -> String {
         .expect("expected input");
 
     match query.value.clone() {
-        CommandDataOptionValue::String(s) => s,
+        CommandDataOptionValue::String(s) => s.to_string(),
         _ => panic!("expected a string"),
     }
 }
@@ -653,7 +662,7 @@ async fn return_response(
     if is_playlist {
         buttons.push(create_shuffle_button());
     }
-    let action_row = CreateActionRow::Buttons(buttons);
+    let action_row = CreateComponent::ActionRow(CreateActionRow::Buttons(Cow::Owned(buttons)));
 
     let message = command
         .edit_response(
@@ -667,8 +676,8 @@ async fn return_response(
         .await
         .expect("Error creating interaction response");
 
-    let voice_messages_lock = get_voice_messages_lock(&ctx.data).await;
-    let mut voice_messages = voice_messages_lock.write().await;
+    let state_lock = ctx.bot_state();
+    let voice_messages = &mut state_lock.write().await.voice_messages;
 
     if message.content.contains("Playing") {
         voice_messages
@@ -697,7 +706,7 @@ fn get_queue_durations(queue: &TrackQueue) -> Vec<Duration> {
     durations
 }
 
-pub fn create_track_embed(metadata: &AuxMetadata) -> CreateEmbed {
+pub fn create_track_embed(metadata: &AuxMetadata) -> CreateEmbed<'_> {
     let title = metadata.title.clone().unwrap_or_default();
     let channel = metadata.channel.clone().unwrap_or_default();
     let thumbnail = metadata.thumbnail.clone().unwrap_or_default();

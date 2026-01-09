@@ -1,24 +1,25 @@
 use std::{cmp::max, sync::Arc, time::Duration};
 
+use serenity::all::Context;
 use serenity::builder::EditMessage;
-use serenity::client::Context;
 use serenity::model::id::GuildId;
 use songbird::Call;
 use tokio::{sync::Mutex, time::timeout};
 use tracing::{Instrument, info_span, instrument};
 
-use crate::client::voice::model::get_voice_messages_lock;
+use crate::client::global_data::GetBotState;
 
 use super::command_response::{create_queue_edit_message, get_queue_start_from_queue_message};
 
 #[instrument(skip(ctx, call_lock))]
 pub async fn update_queue_message(ctx: &Context, guild_id: GuildId, call_lock: Arc<Mutex<Call>>) {
-    let voice_messages_lock = get_voice_messages_lock(&ctx.data).await;
+    let state_lock = ctx.bot_state();
 
-    let queue_message = voice_messages_lock
+    let queue_message = state_lock
         .read()
         .instrument(info_span!("Waiting for voice_messages read lock"))
         .await
+        .voice_messages
         .queue
         .get(&guild_id)
         .cloned();
@@ -36,7 +37,8 @@ pub async fn update_queue_message(ctx: &Context, guild_id: GuildId, call_lock: A
                 .expect("Error creating interaction response");
             return;
         }
-        let mut queue_start = get_queue_start_from_queue_message(&queue_message.content);
+        let mut queue_start =
+            get_queue_start_from_queue_message(queue_message.content.to_string());
 
         let queue = call.queue().clone();
         drop(call);
@@ -56,10 +58,11 @@ pub async fn update_queue_message(ctx: &Context, guild_id: GuildId, call_lock: A
             .await
             .expect("Error creating interaction response");
 
-        voice_messages_lock
+        state_lock
             .write()
             .instrument(info_span!("Waiting for voice_messages write lock"))
             .await
+            .voice_messages
             .queue
             .insert(guild_id, queue_message);
     }

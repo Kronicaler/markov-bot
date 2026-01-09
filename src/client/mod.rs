@@ -9,12 +9,14 @@ pub mod slash_commands;
 pub mod tags;
 pub mod voice;
 
-use global_data::{HELP_MESSAGE, init_global_data_for_client};
+use global_data::{HELP_MESSAGE, init_bot_state};
 use itertools::Itertools;
 use regex::Regex;
 use slash_commands::{command_responses, create_global_commands};
 use sqlx::{Pool, Postgres};
 use tracing::{Instrument, info_span};
+
+use crate::client::global_data::GetBotState;
 
 use self::{
     tags::{blacklist_user, respond_to_tag},
@@ -30,18 +32,16 @@ use self::{
 use super::tags::check_for_tag_listeners;
 use serenity::{
     Client,
-    all::{CreateInteractionResponseMessage, Guild, Interaction, InteractionResponseFlags},
+    all::{
+        Context, CreateInteractionResponseMessage, EventHandler, FullEvent, Guild, Interaction,
+        MessageFlags, Token, VoiceGatewayManager,
+    },
     async_trait,
     builder::{CreateInteractionResponse, CreateMessage},
-    client::{Context, EventHandler},
     model::{channel::Message, gateway::Ready, voice::VoiceState},
     prelude::GatewayIntents,
 };
-use songbird::{
-    Config, SerenityInit,
-    driver::retry::{Retry, Strategy},
-};
-use std::{env, str::FromStr, time::Duration};
+use std::{env, str::FromStr, sync::Arc, time::Duration};
 use strum_macros::{Display, EnumString};
 use tokio::{select, time::timeout};
 
@@ -64,17 +64,16 @@ struct Handler {
     pool: Pool<Postgres>,
 }
 
-#[async_trait]
-impl EventHandler for Handler {
+impl Handler {
     /// Is called when the bot connects to discord
-    async fn ready(&self, ctx: Context, ready: Ready) {
+    async fn ready(&self, ctx: &Context, ready: Ready) {
         println!("{} is connected!", ready.user.name);
 
-        create_global_commands(&ctx).await;
+        create_global_commands(ctx).await;
     }
     // Is called when the bot gets data for a guild
     // if is_new is true then the bot just joined a new guild
-    async fn guild_create(&self, ctx: Context, guild: Guild, is_new: std::option::Option<bool>) {
+    async fn guild_create(&self, ctx: &Context, guild: Guild, _is_new: Option<bool>) {
         let owner = guild
             .member(&ctx.http, guild.owner_id)
             .await
@@ -82,32 +81,16 @@ impl EventHandler for Handler {
             .user
             .clone();
 
-        if is_new.unwrap_or(false) {
-            println!(
-                "Joined guild {} owned by {} with {} members",
-                guild.name,
-                owner.tag(),
-                guild.member_count
-            );
-
-            owner.direct_message(&ctx.http, CreateMessage::new().content("
-Hi, I was just invited to your server by an admin. I'm a general purpose bot. I can play music, chat and i also have tag functionality. Type /help if you want to see all of my commands.\n\n
-Due to my chatting functionality I save every message that gets said in the server. These saved messages aren't linked to any usernames so they're anonymized.
-The admins of the server can prevent the saving of messages in certain channels (/stop-saving-messages-channel) or in the whole server (/stop-saving-messages-server)
-and the users can choose themselves if they don't want their messages saved (/stop-saving-my-messages)")
-            ).await.unwrap();
-        } else {
-            println!(
-                "Got data for guild {} owned by {} with {} members",
-                guild.name,
-                owner.tag(),
-                guild.member_count
-            );
-        }
+        println!(
+            "Got data for guild {} owned by {} with {} members",
+            guild.name,
+            owner.tag(),
+            guild.member_count
+        );
     }
 
     /// Is called when a user starts an [`Interaction`]
-    async fn interaction_create(&self, ctx: Context, interaction: Interaction) {
+    async fn interaction_create(&self, ctx: &Context, interaction: Interaction) {
         match interaction {
             Interaction::Ping(_) => todo!(),
             Interaction::Command(command) => {
@@ -119,14 +102,14 @@ and the users can choose themselves if they don't want their messages saved (/st
 
                 match button_id {
                     ComponentIds::BlacklistMeFromTags => {
-                        let response = blacklist_user(&component.user, &__self.pool).await;
+                        let response = blacklist_user(&component.user, &self.pool).await;
                         component
                             .create_response(
                                 &ctx.http,
                                 CreateInteractionResponse::Message(
                                     CreateInteractionResponseMessage::new()
                                         .content(response)
-                                        .flags(InteractionResponseFlags::EPHEMERAL),
+                                        .flags(MessageFlags::EPHEMERAL),
                                 ),
                             )
                             .instrument(info_span!("Sending message"))
@@ -137,20 +120,20 @@ and the users can choose themselves if they don't want their messages saved (/st
                     | ComponentIds::QueuePrevious
                     | ComponentIds::QueueStart
                     | ComponentIds::QueueEnd => {
-                        change_queue_page(&ctx, &mut component, button_id).await;
+                        change_queue_page(ctx, &mut component, button_id).await;
                     }
                     ComponentIds::Skip => {
-                        skip_button_press(&ctx, &component).await.unwrap();
+                        skip_button_press(ctx, &component).await.unwrap();
                     }
                     ComponentIds::PlayNow | ComponentIds::PlayNowMenu => {
-                        play_now(&ctx, &component).await;
+                        play_now(ctx, &component).await;
                     }
                     ComponentIds::BringToFront | ComponentIds::BringToFrontMenu => {
-                        bring_to_front(&ctx, &component).await;
+                        bring_to_front(ctx, &component).await;
                     }
                     ComponentIds::Shuffle => {
                         component.defer(&ctx.http).await.unwrap();
-                        shuffle_queue(&ctx, component.guild_id.unwrap())
+                        shuffle_queue(ctx, component.guild_id.unwrap())
                             .await
                             .unwrap();
                     }
@@ -161,12 +144,12 @@ and the users can choose themselves if they don't want their messages saved (/st
     }
 
     /// Is called by the framework whenever a user sends a message in a guild or in the bots DMs
-    async fn message(&self, ctx: Context, msg: Message) {
-        if msg.author.bot {
+    async fn message(&self, ctx: &Context, msg: Message) {
+        if msg.author.bot() {
             return;
         }
 
-        markov::add_message_to_chain(&msg, &ctx, &self.pool)
+        markov::add_message_to_chain(&msg, ctx, &self.pool)
             .await
             .ok();
 
@@ -204,14 +187,14 @@ and the users can choose themselves if they don't want their messages saved (/st
                     msg.channel_id
                         .say(
                             &ctx.http,
-                            markov::generate_sentence(&ctx, Some(&sanitized_message)).await,
+                            markov::generate_sentence(ctx, Some(&sanitized_message)).await,
                         )
                         .instrument(info_span!("Sending message"))
                         .await
                         .expect("Couldn't send message");
                 } else {
                     msg.channel_id
-                        .say(&ctx.http, markov::generate_sentence(&ctx, None).await)
+                        .say(&ctx.http, markov::generate_sentence(ctx, None).await)
                         .instrument(info_span!("Sending message"))
                         .await
                         .expect("Couldn't send message");
@@ -231,18 +214,22 @@ and the users can choose themselves if they don't want their messages saved (/st
             )
             .await
         {
-            respond_to_tag(&ctx, &msg, &response, &self.pool).await;
-            return;
+            respond_to_tag(ctx, &msg, &response, &self.pool).await;
         }
     }
 
-    async fn voice_state_update(&self, ctx: Context, old: Option<VoiceState>, new: VoiceState) {
-        leave_vc_if_alone(old, &ctx).await;
+    async fn voice_state_update(&self, ctx: &Context, old: Option<VoiceState>, new: VoiceState) {
+        leave_vc_if_alone(&old, ctx).await;
 
         if new.channel_id.is_none() && new.user_id == ctx.http.application_id().unwrap().get() {
-            let manager = songbird::get(&ctx).await.unwrap();
+            let state_lock = ctx.bot_state();
+            let state = state_lock.read().await;
+            let call_lock = state.songbird.get(new.guild_id.unwrap());
 
-            let call_lock = manager.get(new.guild_id.unwrap()).unwrap();
+            let Some(call_lock) = call_lock else {
+                return;
+            };
+
             let mut call = timeout(Duration::from_secs(30), call_lock.lock())
                 .await
                 .unwrap();
@@ -253,15 +240,28 @@ and the users can choose themselves if they don't want their messages saved (/st
     }
 }
 
-pub async fn start() {
-    let token = env::var("DISCORD_TOKEN").expect("Expected a DISCORD_TOKEN in the environment");
+#[async_trait]
+impl EventHandler for Handler {
+    async fn dispatch(&self, ctx: &Context, event: &FullEvent) {
+        match event.clone() {
+            FullEvent::Ready { data_about_bot, .. } => self.ready(&ctx, data_about_bot).await,
+            FullEvent::GuildCreate { guild, is_new, .. } => {
+                self.guild_create(&ctx, guild, is_new).await;
+            }
+            FullEvent::InteractionCreate { interaction, .. } => {
+                self.interaction_create(&ctx, interaction).await;
+            }
+            FullEvent::Message { new_message, .. } => self.message(&ctx, new_message).await,
+            FullEvent::VoiceStateUpdate { old, new, .. } => {
+                self.voice_state_update(&ctx, old, new).await;
+            }
+            _ => {}
+        }
+    }
+}
 
-    let songbird_config = Config::default()
-        .driver_retry(Retry {
-            retry_limit: Some(60),
-            strategy: Strategy::Every(std::time::Duration::from_secs(10)),
-        })
-        .preallocated_tracks(2);
+pub async fn start() {
+    let token = Token::from_env("DISCORD_TOKEN").unwrap();
 
     let intents = GatewayIntents::GUILD_MESSAGES
         | GatewayIntents::DIRECT_MESSAGES
@@ -274,15 +274,17 @@ pub async fn start() {
 
     sqlx::migrate!("./migrations").run(&pool).await.unwrap();
 
+    let bot_state = init_bot_state()
+        .await
+        .expect("Couldn't initialize bot state");
+    let songbird = bot_state.read().await.songbird.clone();
+
     let mut client = Client::builder(token, intents)
-        .event_handler(Handler { pool })
-        .register_songbird_from_config(songbird_config)
+        .event_handler(Arc::new(Handler { pool }) as Arc<dyn EventHandler>)
+        .data(Arc::new(bot_state))
+        .voice_manager(songbird as Arc<dyn VoiceGatewayManager>)
         .await
         .expect("Error creating client");
-
-    init_global_data_for_client(&client)
-        .await
-        .expect("Couldn't initialize global data");
 
     let termination_signal = wait_for_signal();
     let client = client.start();

@@ -20,7 +20,7 @@ use std::{
 
 use itertools::Itertools;
 use serenity::all::{
-    CommandInteraction, Context, CreateAttachment, CreateQuickModal, EditInteractionResponse,
+    CommandInteraction, Context, CreateAttachment, CreateInputText, CreateQuickModal, EditInteractionResponse, InputTextStyle, QuickModal,
 };
 use sqlx::{PgConnection, PgPool};
 use tracing::{Instrument, info, info_span};
@@ -134,7 +134,7 @@ async fn post_random_meme(
     let Some(mfc) = mfc else {
         command
             .edit_response(
-                &ctx,
+                &ctx.http,
                 EditInteractionResponse::new().content("Tag doesn't exist"),
             )
             .await?;
@@ -158,7 +158,7 @@ async fn post_ordered_meme(
     let Some(category) = category else {
         command
             .edit_response(
-                &ctx,
+                &ctx.http,
                 EditInteractionResponse::new().content("Tag doesn't exist"),
             )
             .await?;
@@ -240,7 +240,7 @@ async fn post_meme(
     let Some(meme_file) = meme_file else {
         command
             .edit_response(
-                &ctx,
+                &ctx.http,
                 EditInteractionResponse::new().content("Tag doesn't exist"),
             )
             .await?;
@@ -249,7 +249,7 @@ async fn post_meme(
     let file_bytes = dal::read_file(&meme_file)?;
     command
         .edit_response(
-            &ctx,
+            &ctx.http,
             EditInteractionResponse::new().new_attachment(CreateAttachment::bytes(
                 file_bytes,
                 format!("{}.{}", meme_file.name, meme_file.extension),
@@ -270,7 +270,11 @@ pub async fn upload_meme(
             ctx,
             CreateQuickModal::new("Upload meme")
                 .timeout(Duration::from_mins(10))
-                .short_field("Tags"),
+                .field_with_description(
+                    "Tags",
+                    "Input the tags of the meme you selected. Make sure the tags are separated by spaces. For example for a cute cat video you'd input the tags ``cat cute``",
+                    CreateInputText::new(InputTextStyle::Short, "tags"),
+                ),
         )
         .await?;
 
@@ -278,7 +282,10 @@ pub async fn upload_meme(
         return Ok(());
     };
 
-    modal_response.interaction.defer_ephemeral(ctx).await?;
+    modal_response
+        .interaction
+        .defer_ephemeral(&ctx.http)
+        .await?;
 
     let message_id = command.data.target_id.unwrap();
 

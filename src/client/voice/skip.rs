@@ -2,15 +2,15 @@ use std::{str::FromStr, time::Duration};
 
 use anyhow::Context;
 use serenity::{
+    all::Context as ClientContext,
     all::{Colour, CommandInteraction, GuildId},
     builder::{CreateEmbed, EditInteractionResponse},
-    client::Context as ClientContext,
 };
 use strum_macros::EnumString;
 use tokio::time::timeout;
 use tracing::{Instrument, info_span};
 
-use crate::client::voice::model::get_queue_data_lock;
+use crate::client::global_data::GetBotState;
 
 use super::helper_funcs::{
     get_call_lock, is_bot_in_another_voice_channel, voice_channel_not_same_response,
@@ -84,17 +84,19 @@ async fn handle_skip_type_until(
     ctx: &ClientContext,
     guild_id: GuildId,
 ) -> anyhow::Result<()> {
-    let queue_data_lock = get_queue_data_lock(&ctx.data).await;
-    let mut queue_data = queue_data_lock.write().await;
+    let state_lock = ctx.bot_state();
+    let mut state = state_lock.write().await;
 
-    let filling_queue = queue_data
+    let filling_queue = state
+        .queue_data
         .filling_queue
         .get(&guild_id)
         .copied()
         .unwrap_or(false);
 
     if filling_queue {
-        queue_data
+        state
+            .queue_data
             .skip_queue
             .insert(guild_id, (SkipType::Until, track_number));
         return Ok(());
@@ -119,17 +121,19 @@ async fn handle_skip_type_number(
     ctx: &ClientContext,
     guild_id: GuildId,
 ) -> bool {
-    let queue_data_lock = get_queue_data_lock(&ctx.data).await;
-    let mut queue_data = queue_data_lock.write().await;
+    let state_lock = ctx.bot_state();
+    let mut state = state_lock.write().await;
 
-    let filling_queue = queue_data
+    let filling_queue = state
+        .queue_data
         .filling_queue
         .get(&guild_id)
         .copied()
         .unwrap_or(false);
 
     if filling_queue {
-        queue_data
+        state
+            .queue_data
             .skip_queue
             .insert(guild_id, (SkipType::Number, track_number));
         return true;

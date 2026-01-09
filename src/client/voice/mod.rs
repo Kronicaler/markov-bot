@@ -1,58 +1,45 @@
 pub mod commands;
 pub mod component_interactions;
 pub mod helper_funcs;
-mod loop_song;
+pub mod loop_song;
 pub mod model;
-mod play;
-mod play_from_attachment;
-mod playing;
+pub mod play;
+pub mod play_from_attachment;
+pub mod playing;
 pub mod queue;
-mod skip;
-mod stop;
-mod swap;
+pub mod skip;
+pub mod stop;
+pub mod swap;
 
-use self::model::MyAuxMetadata;
-use self::model::get_voice_messages_lock;
-use self::queue::command_response::get_song_metadata_from_queue;
+use self::{model::MyAuxMetadata, queue::command_response::get_song_metadata_from_queue};
 use super::ComponentIds;
-use crate::client::voice::play::create_track_embed;
-use crate::client::voice::queue::update_queue_message::update_queue_message;
+use crate::client::{
+    global_data::GetBotState,
+    voice::{play::create_track_embed, queue::update_queue_message::update_queue_message},
+};
 use futures::future::join_all;
 use itertools::Itertools;
-pub use loop_song::loop_song;
-pub use play::play;
-pub use play_from_attachment::play_from_attachment;
-pub use playing::playing;
-use serenity::all::ActionRowComponent;
-use serenity::all::ButtonKind;
-use serenity::all::ButtonStyle;
-use serenity::all::CreateSelectMenuKind;
-use serenity::all::ReactionType;
-use serenity::async_trait;
-use serenity::builder::CreateActionRow;
-use serenity::builder::CreateButton;
-use serenity::builder::CreateMessage;
-use serenity::builder::CreateSelectMenu;
-use serenity::builder::CreateSelectMenuOption;
-use serenity::builder::EditMessage;
-use serenity::client::Context;
-use serenity::model::id::ChannelId;
-use serenity::model::id::GuildId;
-use serenity::model::prelude::Message;
-pub use skip::skip;
-use songbird::EventHandler;
-use songbird::tracks::TrackQueue;
-use std::cmp::max;
-use std::cmp::min;
+use serenity::{
+    all::{
+        ActionRowComponent, ButtonKind, ButtonStyle, Component, Context, CreateComponent, CreateEmbed, CreateSelectMenuKind, GenericChannelId, ReactionType,
+    },
+    async_trait,
+    builder::{
+        CreateActionRow, CreateButton, CreateMessage, CreateSelectMenu, CreateSelectMenuOption,
+        EditMessage,
+    },
+    model::{
+        id::{ChannelId, GuildId},
+        prelude::Message,
+    },
+    small_fixed_array::FixedString,
+};
+use songbird::{EventHandler, tracks::TrackQueue};
 use std::time::Duration;
-pub use stop::stop;
-pub use swap::swap;
+use std::{borrow::Cow, cmp::min};
+use std::{cmp::max, str::FromStr};
 use tokio::time::timeout;
-use tracing::Instrument;
-use tracing::info;
-use tracing::info_span;
-use tracing::instrument;
-use tracing::warn;
+use tracing::{Instrument, info, info_span, instrument, warn};
 
 /*
  * voice.rs, LasagnaBoi 2022
@@ -67,7 +54,7 @@ struct PeriodicHandler {
 #[async_trait]
 impl EventHandler for PeriodicHandler {
     async fn act(&self, _ctx: &songbird::EventContext<'_>) -> Option<songbird::Event> {
-        let songbird = songbird::get(&self.ctx).await.unwrap();
+        let songbird = self.ctx.bot_state().read().await.songbird.clone();
         let call_lock = songbird.get(self.guild_id).unwrap();
         let mut call = timeout(Duration::from_secs(30), call_lock.lock())
             .await
@@ -90,15 +77,15 @@ impl PeriodicHandler {
         &self,
         call: &tokio::sync::MutexGuard<'_, songbird::Call>,
     ) -> bool {
-        let channel_id = ChannelId::new(call.current_channel().unwrap().0.get());
+        let channel_id = call.current_channel().unwrap();
         let guild_id = call.current_connection().unwrap().guild_id;
         let voice_channel_members = self
             .ctx
             .cache
-            .guild(guild_id.0)
+            .guild(GuildId::new(guild_id.get()))
             .unwrap()
             .channels
-            .get(&channel_id)
+            .get(&ChannelId::new(channel_id.get()))
             .unwrap()
             .members(&self.ctx.cache)
             .unwrap();
@@ -112,7 +99,7 @@ impl PeriodicHandler {
 }
 
 struct TrackStartHandler {
-    voice_text_channel: ChannelId,
+    voice_text_channel: GenericChannelId,
     guild_id: GuildId,
     ctx: Context,
 }
@@ -134,10 +121,7 @@ impl EventHandler for TrackStartHandler {
             .update_last_message()
             .instrument(info_span!("Updating the 'Now playing' message"));
 
-        let manager = songbird::get(&self.ctx)
-            .await
-            .expect("Songbird Voice client placed in at initialization.")
-            .clone();
+        let manager = self.ctx.bot_state().read().await.songbird.clone();
 
         let Some(call_lock) = manager.get(self.guild_id) else {
             warn!("Couldn't get call lock");
@@ -157,14 +141,14 @@ mod modname {}
 
 impl TrackStartHandler {
     #[instrument]
-    async fn send_now_playing_message(&self, embed: serenity::builder::CreateEmbed) -> Message {
+    async fn send_now_playing_message(&self, embed: CreateEmbed<'_>) -> Message {
         self.voice_text_channel
             .send_message(
                 &self.ctx.http,
                 CreateMessage::new()
                     .content("Now playing")
                     .embed(embed)
-                    .components(vec![set_skip_button_row()]),
+                    .components(Cow::Owned(vec![set_skip_button_row()])),
             )
             .instrument(info_span!("Sending message"))
             .await
@@ -173,7 +157,7 @@ impl TrackStartHandler {
 
     #[instrument]
     async fn update_last_message(&self) {
-        let songbird = songbird::get(&self.ctx).await.unwrap();
+        let songbird = self.ctx.bot_state().read().await.songbird.clone();
 
         let call_lock = songbird.get(self.guild_id).unwrap();
         let call = call_lock
@@ -192,12 +176,13 @@ impl TrackStartHandler {
 
         let embed = create_track_embed(&track_metadata);
 
-        let voice_messages_lock = get_voice_messages_lock(&self.ctx.data).await;
+        let state_lock = self.ctx.bot_state();
 
-        let last_message = voice_messages_lock
+        let last_message = state_lock
             .read()
             .instrument(info_span!("Waiting for voice_messages read lock"))
             .await
+            .voice_messages
             .get_last_message_type_in_channel(self.guild_id, &self.ctx)
             .await;
 
@@ -205,18 +190,22 @@ impl TrackStartHandler {
             model::LastMessageType::NowPlaying(mut message) => {
                 let mut buttons = vec![create_skip_button()];
                 if message.components.iter().any(|c| {
-                    c.components.iter().any(|c| {
-                        if let ActionRowComponent::Button(b) = c
-                            && let ButtonKind::NonLink {
-                                custom_id,
-                                style: _,
-                            } = &b.data
-                            && custom_id == &ComponentIds::Shuffle.to_string()
-                        {
-                            return true;
-                        }
+                    if let Component::ActionRow(c) = c {
+                        c.components.iter().any(|c| {
+                            if let ActionRowComponent::Button(b) = c
+                                && let ButtonKind::NonLink {
+                                    custom_id,
+                                    style: _,
+                                } = &b.data
+                                && custom_id == &ComponentIds::Shuffle.to_string()
+                            {
+                                return true;
+                            }
+                            false
+                        })
+                    } else {
                         false
-                    })
+                    }
                 }) {
                     buttons.push(create_shuffle_button());
                 }
@@ -224,18 +213,21 @@ impl TrackStartHandler {
                 message
                     .edit(
                         &self.ctx.http,
-                        EditMessage::new()
-                            .embed(embed)
-                            .components(vec![CreateActionRow::Buttons(buttons)]),
+                        EditMessage::new().embed(embed).components(Cow::Owned(vec![
+                            CreateComponent::ActionRow(CreateActionRow::Buttons(Cow::Owned(
+                                buttons,
+                            ))),
+                        ])),
                     )
                     .instrument(info_span!("Sending message"))
                     .await
                     .unwrap();
 
-                voice_messages_lock
+                state_lock
                     .write()
                     .instrument(info_span!("Waiting for voice_messages write lock"))
                     .await
+                    .voice_messages
                     .last_now_playing
                     .insert(self.guild_id, message);
             }
@@ -255,27 +247,30 @@ impl TrackStartHandler {
                         .await
                         .unwrap();
 
-                    voice_messages_lock
+                    state_lock
                         .write()
                         .instrument(info_span!("Waiting for voice_messages write lock"))
                         .await
+                        .voice_messages
                         .last_position_in_queue
                         .remove(&self.guild_id)
                         .unwrap();
 
-                    voice_messages_lock
+                    state_lock
                         .write()
                         .instrument(info_span!("Waiting for voice_messages write lock"))
                         .await
+                        .voice_messages
                         .last_now_playing
                         .insert(self.guild_id, message);
                 } else {
                     let now_playing_msg = self.send_now_playing_message(embed).await;
 
-                    voice_messages_lock
+                    state_lock
                         .write()
                         .instrument(info_span!("Waiting for voice_messages write lock"))
                         .await
+                        .voice_messages
                         .last_now_playing
                         .insert(self.guild_id, now_playing_msg);
                 }
@@ -283,10 +278,11 @@ impl TrackStartHandler {
             model::LastMessageType::None => {
                 let now_playing_msg = self.send_now_playing_message(embed).await;
 
-                voice_messages_lock
+                state_lock
                     .write()
                     .instrument(info_span!("Waiting for voice_messages write lock"))
                     .await
+                    .voice_messages
                     .last_now_playing
                     .insert(self.guild_id, now_playing_msg);
             }
@@ -294,44 +290,46 @@ impl TrackStartHandler {
     }
 }
 
-fn set_skip_button_row() -> CreateActionRow {
-    CreateActionRow::Buttons(vec![create_skip_button()])
+fn set_skip_button_row<'a>() -> CreateComponent<'a> {
+    CreateComponent::ActionRow(CreateActionRow::Buttons(Cow::Owned(vec![
+        create_skip_button(),
+    ])))
 }
 
-pub fn create_skip_button() -> CreateButton {
+pub fn create_skip_button() -> CreateButton<'static> {
     CreateButton::new(ComponentIds::Skip.to_string())
         .label("Skip")
         .style(ButtonStyle::Primary)
 }
 
-pub fn create_play_now_button() -> CreateButton {
+pub fn create_play_now_button() -> CreateButton<'static> {
     CreateButton::new(ComponentIds::PlayNow.to_string())
         .label("Play now")
         .style(ButtonStyle::Primary)
 }
 
-pub fn create_bring_to_front_button() -> CreateButton {
+pub fn create_bring_to_front_button() -> CreateButton<'static> {
     CreateButton::new(ComponentIds::BringToFront.to_string())
         .label("Bring to front")
         .style(ButtonStyle::Primary)
 }
 
-pub fn create_shuffle_button() -> CreateButton {
+pub fn create_shuffle_button() -> CreateButton<'static> {
     CreateButton::new(ComponentIds::Shuffle.to_string())
         .label("Shuffle")
         .style(ButtonStyle::Primary)
 }
 
-pub fn create_emoji_shuffle_button() -> CreateButton {
+pub fn create_emoji_shuffle_button() -> CreateButton<'static> {
     CreateButton::new(ComponentIds::Shuffle.to_string())
-        .emoji(ReactionType::Unicode("🔀".to_string()))
+        .emoji(ReactionType::Unicode(FixedString::from_str("🔀").unwrap()))
         .style(ButtonStyle::Primary)
 }
 
 pub async fn create_bring_to_front_select_menu(
     queue: &TrackQueue,
     queue_start: usize,
-) -> CreateSelectMenu {
+) -> CreateSelectMenu<'_> {
     let queue_start_index = max(queue_start - 1, 1);
 
     let number_of_songs = if queue_start_index == 1 { 9 } else { 10 };
@@ -357,7 +355,9 @@ pub async fn create_bring_to_front_select_menu(
 
     CreateSelectMenu::new(
         ComponentIds::BringToFrontMenu.to_string(),
-        CreateSelectMenuKind::String { options },
+        CreateSelectMenuKind::String {
+            options: Cow::Owned(options),
+        },
     )
     .placeholder("Bring a song to the front of the queue")
 }
@@ -365,7 +365,7 @@ pub async fn create_bring_to_front_select_menu(
 pub async fn create_play_now_select_menu(
     queue: &TrackQueue,
     queue_start: usize,
-) -> CreateSelectMenu {
+) -> CreateSelectMenu<'_> {
     let queue_start_index = max(queue_start - 1, 1);
 
     let number_of_songs = if queue_start_index == 1 { 9 } else { 10 };
@@ -391,7 +391,9 @@ pub async fn create_play_now_select_menu(
 
     CreateSelectMenu::new(
         ComponentIds::PlayNowMenu.to_string(),
-        CreateSelectMenuKind::String { options },
+        CreateSelectMenuKind::String {
+            options: Cow::Owned(options),
+        },
     )
     .placeholder("Play a song now")
 }

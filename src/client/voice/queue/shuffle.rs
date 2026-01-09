@@ -1,21 +1,17 @@
 use std::time::Duration;
 
-use anyhow::Context as AnyhowContext;
 use rand::seq::SliceRandom;
 use serenity::all::{Context, GuildId};
 use songbird::tracks::Queued;
 use tokio::time::timeout;
 
-use crate::client::voice::model::get_queue_data_lock;
+use crate::client::global_data::GetBotState;
 
 use super::update_queue_message::update_queue_message;
 
 #[tracing::instrument(skip(ctx))]
 pub async fn shuffle_queue(ctx: &Context, guild_id: GuildId) -> anyhow::Result<&'static str> {
-    let manager = songbird::get(ctx)
-        .await
-        .context("Songbird Voice client placed in at initialization.")?
-        .clone();
+    let manager = ctx.bot_state().read().await.songbird.clone();
 
     let Some(call_lock) = manager.get(guild_id) else {
         return Ok("You must be in a voice channel to use that command!");
@@ -44,10 +40,11 @@ pub async fn shuffle_queue(ctx: &Context, guild_id: GuildId) -> anyhow::Result<&
 
     drop(call);
 
-    let queue_data_lock = get_queue_data_lock(&ctx.data).await;
-    queue_data_lock
+    let state_lock = ctx.bot_state();
+    state_lock
         .write()
         .await
+        .queue_data
         .shuffle_queue
         .insert(guild_id, true);
 

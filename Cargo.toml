@@ -35,18 +35,20 @@ tracing-subscriber = { version = "0.3", features = [
 opentelemetry-otlp = { version = "0.30", features = ["trace", "grpc-tonic"] }
 futures = "0.3"
 itertools = "0.14"
-serenity = { version = "0.12", features = [
+serenity = { git = "https://github.com/serenity-rs/serenity.git", branch = "next", features = [
 	"cache",
-	"client",
 	"gateway",
 	"rustls_backend",
 	"model",
-	"unstable_discord_api",
 	"voice",
 	"collector",
+	"unstable"
 ] }
 # requires yt-dlp and opus in order for voice commands to work
-songbird = { version = "0.5", features = ["builtin-queue", "serenity"] }
+songbird = { git = "https://github.com/serenity-rs/songbird.git", branch = "serenity-next", features = [
+	"builtin-queue",
+	"serenity",
+] }
 file-format = "0.28"
 uuid = "1.16"
 markov_str = { version = "0.3.0", features = ["serde", "serialize"] }

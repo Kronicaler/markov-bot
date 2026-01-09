@@ -13,18 +13,27 @@ use crate::{
     client::{
         download::{download_command, download_from_message_command},
         memes::{commands::create_memes_commands, post_meme_command, upload_meme},
-        voice::queue::{command_response::queue, shuffle::shuffle_queue},
+        voice::{
+            loop_song::loop_song,
+            play::play,
+            play_from_attachment::play_from_attachment,
+            playing::playing,
+            queue::{command_response::queue, shuffle::shuffle_queue},
+            skip::skip,
+            stop::stop,
+            swap::swap,
+        },
     },
-    global_data, markov, voice,
+    global_data, markov,
 };
 use serenity::{
+    all::Context,
     all::{
         Command, CommandInteraction, CommandOptionType, CommandType,
         CreateInteractionResponseMessage, EditInteractionResponse, InstallationContext,
         InteractionContext,
     },
     builder::{CreateCommand, CreateCommandOption, CreateInteractionResponse},
-    client::Context,
 };
 use sqlx::{Pool, Postgres};
 use strum_macros::{Display, EnumProperty, EnumString};
@@ -93,7 +102,7 @@ pub enum UserCommand {
 /// Check which slash command was triggered, call the appropriate function and return a response to the user
 #[allow(clippy::too_many_lines)]
 #[tracing::instrument(name = "Command", skip(ctx, pool, command))]
-pub async fn command_responses(command: &CommandInteraction, ctx: Context, pool: &Pool<Postgres>) {
+pub async fn command_responses(command: &CommandInteraction, ctx: &Context, pool: &Pool<Postgres>) {
     info!(?command);
     let user = &command.user;
 
@@ -113,20 +122,20 @@ pub async fn command_responses(command: &CommandInteraction, ctx: Context, pool:
             }
             UserCommand::id => user_id_command(ctx, command).await,
             UserCommand::stop_saving_my_messages => {
-                markov::add_user_to_blacklist(user, &ctx, command, pool).await;
+                markov::add_user_to_blacklist(user, ctx, command, pool).await;
             }
-            UserCommand::create_tag => create_tag(&ctx, command, pool).await,
-            UserCommand::remove_tag => remove_tag(&ctx, command, pool).await,
-            UserCommand::tag_list => list_tags(&ctx, command, pool).await,
+            UserCommand::create_tag => create_tag(ctx, command, pool).await,
+            UserCommand::remove_tag => remove_tag(ctx, command, pool).await,
+            UserCommand::tag_list => list_tags(ctx, command, pool).await,
             UserCommand::blacklist_me_from_tags => {
-                blacklist_user_from_tags_command(&ctx, user, command, pool).await;
+                blacklist_user_from_tags_command(ctx, user, command, pool).await;
             }
             UserCommand::tag_response_channel => {
-                set_tag_response_channel(&ctx, command, pool).await;
+                set_tag_response_channel(ctx, command, pool).await;
             }
             UserCommand::help => command
                 .create_response(
-                    ctx.http,
+                    &ctx.http,
                     CreateInteractionResponse::Message(
                         CreateInteractionResponseMessage::new().content(global_data::HELP_MESSAGE),
                     ),
@@ -136,7 +145,7 @@ pub async fn command_responses(command: &CommandInteraction, ctx: Context, pool:
                 .expect("Error creating interaction response"),
             UserCommand::version => command
                 .create_response(
-                    ctx.http,
+                    &ctx.http,
                     CreateInteractionResponse::Message(
                         CreateInteractionResponseMessage::new().content(
                             "My current version is ".to_owned() + env!("CARGO_PKG_VERSION"),
@@ -147,26 +156,26 @@ pub async fn command_responses(command: &CommandInteraction, ctx: Context, pool:
                 .await
                 .expect("Error creating interaction response"),
             UserCommand::continue_saving_my_messages => {
-                markov::remove_user_from_blacklist(user, &ctx, command, pool).await;
+                markov::remove_user_from_blacklist(user, ctx, command, pool).await;
             }
             UserCommand::stop_saving_messages_channel => {
-                markov::stop_saving_messages_channel(&ctx, command, pool).await;
+                markov::stop_saving_messages_channel(ctx, command, pool).await;
             }
             UserCommand::stop_saving_messages_server => {
-                markov::stop_saving_messages_server(&ctx, command, pool).await;
+                markov::stop_saving_messages_server(ctx, command, pool).await;
             }
-            UserCommand::play => voice::play(&ctx, command).await,
-            UserCommand::play_from_attachment => voice::play_from_attachment(&ctx, command).await,
-            UserCommand::skip => voice::skip(&ctx, command).await.unwrap(),
-            UserCommand::stop => voice::stop(&ctx, command).await,
-            UserCommand::playing => voice::playing(&ctx, command).await,
-            UserCommand::queue => queue(&ctx, command).await,
-            UserCommand::loop_song => voice::loop_song(&ctx, command).await,
-            UserCommand::swap_songs => voice::swap(&ctx, command).await,
+            UserCommand::play => play(ctx, command).await,
+            UserCommand::play_from_attachment => play_from_attachment(ctx, command).await,
+            UserCommand::skip => skip(ctx, command).await.unwrap(),
+            UserCommand::stop => stop(ctx, command).await,
+            UserCommand::playing => playing(ctx, command).await,
+            UserCommand::queue => queue(ctx, command).await,
+            UserCommand::loop_song => loop_song(ctx, command).await,
+            UserCommand::swap_songs => swap(ctx, command).await,
             UserCommand::queue_shuffle => {
                 command.defer(&ctx.http).await.unwrap();
 
-                let response = shuffle_queue(&ctx, command.guild_id.unwrap())
+                let response = shuffle_queue(ctx, command.guild_id.unwrap())
                     .await
                     .unwrap();
 
@@ -176,8 +185,8 @@ pub async fn command_responses(command: &CommandInteraction, ctx: Context, pool:
                     .await
                     .expect("Error creating interaction response");
             }
-            UserCommand::upload_meme => upload_meme(&ctx, command, pool).await.unwrap(),
-            UserCommand::post_meme => post_meme_command(&ctx, command, pool).await.unwrap(),
+            UserCommand::upload_meme => upload_meme(ctx, command, pool).await.unwrap(),
+            UserCommand::post_meme => post_meme_command(ctx, command, pool).await.unwrap(),
         },
         Err(why) => {
             error!("Cannot respond to slash command {why:?}");
@@ -206,12 +215,12 @@ pub async fn create_global_commands(ctx: &Context) {
     commands.append(&mut create_memes_commands());
     commands.push(create_tag_commands());
 
-    Command::set_global_commands(&ctx.http, commands)
+    Command::set_global_commands(&ctx.http, &commands)
         .await
         .expect("Couldn't create global slash commands");
 }
 
-fn create_download_commands() -> Vec<CreateCommand> {
+fn create_download_commands() -> Vec<CreateCommand<'static>> {
     vec![
         CreateCommand::new(UserCommand::download.to_string())
             .description("download a video or audio file from a url")

@@ -5,7 +5,7 @@ use serenity::{
 
 use crate::client::slash_commands::UserCommand;
 
-pub fn create_markov_commands() -> Vec<CreateCommand> {
+pub fn create_markov_commands() -> Vec<CreateCommand<'static>> {
     vec![
         CreateCommand::new(UserCommand::stop_saving_my_messages.to_string())
         .description("Blacklist yourself if you don't want me to save and learn from your messages"),

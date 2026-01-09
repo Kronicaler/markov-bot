@@ -1,5 +1,7 @@
 use std::time::Duration;
 
+use crate::client::global_data::GetBotState;
+
 use super::super::helper_funcs::is_bot_in_another_voice_channel;
 use anyhow::Context as AnyhowContext;
 use serenity::all::ComponentInteraction;
@@ -28,10 +30,7 @@ pub async fn skip_button_press(ctx: &Context, button: &ComponentInteraction) -> 
         return Ok(());
     }
 
-    let manager = songbird::get(ctx)
-        .await
-        .context("Songbird Voice client placed in at initialization.")?
-        .clone();
+    let manager = ctx.bot_state().read().await.songbird.clone();
 
     let Some(call_lock) = manager.get(guild_id) else {
         return Ok(());

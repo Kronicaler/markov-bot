@@ -6,7 +6,7 @@ use strum::EnumProperty;
 
 use crate::client::slash_commands::UserCommand;
 
-pub fn create_memes_commands() -> Vec<CreateCommand> {
+pub fn create_memes_commands() -> Vec<CreateCommand<'static>> {
     let upload_meme_command = CreateCommand::new(UserCommand::upload_meme.to_string())
         .add_integration_type(InstallationContext::User)
         .add_integration_type(InstallationContext::Guild)

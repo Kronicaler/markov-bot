@@ -4,9 +4,9 @@ use std::{
 };
 
 use serenity::{
+    all::Context,
     all::{CommandDataOptionValue, CommandInteraction},
     builder::EditInteractionResponse,
-    client::Context,
 };
 use songbird::tracks::TrackQueue;
 use thiserror::Error;

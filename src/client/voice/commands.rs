@@ -5,7 +5,7 @@ use serenity::{
 
 use crate::client::slash_commands::UserCommand;
 
-pub fn create_voice_commands() -> Vec<CreateCommand> {
+pub fn create_voice_commands() -> Vec<CreateCommand<'static>> {
     vec![
         create_play_command(),
         create_play_video_command(),
@@ -22,7 +22,7 @@ pub fn create_voice_commands() -> Vec<CreateCommand> {
     ]
 }
 
-fn create_play_command() -> CreateCommand {
+fn create_play_command() -> CreateCommand<'static> {
     CreateCommand::new(UserCommand::play.to_string())
         .description("play song from youtube")
         .add_option(
@@ -35,11 +35,11 @@ fn create_play_command() -> CreateCommand {
         )
 }
 
-fn create_play_video_command() -> CreateCommand {
+fn create_play_video_command() -> CreateCommand<'static> {
     CreateCommand::new(UserCommand::play_from_attachment.to_string()).kind(CommandType::Message)
 }
 
-fn create_skip_command() -> CreateCommand {
+fn create_skip_command() -> CreateCommand<'static> {
     CreateCommand::new(UserCommand::skip.to_string())
         .description("skip one or multiple songs")
         .add_option(
@@ -60,7 +60,7 @@ fn create_skip_command() -> CreateCommand {
         )
 }
 
-fn create_swap_command() -> CreateCommand {
+fn create_swap_command() -> CreateCommand<'static> {
     CreateCommand::new(UserCommand::swap_songs.to_string())
         .description("swap the positions of 2 songs in the queue")
         .add_option(
