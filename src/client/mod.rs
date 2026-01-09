@@ -37,7 +37,7 @@ use serenity::{
         MessageFlags, Token, VoiceGatewayManager,
     },
     async_trait,
-    builder::{CreateInteractionResponse, CreateMessage},
+    builder::CreateInteractionResponse,
     model::{channel::Message, gateway::Ready, voice::VoiceState},
     prelude::GatewayIntents,
 };

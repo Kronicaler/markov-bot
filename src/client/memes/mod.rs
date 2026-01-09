@@ -20,7 +20,8 @@ use std::{
 
 use itertools::Itertools;
 use serenity::all::{
-    CommandInteraction, Context, CreateAttachment, CreateInputText, CreateQuickModal, EditInteractionResponse, InputTextStyle, QuickModal,
+    CommandInteraction, Context, CreateAttachment, CreateQuickModal, EditInteractionResponse,
+    QuickModal,
 };
 use sqlx::{PgConnection, PgPool};
 use tracing::{Instrument, info, info_span};
@@ -270,11 +271,8 @@ pub async fn upload_meme(
             ctx,
             CreateQuickModal::new("Upload meme")
                 .timeout(Duration::from_mins(10))
-                .field_with_description(
-                    "Tags",
-                    "Input the tags of the meme you selected. Make sure the tags are separated by spaces. For example for a cute cat video you'd input the tags ``cat cute``",
-                    CreateInputText::new(InputTextStyle::Short, "tags"),
-                ),
+                .text("Input the tags of the meme you selected. Make sure the tags are separated by spaces. For example for a cute cat video you'd input the tags ``cat cute``")
+                .short_field("Tags"),
         )
         .await?;
 
