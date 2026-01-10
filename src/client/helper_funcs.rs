@@ -188,6 +188,8 @@ pub async fn post_file_from_message(
                 _ => panic!("unexpected max_filesize_mb"),
             };
             continue;
+        } else {
+            break;
         }
     }
 }
@@ -250,8 +252,16 @@ pub async fn download_file_from_message(
     };
 
     let filesize_filter =
-        format!("b[filesize<{max_filesize_mb}M]/b[filesize_approx<{max_filesize_mb}M]");
-    let args = ["-f", filesize_filter.as_str(), "-o", "-", query.as_str()];
+        format!("b[filesize<{max_filesize_mb}M]/b[filesize_approx<{max_filesize_mb}M]/b");
+    let args = [
+        "-f",
+        filesize_filter.as_str(),
+        "-o",
+        "-",
+        "--max-filesize",
+        &format!("{max_filesize_mb}M"),
+        query.as_str(),
+    ];
     info!(?args);
     let mut output = tokio::process::Command::new("yt-dlp")
         .args(args)
