@@ -202,6 +202,7 @@ pub enum DownloadFileFromMessageError {
     FileTooLarge,
 }
 
+/// Searches the message for a link or attachment
 #[tracing::instrument(skip(message))]
 pub async fn download_file_from_message(
     message: &Message,

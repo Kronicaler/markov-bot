@@ -27,8 +27,7 @@ impl GetOptionFromCommand for CommandData {
                     .iter()
                     .find(|o| o.name == name)?
                     .value
-                    .as_bool()
-                    .unwrap(),
+                    .as_bool()?,
             ),
             _ => panic!("unknown option"),
         }
