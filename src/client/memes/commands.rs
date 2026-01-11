@@ -33,8 +33,8 @@ pub fn create_memes_commands() -> Vec<CreateCommand<'static>> {
             .add_sub_option(
                 CreateCommandOption::new(
                     CommandOptionType::Boolean,
-                    "ordered",
-                    "send from oldest to newest in this server for this tag",
+                    "random",
+                    "by default memes are sent from oldest to newest in this server for this tag",
                 )
                 .required(false),
             )

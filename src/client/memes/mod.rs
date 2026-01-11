@@ -96,9 +96,9 @@ pub async fn post_meme_command(
     pool: &PgPool,
 ) -> anyhow::Result<()> {
     let category = command.data.get_string("tag").to_lowercase();
-    let is_ordered = command
+    let is_random = command
         .data
-        .get_optional_bool("ordered")
+        .get_optional_bool("random")
         .unwrap_or_default();
     let is_ephemeral = command
         .data
@@ -113,7 +113,7 @@ pub async fn post_meme_command(
 
     let mut tx = pool.begin().await?;
 
-    if is_ordered {
+    if !is_random {
         post_ordered_meme(ctx, command, &category, &mut tx).await?;
     } else {
         post_random_meme(ctx, command, category, &mut tx).await?;
