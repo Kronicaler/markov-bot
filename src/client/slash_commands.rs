@@ -12,7 +12,7 @@ use super::{
 use crate::{
     client::{
         download::{download_command, download_from_message_command},
-        memes::{commands::create_memes_commands, post_meme_command, upload_meme},
+        memes::{commands::create_memes_commands, meme_tags_command, post_meme_command, upload_meme},
         voice::{
             loop_song::loop_song,
             play::play,
@@ -97,6 +97,8 @@ pub enum UserCommand {
     upload_meme,
     #[strum(props(SubCommand = "post"), serialize = "meme post")]
     post_meme,
+    #[strum(props(SubCommand = "tags"), serialize = "meme tags")]
+    meme_tags,
 }
 
 /// Check which slash command was triggered, call the appropriate function and return a response to the user
@@ -187,6 +189,7 @@ pub async fn command_responses(command: &CommandInteraction, ctx: &Context, pool
             }
             UserCommand::upload_meme => upload_meme(ctx, command, pool).await.unwrap(),
             UserCommand::post_meme => post_meme_command(ctx, command, pool).await.unwrap(),
+            UserCommand::meme_tags => meme_tags_command(ctx, command, pool).await.unwrap(),
         },
         Err(why) => {
             error!("Cannot respond to slash command {why:?}");

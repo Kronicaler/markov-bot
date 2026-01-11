@@ -14,7 +14,7 @@ pub fn create_memes_commands() -> Vec<CreateCommand<'static>> {
         .add_context(InteractionContext::PrivateChannel)
         .kind(CommandType::Message);
 
-    let post_meme_command = CreateCommand::new("meme")
+    let meme_commands = CreateCommand::new("meme")
         .description("description")
         .add_integration_type(InstallationContext::User)
         .add_integration_type(InstallationContext::Guild)
@@ -46,7 +46,12 @@ pub fn create_memes_commands() -> Vec<CreateCommand<'static>> {
                 )
                 .required(false),
             ),
-        );
+        )
+        .add_option(CreateCommandOption::new(
+            CommandOptionType::SubCommand,
+            UserCommand::meme_tags.get_str("SubCommand").unwrap(),
+            "See the number of memes in the most popular tags",
+        ));
 
-    vec![upload_meme_command, post_meme_command]
+    vec![upload_meme_command, meme_commands]
 }

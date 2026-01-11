@@ -20,8 +20,8 @@ use std::{
 
 use itertools::Itertools;
 use serenity::all::{
-    CommandInteraction, Context, CreateAttachment, CreateQuickModal, EditInteractionResponse,
-    QuickModal,
+    CommandInteraction, Context, CreateAttachment, CreateEmbed, CreateQuickModal,
+    EditInteractionResponse, QuickModal,
 };
 use sqlx::{PgConnection, PgPool};
 use tracing::{Instrument, info, info_span};
@@ -31,8 +31,8 @@ use crate::client::{
     helper_funcs::download_file_from_message,
     memes::dal::{
         MemeServerCategory, create_meme_file, create_meme_file_categories, create_new_categories,
-        create_new_category_dirs, get_file_by_hash, get_meme_file_count_by_folder,
-        save_meme_to_file,
+        create_new_category_dirs, get_category_file_count, get_file_by_hash,
+        get_meme_file_count_by_folder, save_meme_to_file,
     },
 };
 
@@ -96,10 +96,7 @@ pub async fn post_meme_command(
     pool: &PgPool,
 ) -> anyhow::Result<()> {
     let category = command.data.get_string("tag").to_lowercase();
-    let is_random = command
-        .data
-        .get_optional_bool("random")
-        .unwrap_or_default();
+    let is_random = command.data.get_optional_bool("random").unwrap_or_default();
     let is_ephemeral = command
         .data
         .get_optional_bool("ephemeral")
@@ -328,6 +325,36 @@ pub async fn upload_meme(
         .instrument(info_span!("Sending message"))
         .await
         .expect("Couldn't create interaction response");
+
+    Ok(())
+}
+
+pub async fn meme_tags_command(
+    ctx: &Context,
+    command: &CommandInteraction,
+    pool: &PgPool,
+) -> anyhow::Result<()> {
+    command.defer(&ctx.http).await?;
+
+    let mut tx = pool.begin().await?;
+
+    let category_file_counts = get_category_file_count(&mut tx).await?;
+
+    let category_file_counts = category_file_counts.iter().take_while(|e| e.count >= 5);
+
+    command
+        .edit_response(
+            &ctx.http,
+            EditInteractionResponse::new().embed(
+                CreateEmbed::new().title("Number of memes in a tag").fields(
+                    category_file_counts
+                        .map(|e| (format!("{}: {} memes", e.category, e.count), "", false)),
+                ),
+            ),
+        )
+        .await?;
+
+    tx.commit().await?;
 
     Ok(())
 }

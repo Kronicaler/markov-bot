@@ -1,0 +1,26 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT coalesce(count(category), 0) as \"count!\", category\n            FROM \"meme_file_categories\"\n            INNER JOIN \"meme_categories\" ON \"meme_categories\".\"id\"= \"category_id\"\n            group by \"category\"\n            order by \"count!\" DESC \n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "count!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "category",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      null,
+      false
+    ]
+  },
+  "hash": "0389e14acc1e6bc4359bdf685e89163750b03f7a8d3fd40d8d058a4939a3d620"
+}

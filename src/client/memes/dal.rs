@@ -318,3 +318,28 @@ pub async fn create_new_category_dirs(categories: &Vec<String>) -> anyhow::Resul
 
     Ok(())
 }
+
+pub struct CategoryCount {
+    pub count: i64,
+    pub category: String,
+}
+
+/// Get the number of files in each category ordered by descending count
+pub async fn get_category_file_count(
+    conn: &mut PgConnection,
+) -> anyhow::Result<Vec<CategoryCount>> {
+    let category_counts = sqlx::query_as!(
+        CategoryCount,
+        r#"
+            SELECT coalesce(count(category), 0) as "count!", category
+            FROM "meme_file_categories"
+            INNER JOIN "meme_categories" ON "meme_categories"."id"= "category_id"
+            group by "category"
+            order by "count!" DESC 
+            "#,
+    )
+    .fetch_all(&mut *conn)
+    .await?;
+
+    Ok(category_counts)
+}
