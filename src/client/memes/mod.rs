@@ -28,7 +28,7 @@ use tracing::{Instrument, info, info_span};
 
 use crate::client::{
     get_option_from_command::GetOptionFromCommand,
-    helper_funcs::download_file_from_message,
+    helper_funcs::{download_file_from_link, download_file_from_message},
     memes::dal::{
         MemeServerCategory, create_meme_file, create_meme_file_categories, create_new_categories,
         create_new_category_dirs, get_category_file_count, get_file_by_hash,
@@ -258,7 +258,7 @@ async fn post_meme(
 }
 
 #[tracing::instrument(err, skip(ctx, command, pool))]
-pub async fn upload_meme(
+pub async fn upload_meme_command(
     ctx: &Context,
     command: &CommandInteraction,
     pool: &PgPool,
@@ -319,6 +319,36 @@ pub async fn upload_meme(
     modal_response
         .interaction
         .edit_response(
+            &ctx.http,
+            EditInteractionResponse::new().content("Saved meme. I can now post it when someone runs ``/meme post`` with one of the tags you provided!"),
+        )
+        .instrument(info_span!("Sending message"))
+        .await
+        .expect("Couldn't create interaction response");
+
+    Ok(())
+}
+
+pub async fn meme_upload_command(
+    ctx: &Context,
+    command: &CommandInteraction,
+    pool: &PgPool,
+) -> anyhow::Result<()> {
+    command.defer_ephemeral(&ctx.http).await?;
+
+    let link = command.data.get_string("link");
+    let tags = command
+        .data
+        .get_string("tags")
+        .split(" ")
+        .map(|s| s.to_string())
+        .collect_vec();
+
+    let (file_bytes, extension) = download_file_from_link(50, &link).await?;
+
+    save_meme(&file_bytes, &extension, &tags, pool).await?;
+
+    command.edit_response(
             &ctx.http,
             EditInteractionResponse::new().content("Saved meme. I can now post it when someone runs ``/meme post`` with one of the tags you provided!"),
         )

@@ -12,7 +12,9 @@ use super::{
 use crate::{
     client::{
         download::{download_command, download_from_message_command},
-        memes::{commands::create_memes_commands, meme_tags_command, post_meme_command, upload_meme},
+        memes::{
+            commands::create_memes_commands, meme_tags_command, meme_upload_command, post_meme_command, upload_meme_command
+        },
         voice::{
             loop_song::loop_song,
             play::play,
@@ -96,9 +98,11 @@ pub enum UserCommand {
     #[strum(serialize = "Upload meme")]
     upload_meme,
     #[strum(props(SubCommand = "post"), serialize = "meme post")]
-    post_meme,
+    meme_post,
     #[strum(props(SubCommand = "tags"), serialize = "meme tags")]
     meme_tags,
+    #[strum(props(SubCommand = "upload"), serialize = "meme upload")]
+    meme_upload,
 }
 
 /// Check which slash command was triggered, call the appropriate function and return a response to the user
@@ -177,9 +181,7 @@ pub async fn command_responses(command: &CommandInteraction, ctx: &Context, pool
             UserCommand::queue_shuffle => {
                 command.defer(&ctx.http).await.unwrap();
 
-                let response = shuffle_queue(ctx, command.guild_id.unwrap())
-                    .await
-                    .unwrap();
+                let response = shuffle_queue(ctx, command.guild_id.unwrap()).await.unwrap();
 
                 command
                     .edit_response(&ctx.http, EditInteractionResponse::new().content(response))
@@ -187,9 +189,10 @@ pub async fn command_responses(command: &CommandInteraction, ctx: &Context, pool
                     .await
                     .expect("Error creating interaction response");
             }
-            UserCommand::upload_meme => upload_meme(ctx, command, pool).await.unwrap(),
-            UserCommand::post_meme => post_meme_command(ctx, command, pool).await.unwrap(),
+            UserCommand::upload_meme => upload_meme_command(ctx, command, pool).await.unwrap(),
+            UserCommand::meme_post => post_meme_command(ctx, command, pool).await.unwrap(),
             UserCommand::meme_tags => meme_tags_command(ctx, command, pool).await.unwrap(),
+            UserCommand::meme_upload => meme_upload_command(ctx, command, pool).await.unwrap(),
         },
         Err(why) => {
             error!("Cannot respond to slash command {why:?}");

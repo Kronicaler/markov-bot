@@ -23,7 +23,7 @@ pub fn create_memes_commands() -> Vec<CreateCommand<'static>> {
         .add_option(
             CreateCommandOption::new(
                 CommandOptionType::SubCommand,
-                UserCommand::post_meme.get_str("SubCommand").unwrap(),
+                UserCommand::meme_post.get_str("SubCommand").unwrap(),
                 "Post a meme from a desired tag",
             )
             .add_sub_option(
@@ -51,7 +51,30 @@ pub fn create_memes_commands() -> Vec<CreateCommand<'static>> {
             CommandOptionType::SubCommand,
             UserCommand::meme_tags.get_str("SubCommand").unwrap(),
             "See the number of memes in the most popular tags",
-        ));
+        ))
+        .add_option(
+            CreateCommandOption::new(
+                CommandOptionType::SubCommand,
+                UserCommand::meme_upload.get_str("SubCommand").unwrap(),
+                "Upload a meme from a link",
+            )
+            .add_sub_option(
+                CreateCommandOption::new(
+                    CommandOptionType::String,
+                    "link",
+                    "Url to the video/image",
+                )
+                .required(true),
+            )
+            .add_sub_option(
+                CreateCommandOption::new(
+                    CommandOptionType::String,
+                    "tags",
+                    "type in tags separated by spaces",
+                )
+                .required(true),
+            ),
+        );
 
     vec![upload_meme_command, meme_commands]
 }

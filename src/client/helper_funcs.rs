@@ -195,7 +195,7 @@ pub async fn post_file_from_message(
 }
 
 #[derive(Error, Debug)]
-pub enum DownloadFileFromMessageError {
+pub enum DownloadFileError {
     #[error("No link or file found")]
     NoLinkFound,
     #[error("Unsupported link or file")]
@@ -209,19 +209,19 @@ pub enum DownloadFileFromMessageError {
 pub async fn download_file_from_message(
     message: &Message,
     max_filesize_mb: usize,
-) -> Result<(Vec<u8>, String), DownloadFileFromMessageError> {
+) -> Result<(Vec<u8>, String), DownloadFileError> {
     let link_regex =
         regex::Regex::new(r#"(?:(?:https?|ftp)://|\b(?:[a-z\d]+\.))(?:(?:[^\s()<>]+|\((?:[^\s()<>]+|(?:\([^\s()<>]+\)))?\))+(?:\((?:[^\s()<>]+|(?:\(?:[^\s()<>]+\)))?\)|[^\s`!()\[\]{};:'".,<>?«»“”‘’]))?"#)
         .expect("Invalid regular expression");
 
     let Some(query) = link_regex.find(&message.content) else {
         let Some(attachment) = message.attachments.first() else {
-            return Err(DownloadFileFromMessageError::NoLinkFound);
+            return Err(DownloadFileError::NoLinkFound);
         };
         let mut attachment_bytes = attachment
             .download()
             .await
-            .map_err(|_| DownloadFileFromMessageError::UnsupportedLink)?;
+            .map_err(|_| DownloadFileError::UnsupportedLink)?;
         let mut extension = Path::new(&attachment.filename)
             .extension()
             .unwrap()
@@ -240,7 +240,7 @@ pub async fn download_file_from_message(
                 ext = file_format.extension()
             );
 
-            return Err(DownloadFileFromMessageError::UnsupportedLink);
+            return Err(DownloadFileError::UnsupportedLink);
         }
 
         if file_format.media_type() == "video/mp2t" {
@@ -251,6 +251,13 @@ pub async fn download_file_from_message(
         return Ok((attachment_bytes, extension));
     };
 
+    download_file_from_link(max_filesize_mb, query.as_str()).await
+}
+
+pub async fn download_file_from_link(
+    max_filesize_mb: usize,
+    link: &str,
+) -> Result<(Vec<u8>, String), DownloadFileError> {
     let filesize_filter =
         format!("b[filesize<{max_filesize_mb}M]/b[filesize_approx<{max_filesize_mb}M]/b");
     let args = [
@@ -260,7 +267,7 @@ pub async fn download_file_from_message(
         "-",
         "--max-filesize",
         &format!("{max_filesize_mb}M"),
-        query.as_str(),
+        link,
     ];
     info!(?args);
     let mut output = tokio::process::Command::new("yt-dlp")
@@ -277,7 +284,7 @@ pub async fn download_file_from_message(
     if !output.status.success() {
         if stderr_str.contains("Requested format is not available") {
             let formats = tokio::process::Command::new("yt-dlp")
-                .args(["--list-formats", query.as_str()])
+                .args(["--list-formats", link])
                 .output()
                 .instrument(info_span!("waiting on yt-dlp"))
                 .await
@@ -287,7 +294,7 @@ pub async fn download_file_from_message(
 
             if formats.contains("FILESIZE") {
                 error!(stderr_str);
-                return Err(DownloadFileFromMessageError::FileTooLarge);
+                return Err(DownloadFileError::FileTooLarge);
             }
 
             output = tokio::process::Command::new("yt-dlp")
@@ -296,20 +303,20 @@ pub async fn download_file_from_message(
                     "-",
                     "--max-filesize",
                     &format!("{max_filesize_mb}M"),
-                    query.as_str(),
+                    link,
                 ])
                 .output()
                 .instrument(info_span!("waiting on yt-dlp"))
                 .await
-                .map_err(|_| DownloadFileFromMessageError::FileTooLarge)?;
+                .map_err(|_| DownloadFileError::FileTooLarge)?;
 
             if output.stdout.len() > max_filesize_mb * 1_000_000 {
                 error!(stderr_str);
-                return Err(DownloadFileFromMessageError::FileTooLarge);
+                return Err(DownloadFileError::FileTooLarge);
             }
         } else {
             error!(stderr_str);
-            return Err(DownloadFileFromMessageError::UnsupportedLink);
+            return Err(DownloadFileError::UnsupportedLink);
         }
     }
 
@@ -325,7 +332,7 @@ pub async fn download_file_from_message(
             ext = file_format.extension()
         );
 
-        return Err(DownloadFileFromMessageError::UnsupportedLink);
+        return Err(DownloadFileError::UnsupportedLink);
     }
 
     if file_format.media_type() == "video/mp2t" {
@@ -333,7 +340,10 @@ pub async fn download_file_from_message(
         file_format = FileFormat::from_bytes(&output.stdout);
     }
 
-    Ok((output.stdout, file_format.extension().to_string()))
+    let bytes = output.stdout;
+    let extension = file_format.extension().to_string();
+
+    Ok((bytes, extension))
 }
 
 pub async fn convert_mpegts_to_mp4(bytes: Vec<u8>) -> Output {
