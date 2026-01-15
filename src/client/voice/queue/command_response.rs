@@ -8,9 +8,7 @@ use crate::client::{
 };
 use itertools::Itertools;
 use serenity::{
-    all::{
-        ButtonStyle, CommandInteraction, Context, CreateComponent, ReactionType,
-    },
+    all::{ButtonStyle, CommandInteraction, Context, CreateComponent, ReactionType},
     builder::{CreateActionRow, CreateButton, CreateEmbed, EditInteractionResponse, EditMessage},
     model::prelude::Colour,
     small_fixed_array::FixedString,
@@ -103,7 +101,10 @@ fn get_queue_duration(queue: &songbird::tracks::TrackQueue) -> String {
     duration
 }
 
-async fn create_queue_components(queue: &TrackQueue, queue_start: usize) -> Vec<CreateActionRow<'_>> {
+async fn create_queue_components(
+    queue: &TrackQueue,
+    queue_start: usize,
+) -> Vec<CreateActionRow<'_>> {
     vec![
         CreateActionRow::Buttons(Cow::Owned(vec![
             CreateButton::new(ComponentIds::QueueStart.to_string())

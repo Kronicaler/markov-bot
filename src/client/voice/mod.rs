@@ -21,7 +21,8 @@ use futures::future::join_all;
 use itertools::Itertools;
 use serenity::{
     all::{
-        ActionRowComponent, ButtonKind, ButtonStyle, Component, Context, CreateComponent, CreateEmbed, CreateSelectMenuKind, GenericChannelId, ReactionType,
+        ActionRowComponent, ButtonKind, ButtonStyle, Component, Context, CreateComponent,
+        CreateEmbed, CreateSelectMenuKind, GenericChannelId, ReactionType,
     },
     async_trait,
     builder::{

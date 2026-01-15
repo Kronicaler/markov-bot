@@ -24,17 +24,17 @@ pub fn create_memes_commands() -> Vec<CreateCommand<'static>> {
             CreateCommandOption::new(
                 CommandOptionType::SubCommand,
                 UserCommand::meme_post.get_str("SubCommand").unwrap(),
-                "Post a meme from a desired tag",
+                "Post a meme from a desired category",
             )
             .add_sub_option(
-                CreateCommandOption::new(CommandOptionType::String, "tag", "Select a tag")
+                CreateCommandOption::new(CommandOptionType::String, "category", "Select a category. Categories can only contain a single word.")
                     .required(true),
             )
             .add_sub_option(
                 CreateCommandOption::new(
                     CommandOptionType::Boolean,
                     "random",
-                    "by default memes are sent from oldest to newest in this server for this tag",
+                    "by default memes are sent from oldest to newest in this server for this category",
                 )
                 .required(false),
             )
@@ -49,8 +49,8 @@ pub fn create_memes_commands() -> Vec<CreateCommand<'static>> {
         )
         .add_option(CreateCommandOption::new(
             CommandOptionType::SubCommand,
-            UserCommand::meme_tags.get_str("SubCommand").unwrap(),
-            "See the number of memes in the most popular tags",
+            UserCommand::meme_categories.get_str("SubCommand").unwrap(),
+            "See the number of memes in the most popular categories",
         ))
         .add_option(
             CreateCommandOption::new(
@@ -69,8 +69,8 @@ pub fn create_memes_commands() -> Vec<CreateCommand<'static>> {
             .add_sub_option(
                 CreateCommandOption::new(
                     CommandOptionType::String,
-                    "tags",
-                    "type in tags separated by spaces",
+                    "categories",
+                    "type in categories separated by spaces",
                 )
                 .required(true),
             ),

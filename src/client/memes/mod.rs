@@ -20,8 +20,8 @@ use std::{
 
 use itertools::Itertools;
 use serenity::all::{
-    CommandInteraction, Context, CreateAttachment, CreateEmbed, CreateQuickModal,
-    EditInteractionResponse, QuickModal,
+    CommandInteraction, Context, CreateAttachment, CreateEmbed, CreateInteractionResponse,
+    CreateInteractionResponseMessage, CreateQuickModal, EditInteractionResponse, QuickModal,
 };
 use sqlx::{PgConnection, PgPool};
 use tracing::{Instrument, info, info_span};
@@ -95,7 +95,19 @@ pub async fn post_meme_command(
     command: &CommandInteraction,
     pool: &PgPool,
 ) -> anyhow::Result<()> {
-    let category = command.data.get_string("tag").to_lowercase();
+    let category = command.data.get_string("category").to_lowercase();
+
+    if category.contains(" ") {
+        command
+            .create_response(
+                &ctx.http,
+                CreateInteractionResponse::Message(
+                    CreateInteractionResponseMessage::new().ephemeral(true).content("A category can't consist of multiple words. Please retry again with only one word."),
+                ),
+            )
+            .await?;
+    }
+
     let is_random = command.data.get_optional_bool("random").unwrap_or_default();
     let is_ephemeral = command
         .data
@@ -133,7 +145,7 @@ async fn post_random_meme(
         command
             .edit_response(
                 &ctx.http,
-                EditInteractionResponse::new().content("Tag doesn't exist"),
+                EditInteractionResponse::new().content("category doesn't exist"),
             )
             .await?;
         return Ok(());
@@ -157,7 +169,7 @@ async fn post_ordered_meme(
         command
             .edit_response(
                 &ctx.http,
-                EditInteractionResponse::new().content("Tag doesn't exist"),
+                EditInteractionResponse::new().content("category doesn't exist"),
             )
             .await?;
         return Ok(());
@@ -239,7 +251,7 @@ async fn post_meme(
         command
             .edit_response(
                 &ctx.http,
-                EditInteractionResponse::new().content("Tag doesn't exist"),
+                EditInteractionResponse::new().content("category doesn't exist"),
             )
             .await?;
         return Ok(());
@@ -268,8 +280,8 @@ pub async fn upload_meme_command(
             ctx,
             CreateQuickModal::new("Upload meme")
                 .timeout(Duration::from_mins(10))
-                .text("Input the tags of the meme you selected. Make sure the tags are separated by spaces. For example for a cute cat video you'd input the tags ``cat cute``")
-                .short_field("Tags"),
+                .text("Input the categories of the meme you selected. Make sure the categories are separated by spaces. Categories can't consist of multiple words. For example for a cute cat video you'd input the categories ``cat cute``")
+                .short_field("categories"),
         )
         .await?;
 
@@ -305,7 +317,7 @@ pub async fn upload_meme_command(
             .interaction
             .edit_response(
                 &ctx.http,
-                EditInteractionResponse::new().content("No tags provided"),
+                EditInteractionResponse::new().content("No categories provided"),
             )
             .instrument(info_span!("Sending message"))
             .await
@@ -320,7 +332,7 @@ pub async fn upload_meme_command(
         .interaction
         .edit_response(
             &ctx.http,
-            EditInteractionResponse::new().content("Saved meme. I can now post it when someone runs ``/meme post`` with one of the tags you provided!"),
+            EditInteractionResponse::new().content("Saved meme. I can now post it when someone runs ``/meme post`` with one of the categories you provided!"),
         )
         .instrument(info_span!("Sending message"))
         .await
@@ -337,20 +349,20 @@ pub async fn meme_upload_command(
     command.defer_ephemeral(&ctx.http).await?;
 
     let link = command.data.get_string("link");
-    let tags = command
+    let categories = command
         .data
-        .get_string("tags")
+        .get_string("categories")
         .split(" ")
         .map(|s| s.to_string())
         .collect_vec();
 
     let (file_bytes, extension) = download_file_from_link(50, &link).await?;
 
-    save_meme(&file_bytes, &extension, &tags, pool).await?;
+    save_meme(&file_bytes, &extension, &categories, pool).await?;
 
     command.edit_response(
             &ctx.http,
-            EditInteractionResponse::new().content("Saved meme. I can now post it when someone runs ``/meme post`` with one of the tags you provided!"),
+            EditInteractionResponse::new().content("Saved meme. I can now post it when someone runs ``/meme post`` with one of the categories you provided!"),
         )
         .instrument(info_span!("Sending message"))
         .await
@@ -359,7 +371,7 @@ pub async fn meme_upload_command(
     Ok(())
 }
 
-pub async fn meme_tags_command(
+pub async fn meme_categories_command(
     ctx: &Context,
     command: &CommandInteraction,
     pool: &PgPool,
@@ -376,10 +388,12 @@ pub async fn meme_tags_command(
         .edit_response(
             &ctx.http,
             EditInteractionResponse::new().embed(
-                CreateEmbed::new().title("Number of memes in a tag").fields(
-                    category_file_counts
-                        .map(|e| (format!("{}: {} memes", e.category, e.count), "", false)),
-                ),
+                CreateEmbed::new()
+                    .title("Number of memes in a category")
+                    .fields(
+                        category_file_counts
+                            .map(|e| (format!("{}: {} memes", e.category, e.count), "", false)),
+                    ),
             ),
         )
         .await?;

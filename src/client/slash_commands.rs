@@ -13,7 +13,8 @@ use crate::{
     client::{
         download::{download_command, download_from_message_command},
         memes::{
-            commands::create_memes_commands, meme_tags_command, meme_upload_command, post_meme_command, upload_meme_command
+            commands::create_memes_commands, meme_categories_command, meme_upload_command,
+            post_meme_command, upload_meme_command,
         },
         voice::{
             loop_song::loop_song,
@@ -99,8 +100,8 @@ pub enum UserCommand {
     upload_meme,
     #[strum(props(SubCommand = "post"), serialize = "meme post")]
     meme_post,
-    #[strum(props(SubCommand = "tags"), serialize = "meme tags")]
-    meme_tags,
+    #[strum(props(SubCommand = "categories"), serialize = "meme categories")]
+    meme_categories,
     #[strum(props(SubCommand = "upload"), serialize = "meme upload")]
     meme_upload,
 }
@@ -191,7 +192,9 @@ pub async fn command_responses(command: &CommandInteraction, ctx: &Context, pool
             }
             UserCommand::upload_meme => upload_meme_command(ctx, command, pool).await.unwrap(),
             UserCommand::meme_post => post_meme_command(ctx, command, pool).await.unwrap(),
-            UserCommand::meme_tags => meme_tags_command(ctx, command, pool).await.unwrap(),
+            UserCommand::meme_categories => {
+                meme_categories_command(ctx, command, pool).await.unwrap()
+            }
             UserCommand::meme_upload => meme_upload_command(ctx, command, pool).await.unwrap(),
         },
         Err(why) => {
