@@ -161,6 +161,13 @@ async fn post_ordered_meme(
     category: &String,
     conn: &mut PgConnection,
 ) -> Result<(), anyhow::Error> {
+    // TODO: allow user to specify multiple categories
+    // get all meme_categories
+    // get all meme_file_categories
+    // filter out all meme_file_categories that don't satisfy all categories
+    // meme_server_categories would have to be reworked to take dynamic category strings instead of ids, 
+    // though this would also result in duplicates...
+
     let category = dal::get_categories_by_name(&[category.clone()], conn)
         .await?
         .pop();
