@@ -4,7 +4,7 @@ use std::{
     time::Duration,
 };
 
-use chrono::Utc;
+use chrono::{Datelike, TimeZone, Utc};
 use file_format::{FileFormat, Kind};
 use serenity::{
     all::{
@@ -160,12 +160,14 @@ pub async fn post_file_from_message(
             }
         };
 
+        let seconds_in_month = get_seconds_in_month();
+
         let res = command
             .edit_response(
                 &ctx.http,
                 EditInteractionResponse::new().new_attachment(CreateAttachment::bytes(
                     file_bytes,
-                    format!("doki-{}.{}", Utc::now().timestamp() - 1575072000, extension),
+                    format!("doki-{}.{}", seconds_in_month, extension),
                 )),
             )
             .instrument(info_span!("Sending message"))
@@ -192,6 +194,17 @@ pub async fn post_file_from_message(
             break;
         }
     }
+}
+
+/// Returns the number of seconds in the current month
+pub fn get_seconds_in_month() -> i64 {
+    let now = Utc::now();
+    let start_of_month = Utc
+        .with_ymd_and_hms(now.year(), now.month(), 1, 0, 0, 0)
+        .unwrap();
+
+    let seconds_in_month = (now - start_of_month).num_seconds();
+    seconds_in_month
 }
 
 #[derive(Error, Debug)]

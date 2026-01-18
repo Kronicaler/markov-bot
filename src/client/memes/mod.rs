@@ -28,7 +28,7 @@ use tracing::{Instrument, info, info_span};
 
 use crate::client::{
     get_option_from_command::GetOptionFromCommand,
-    helper_funcs::{download_file_from_link, download_file_from_message},
+    helper_funcs::{download_file_from_link, download_file_from_message, get_seconds_in_month},
     memes::dal::{
         MemeServerCategory, create_meme_file, create_meme_file_categories, create_new_categories,
         create_new_category_dirs, get_category_file_count, get_file_by_hash,
@@ -165,7 +165,7 @@ async fn post_ordered_meme(
     // get all meme_categories
     // get all meme_file_categories
     // filter out all meme_file_categories that don't satisfy all categories
-    // meme_server_categories would have to be reworked to take dynamic category strings instead of ids, 
+    // meme_server_categories would have to be reworked to take dynamic category strings instead of ids,
     // though this would also result in duplicates...
 
     let category = dal::get_categories_by_name(&[category.clone()], conn)
@@ -264,12 +264,14 @@ async fn post_meme(
         return Ok(());
     };
     let file_bytes = dal::read_file(&meme_file)?;
+    let seconds_in_month = get_seconds_in_month();
+
     command
         .edit_response(
             &ctx.http,
             EditInteractionResponse::new().new_attachment(CreateAttachment::bytes(
                 file_bytes,
-                format!("{}.{}", meme_file.name, meme_file.extension),
+                format!("{}.{}", seconds_in_month, meme_file.extension),
             )),
         )
         .await?;
