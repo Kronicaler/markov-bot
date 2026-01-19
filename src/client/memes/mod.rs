@@ -44,6 +44,11 @@ fn calculate_hash<T: Hash>(t: &T) -> i64 {
     s.finish() as i64
 }
 
+pub enum SaveMemeResult {
+    Saved,
+    Updated,
+}
+
 /// - hash bytes and check if it already is in the DB
 ///     - if it exists in the DB then just add new categories in the db and return
 /// - if not then:
@@ -56,7 +61,7 @@ pub async fn save_meme(
     extension: &str,
     categories: &[String],
     pool: &PgPool,
-) -> anyhow::Result<()> {
+) -> anyhow::Result<SaveMemeResult> {
     let extension = &extension.to_lowercase();
     let categories = &categories.iter().map(|e| e.to_lowercase()).collect_vec();
 
@@ -70,7 +75,7 @@ pub async fn save_meme(
     if let Some(meme_file) = meme_file {
         create_new_categories(categories, &mut tx).await?;
         create_meme_file_categories(categories, meme_file.id, &mut tx).await?;
-        return Ok(());
+        return Ok(SaveMemeResult::Updated);
     }
 
     let folder = categories.first().unwrap();
@@ -86,7 +91,7 @@ pub async fn save_meme(
 
     tx.commit().await?;
 
-    Ok(())
+    Ok(SaveMemeResult::Saved)
 }
 
 #[tracing::instrument(err, skip(ctx, command, pool))]
@@ -335,13 +340,17 @@ pub async fn upload_meme_command(
         return Ok(());
     }
 
-    save_meme(&file_bytes, &extension, &categories, pool).await?;
+    let action = match save_meme(&file_bytes, &extension, &categories, pool).await? {
+        SaveMemeResult::Saved => "Saved",
+        SaveMemeResult::Updated => "Updated",
+    }
+    .to_string();
 
     modal_response
         .interaction
         .edit_response(
             &ctx.http,
-            EditInteractionResponse::new().content("Saved meme. I can now post it when someone runs ``/meme post`` with one of the categories you provided!"),
+            EditInteractionResponse::new().content(action + " meme. I can now post it when someone runs ``/meme post`` with one of the categories you provided!"),
         )
         .instrument(info_span!("Sending message"))
         .await
@@ -367,11 +376,15 @@ pub async fn meme_upload_command(
 
     let (file_bytes, extension) = download_file_from_link(50, &link).await?;
 
-    save_meme(&file_bytes, &extension, &categories, pool).await?;
+    let action = match save_meme(&file_bytes, &extension, &categories, pool).await? {
+        SaveMemeResult::Saved => "Saved",
+        SaveMemeResult::Updated => "Updated",
+    }
+    .to_string();
 
     command.edit_response(
             &ctx.http,
-            EditInteractionResponse::new().content("Saved meme. I can now post it when someone runs ``/meme post`` with one of the categories you provided!"),
+            EditInteractionResponse::new().content(action+ " meme. I can now post it when someone runs ``/meme post`` with one of the categories you provided!"),
         )
         .instrument(info_span!("Sending message"))
         .await
