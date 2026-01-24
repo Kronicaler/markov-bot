@@ -9,14 +9,18 @@ pub mod slash_commands;
 pub mod tags;
 pub mod voice;
 
+use anyhow::Context as _;
 use global_data::{HELP_MESSAGE, init_bot_state};
 use itertools::Itertools;
 use regex::Regex;
 use slash_commands::{command_responses, create_global_commands};
-use sqlx::{Pool, Postgres};
-use tracing::{Instrument, info_span};
+use sqlx::{PgPool, Pool, Postgres};
+use tracing::{Instrument, error, info, info_span, warn};
 
-use crate::client::global_data::GetBotState;
+use crate::client::{
+    global_data::GetBotState,
+    memes::{MEME_IMPORT_FOLDER, save_meme},
+};
 
 use self::{
     tags::{blacklist_user, respond_to_tag},
@@ -41,7 +45,7 @@ use serenity::{
     model::{channel::Message, gateway::Ready, voice::VoiceState},
     prelude::GatewayIntents,
 };
-use std::{env, str::FromStr, sync::Arc, time::Duration};
+use std::{env, fs, str::FromStr, sync::Arc, time::Duration};
 use strum_macros::{Display, EnumString};
 use tokio::{select, time::timeout};
 
@@ -279,6 +283,10 @@ pub async fn start() {
         .expect("Couldn't initialize bot state");
     let songbird = bot_state.read().await.songbird.clone();
 
+    if let Err(e) = import_memes(pool.clone()).await {
+        error!(?e);
+    }
+
     let mut client = Client::builder(token, intents)
         .event_handler(Arc::new(Handler { pool }) as Arc<dyn EventHandler>)
         .data(Arc::new(bot_state))
@@ -292,6 +300,55 @@ pub async fn start() {
         () = termination_signal=>{}
         result = client => {result.unwrap();}
     }
+}
+
+#[tracing::instrument(err, skip(pool))]
+async fn import_memes(pool: PgPool) -> anyhow::Result<()> {
+    // - get folders in import_memes
+    // - get files in each folder
+    // - the categories of the files will be the name of the folder split by spaces
+    // - save them to the meme folders
+    // - save them to the db
+    // - delete the folders
+
+    for dir in fs::read_dir(MEME_IMPORT_FOLDER)? {
+        let dir = dir?;
+        let path = dir.path().to_string_lossy().to_string();
+        let categories = dir
+            .file_name()
+            .to_string_lossy()
+            .to_string()
+            .split(' ')
+            .map(|s| s.to_string())
+            .collect_vec();
+
+        info!("importing memes from {}", path);
+
+        if categories.len() == 0 {
+            warn!("dir {} has no categories", path);
+            continue;
+        }
+
+        for file in fs::read_dir(&path)?
+            .collect::<Result<Vec<_>, std::io::Error>>()?
+            .into_iter()
+            .sorted_by(|a, b| alphanumeric_sort::compare_os_str(a.file_name(), b.file_name()))
+        {
+            let extension = file
+                .path()
+                .extension()
+                .context("file with no extension")?
+                .to_string_lossy()
+                .to_string();
+            let bytes = fs::read(file.path())?;
+
+            save_meme(&bytes, &extension, &categories, &pool).await?;
+        }
+
+        fs::remove_dir_all(path)?;
+    }
+
+    Ok(())
 }
 
 /// Waits for a signal that requests a graceful shutdown, like SIGTERM or SIGINT.

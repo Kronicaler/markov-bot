@@ -37,6 +37,7 @@ use crate::client::{
 };
 
 pub const MEMES_FOLDER: &str = "./data/memes";
+pub const MEME_IMPORT_FOLDER: &str = "./data/meme_import";
 
 fn calculate_hash<T: Hash>(t: &T) -> i64 {
     let mut s = DefaultHasher::new();
