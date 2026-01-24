@@ -92,7 +92,7 @@ pub async fn create_meme_file(
 }
 
 #[tracing::instrument(err, skip(conn))]
-pub async fn get_file_by_id(id: i32, conn: &mut PgConnection) -> anyhow::Result<Option<MemeFile>> {
+pub async fn get_file_by_id(id: &i32, conn: &mut PgConnection) -> anyhow::Result<Option<MemeFile>> {
     Ok(sqlx::query_as!(
         MemeFile,
         r#"

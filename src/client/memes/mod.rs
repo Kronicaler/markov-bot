@@ -21,7 +21,8 @@ use std::{
 use itertools::Itertools;
 use serenity::all::{
     CommandInteraction, Context, CreateAttachment, CreateEmbed, CreateInteractionResponse,
-    CreateInteractionResponseMessage, CreateQuickModal, EditInteractionResponse, QuickModal,
+    CreateInteractionResponseMessage, CreateQuickModal, EditAttachments, EditInteractionResponse,
+    QuickModal,
 };
 use sqlx::{PgConnection, PgPool};
 use tracing::{Instrument, info, info_span};
@@ -102,23 +103,38 @@ pub async fn post_meme_command(
     pool: &PgPool,
 ) -> anyhow::Result<()> {
     let category = command.data.get_string("category").to_lowercase();
-
-    if category.contains(" ") {
-        command
-            .create_response(
-                &ctx.http,
-                CreateInteractionResponse::Message(
-                    CreateInteractionResponseMessage::new().ephemeral(true).content("A category can't consist of multiple words. Please retry again with only one word."),
-                ),
-            )
-            .await?;
-    }
-
     let is_random = command.data.get_optional_bool("random").unwrap_or_default();
     let is_ephemeral = command
         .data
         .get_optional_bool("ephemeral")
         .unwrap_or_default();
+    let count = command.data.get_optional_int("count").unwrap_or(1);
+
+    if category.contains(" ") {
+        command
+        .create_response(
+            &ctx.http,
+            CreateInteractionResponse::Message(
+                CreateInteractionResponseMessage::new().ephemeral(true).content("A category can't consist of multiple words. Please retry again with only one word."),
+            ),
+        )
+        .await?;
+        return Ok(());
+    }
+
+    if count < 1 || count > 9 {
+        command
+            .create_response(
+                &ctx.http,
+                CreateInteractionResponse::Message(
+                    CreateInteractionResponseMessage::new()
+                        .ephemeral(true)
+                        .content("Count must be between 1 and 9. Please retry again."),
+                ),
+            )
+            .await?;
+        return Ok(());
+    }
 
     if is_ephemeral {
         command.defer_ephemeral(&ctx.http).await.unwrap();
@@ -129,9 +145,9 @@ pub async fn post_meme_command(
     let mut tx = pool.begin().await?;
 
     if !is_random {
-        post_ordered_meme(ctx, command, &category, &mut tx).await?;
+        post_ordered_meme(ctx, command, &category, count, &mut tx).await?;
     } else {
-        post_random_meme(ctx, command, category, &mut tx).await?;
+        post_random_meme(ctx, command, category, count, &mut tx).await?;
     }
 
     tx.commit().await?;
@@ -144,19 +160,27 @@ async fn post_random_meme(
     ctx: &Context,
     command: &CommandInteraction,
     category: String,
+    count: i64,
     conn: &mut PgConnection,
 ) -> Result<(), anyhow::Error> {
-    let mfc = dal::get_random_meme_file_category_by_category(&category, conn).await?;
-    let Some(mfc) = mfc else {
-        command
-            .edit_response(
-                &ctx.http,
-                EditInteractionResponse::new().content("category doesn't exist"),
-            )
-            .await?;
-        return Ok(());
-    };
-    post_meme(ctx, command, conn, mfc.file_id).await?;
+    let mut mfcs = vec![];
+
+    while mfcs.len() < count as usize {
+        let mfc = dal::get_random_meme_file_category_by_category(&category, conn).await?;
+        let Some(mfc) = mfc else {
+            command
+                .edit_response(
+                    &ctx.http,
+                    EditInteractionResponse::new().content("category doesn't exist"),
+                )
+                .await?;
+            return Ok(());
+        };
+
+        mfcs.push(mfc.file_id);
+    }
+
+    post_memes(ctx, command, conn, &mfcs).await?;
     Ok(())
 }
 
@@ -165,6 +189,7 @@ async fn post_ordered_meme(
     ctx: &Context,
     command: &CommandInteraction,
     category: &String,
+    count: i64,
     conn: &mut PgConnection,
 ) -> Result<(), anyhow::Error> {
     // TODO: allow user to specify multiple categories
@@ -192,93 +217,108 @@ async fn post_ordered_meme(
         .guild_id
         .map_or_else(|| command.channel_id.get(), serenity::all::GuildId::get)
         as i64;
-    let mut server_category = dal::get_server_category(server_id, category.id, conn)
-        .await?
-        .unwrap_or(MemeServerCategory {
-            category_id: category.id,
-            file_id: 1,
-            server_id,
-        });
 
-    if dal::get_file_by_id(server_category.file_id, conn)
-        .await?
-        .is_none()
-    {
-        let oldest_mfc = dal::get_oldest_meme_file_category(category.id, conn)
+    let mut file_ids = vec![];
+
+    while file_ids.len() < count as usize {
+        let mut server_category = dal::get_server_category(server_id, category.id, conn)
             .await?
-            .unwrap();
+            .unwrap_or(MemeServerCategory {
+                category_id: category.id,
+                file_id: 1,
+                server_id,
+            });
 
-        server_category.file_id = oldest_mfc.file_id;
-
-        dal::set_server_category(
-            server_category.server_id,
-            oldest_mfc.category_id,
-            oldest_mfc.file_id,
-            conn,
-        )
-        .await?;
-    }
-
-    post_meme(ctx, command, conn, server_category.file_id).await?;
-
-    let next_mfc =
-        dal::get_next_meme_file_category(category.id, server_category.file_id, conn).await?;
-
-    let Some(next_mfc) = next_mfc else {
-        info!("reached the oldest meme file category, resetting to beginning");
-        let oldest_mfc = dal::get_oldest_meme_file_category(category.id, conn)
+        if dal::get_file_by_id(&server_category.file_id, conn)
             .await?
-            .unwrap();
+            .is_none()
+        {
+            let oldest_mfc = dal::get_oldest_meme_file_category(category.id, conn)
+                .await?
+                .unwrap();
+
+            server_category.file_id = oldest_mfc.file_id;
+
+            dal::set_server_category(
+                server_category.server_id,
+                oldest_mfc.category_id,
+                oldest_mfc.file_id,
+                conn,
+            )
+            .await?;
+        }
+
+        let next_mfc =
+            dal::get_next_meme_file_category(category.id, server_category.file_id, conn).await?;
+
+        let Some(next_mfc) = next_mfc else {
+            info!("reached the oldest meme file category, resetting to beginning");
+            let oldest_mfc = dal::get_oldest_meme_file_category(category.id, conn)
+                .await?
+                .unwrap();
+
+            dal::set_server_category(
+                server_category.server_id,
+                server_category.category_id,
+                oldest_mfc.file_id,
+                conn,
+            )
+            .await?;
+
+            file_ids.push(server_category.file_id);
+            continue;
+        };
 
         dal::set_server_category(
             server_category.server_id,
             server_category.category_id,
-            oldest_mfc.file_id,
+            next_mfc.file_id,
             conn,
         )
         .await?;
 
-        return Ok(());
-    };
+        file_ids.push(server_category.file_id);
+    }
 
-    dal::set_server_category(
-        server_category.server_id,
-        server_category.category_id,
-        next_mfc.file_id,
-        conn,
-    )
-    .await?;
+    post_memes(ctx, command, conn, &file_ids).await?;
 
     Ok(())
 }
 
 #[tracing::instrument(err, skip(ctx, command, tx))]
-async fn post_meme(
+async fn post_memes(
     ctx: &Context,
     command: &CommandInteraction,
     tx: &mut PgConnection,
-    file_id: i32,
+    file_ids: &[i32],
 ) -> Result<(), anyhow::Error> {
-    let meme_file = dal::get_file_by_id(file_id, tx).await?;
-    let Some(meme_file) = meme_file else {
-        command
-            .edit_response(
-                &ctx.http,
-                EditInteractionResponse::new().content("category doesn't exist"),
-            )
-            .await?;
-        return Ok(());
-    };
-    let file_bytes = dal::read_file(&meme_file)?;
-    let seconds_in_month = get_seconds_in_month();
+    let mut attachments = EditAttachments::new();
+    for file_id in file_ids.iter().unique() {
+        let meme_file = dal::get_file_by_id(file_id, tx).await?;
+        let Some(meme_file) = meme_file else {
+            command
+                .edit_response(
+                    &ctx.http,
+                    EditInteractionResponse::new().content("category doesn't exist"),
+                )
+                .await?;
+            return Ok(());
+        };
+        let file_bytes = dal::read_file(&meme_file)?;
+        let seconds_in_month = get_seconds_in_month();
+
+        let attachment = CreateAttachment::bytes(
+            file_bytes,
+            format!("{}.{}", seconds_in_month, meme_file.extension),
+        );
+
+        attachments = attachments.add(attachment);
+    }
 
     command
         .edit_response(
             &ctx.http,
-            EditInteractionResponse::new().new_attachment(CreateAttachment::bytes(
-                file_bytes,
-                format!("{}.{}", seconds_in_month, meme_file.extension),
-            )),
+            EditInteractionResponse::new().attachments(attachments),
         )
         .await?;
     Ok(())

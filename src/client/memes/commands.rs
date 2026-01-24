@@ -32,6 +32,14 @@ pub fn create_memes_commands() -> Vec<CreateCommand<'static>> {
             )
             .add_sub_option(
                 CreateCommandOption::new(
+                    CommandOptionType::Integer,
+                    "count",
+                    "How many memes to post. Default is 1. Choose between 1 and 9",
+                )
+                .required(false),
+            )
+            .add_sub_option(
+                CreateCommandOption::new(
                     CommandOptionType::Boolean,
                     "random",
                     "by default memes are sent from oldest to newest in this server for this category",

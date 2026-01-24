@@ -3,6 +3,7 @@ use serenity::all::{CommandData, CommandDataOptionValue};
 pub trait GetOptionFromCommand {
     fn get_string(&self, name: &str) -> String;
     fn get_optional_bool(&self, name: &str) -> Option<bool>;
+    fn get_optional_int(&self, name: &str) -> Option<i64>;
 }
 
 impl GetOptionFromCommand for CommandData {
@@ -28,6 +29,19 @@ impl GetOptionFromCommand for CommandData {
                     .find(|o| o.name == name)?
                     .value
                     .as_bool()?,
+            ),
+            _ => panic!("unknown option"),
+        }
+    }
+
+    fn get_optional_int(&self, name: &str) -> Option<i64> {
+        match self.options.first().cloned().unwrap().value {
+            CommandDataOptionValue::SubCommand(command_data_options) => Some(
+                command_data_options
+                    .iter()
+                    .find(|o| o.name == name)?
+                    .value
+                    .as_i64()?,
             ),
             _ => panic!("unknown option"),
         }
