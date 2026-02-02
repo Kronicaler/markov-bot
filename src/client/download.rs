@@ -1,8 +1,6 @@
 use std::str::FromStr;
 
-use crate::client::{
-    get_option_from_command::GetOptionFromCommand, helper_funcs::post_file_from_message,
-};
+use crate::client::helper_funcs::post_file_from_message;
 use serenity::{
     all::{CommandInteraction, Context, Message},
     small_fixed_array::FixedString,
