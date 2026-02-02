@@ -241,6 +241,13 @@ fn create_download_commands() -> Vec<CreateCommand<'static>> {
                 )
                 .required(true),
             )
+            .add_option(
+                CreateCommandOption::new(
+                    CommandOptionType::Boolean,
+                    "ephemeral",
+                    "Whether the command will only be visible to you. Default: True",
+                ),
+            )
             .add_integration_type(InstallationContext::User)
             .add_integration_type(InstallationContext::Guild)
             .add_context(InteractionContext::Guild)
