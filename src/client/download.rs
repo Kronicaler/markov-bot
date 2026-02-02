@@ -10,8 +10,13 @@ use serenity::{
 
 #[tracing::instrument(skip(ctx, command))]
 pub async fn download_command(ctx: &Context, command: &CommandInteraction) {
-    let query = command.data.get_string("url");
-    let ephemeral = command.data.get_optional_bool("ephemeral").unwrap_or(true);
+    let query = command.data.options.get(0).unwrap().value.as_str().unwrap();
+    let ephemeral = command
+        .data
+        .options
+        .get(1)
+        .and_then(|x| Some(x.value.as_bool().unwrap_or(true)))
+        .unwrap_or(true);
 
     if ephemeral {
         command.defer_ephemeral(&ctx.http).await.unwrap();
@@ -20,7 +25,7 @@ pub async fn download_command(ctx: &Context, command: &CommandInteraction) {
     }
 
     let mut x = Message::default();
-    x.content = FixedString::from_str(&query).unwrap();
+    x.content = FixedString::from_str(query).unwrap();
 
     post_file_from_message(ctx, command, &x).await;
 }
