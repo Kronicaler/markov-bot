@@ -62,7 +62,7 @@ version = "0.5"
 features = ["all"]
 
 [patch.crates-io]
-audiopus_sys = { git = "https://github.com/amsam0/audiopus_sys.git" }
+audiopus_sys = { git = 'https://github.com/sevenc-nanashi/audiopus_sys', rev = '00e9d16' }
 
 [profile.dev.package.sqlx-macros]
 opt-level = 3
