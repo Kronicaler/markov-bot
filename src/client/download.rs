@@ -13,7 +13,7 @@ pub async fn download_command(ctx: &Context, command: &CommandInteraction) {
         .data
         .options
         .get(1)
-        .and_then(|x| Some(x.value.as_bool().unwrap_or(true)))
+        .map(|x| x.value.as_bool().unwrap_or(true))
         .unwrap_or(true);
 
     if ephemeral {
