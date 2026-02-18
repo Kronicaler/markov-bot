@@ -444,8 +444,7 @@ pub async fn meme_categories_command(
     let mut tx = pool.begin().await?;
 
     let category_file_counts = get_category_file_count(&mut tx).await?;
-
-    let category_file_counts = category_file_counts.iter().take_while(|e| e.count >= 5);
+    let category_file_counts = category_file_counts.iter().take(25);
 
     command
         .edit_response(
