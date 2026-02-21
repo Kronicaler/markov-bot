@@ -423,9 +423,14 @@ pub async fn meme_upload_command(
     }
     .to_string();
 
+    let seconds_in_month = get_seconds_in_month();
+
     command.edit_response(
             &ctx.http,
-            EditInteractionResponse::new().content(action+ " meme. I can now post it when someone runs ``/meme post`` with one of the categories you provided!"),
+            EditInteractionResponse::new().content(action + " meme. I can now post it when someone runs ``/meme post`` with one of the categories you provided!").new_attachment(CreateAttachment::bytes(
+                file_bytes,
+                format!("doki-{}.{}", seconds_in_month, extension),
+            )),
         )
         .instrument(info_span!("Sending message"))
         .await
