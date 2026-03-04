@@ -5,7 +5,7 @@ use crate::client::voice::helper_funcs::{
     get_voice_channel_of_user, is_bot_in_another_voice_channel, voice_channel_not_same_response,
 };
 use crate::client::voice::play::{add_track_start_event, voice_channel_not_found_response};
-use serenity::all::CommandInteraction;
+use serenity::all::{CommandInteraction, CreateInteractionResponseMessage};
 use serenity::builder::EditInteractionResponse;
 use serenity::prelude::Context;
 use serenity::small_fixed_array::FixedString;
@@ -17,6 +17,18 @@ use super::model::MyAuxMetadata;
 
 #[tracing::instrument(skip(ctx))]
 pub async fn play_from_attachment(ctx: &Context, command: &CommandInteraction) {
+    command
+        .create_response(
+            &ctx.http,
+            serenity::all::CreateInteractionResponse::Message(
+                CreateInteractionResponseMessage::new()
+                    .content("Voice functionality is temporarily unavailable"),
+            ),
+        )
+        .await
+        .unwrap();
+    return;
+
     command
         .defer(&ctx.http)
         .instrument(info_span!("deferring response"))
