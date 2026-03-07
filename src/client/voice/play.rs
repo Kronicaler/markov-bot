@@ -23,10 +23,7 @@ use rspotify::{
     prelude::BaseClient,
 };
 use serenity::{
-    all::{
-        Colour, CommandDataOptionValue, CommandInteraction, Context, CreateComponent,
-        CreateInteractionResponseMessage, GuildId,
-    },
+    all::{Colour, CommandDataOptionValue, CommandInteraction, Context, CreateComponent, GuildId},
     builder::{CreateActionRow, CreateEmbed, EditInteractionResponse},
     prelude::Mutex,
 };
@@ -43,17 +40,17 @@ use url::Url;
 ///play song from youtube
 #[tracing::instrument(skip(ctx))]
 pub async fn play(ctx: &Context, command: &CommandInteraction) {
-    command
-        .create_response(
-            &ctx.http,
-            serenity::all::CreateInteractionResponse::Message(
-                CreateInteractionResponseMessage::new()
-                    .content("Voice functionality is temporarily unavailable"),
-            ),
-        )
-        .await
-        .unwrap();
-    return;
+    // command
+    //     .create_response(
+    //         &ctx.http,
+    //         serenity::all::CreateInteractionResponse::Message(
+    //             CreateInteractionResponseMessage::new()
+    //                 .content("Voice functionality is temporarily unavailable"),
+    //         ),
+    //     )
+    //     .await
+    //     .unwrap();
+    // return;
 
     let guild_id = command.guild_id.expect("Couldn't get guild ID");
     let query = get_query(command);

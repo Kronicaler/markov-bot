@@ -45,7 +45,7 @@ serenity = { git = "https://github.com/serenity-rs/serenity.git", branch = "next
 	"unstable"
 ] }
 # requires yt-dlp and opus in order for voice commands to work
-songbird = { git = "https://github.com/serenity-rs/songbird.git", branch = "serenity-next", features = [
+songbird = { git = "https://github.com/Kronicaler/songbird.git", branch = "serenity-next", features = [
 	"builtin-queue",
 	"serenity",
 ] }
