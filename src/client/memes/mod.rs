@@ -75,8 +75,10 @@ pub async fn save_meme(
 
     // Avoid saving duplicates with hashing
     if let Some(meme_file) = meme_file {
+        info!("updating meme");
         create_new_categories(categories, &mut tx).await?;
         create_meme_file_categories(categories, meme_file.id, &mut tx).await?;
+        tx.commit().await?;
         return Ok(SaveMemeResult::Updated);
     }
 

@@ -139,6 +139,7 @@ pub struct MemeFileCategory {
     pub file_id: i32,
 }
 
+#[tracing::instrument(ret, err, skip(conn))]
 pub async fn create_meme_file_categories(
     categories: &[String],
     meme_file_id: i32,
@@ -147,6 +148,8 @@ pub async fn create_meme_file_categories(
     let categories = get_categories_by_name(categories, conn).await?;
 
     for category in categories {
+        info!(category.category, meme_file_id, "inserting category");
+
         sqlx::query!(
             r#"
             INSERT INTO meme_file_categories ( category_id, file_id )
