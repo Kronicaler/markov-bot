@@ -27,9 +27,12 @@ RUN apt-get update && apt-get install -y unzip ffmpeg libssl3 libopus-dev curl c
 
 RUN curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp;
 RUN chmod a+rx /usr/local/bin/yt-dlp;
+RUN echo "--remote-components ejs:npm" > /usr/local/bin/yt-dlp.conf
 
 RUN curl -L https://deno.land/install.sh -o denoinstall.sh;
 RUN chmod a+rx ./denoinstall.sh;
+
+ENV DENO_INSTALL=/usr/local/
 RUN ./denoinstall.sh -y;
 
 COPY --link --from=builder /markov_bot /app/markov_bot
