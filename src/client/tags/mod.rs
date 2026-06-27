@@ -3,8 +3,10 @@ mod create_tag;
 mod data_access;
 mod model;
 mod remove_tag;
+mod tag_ban;
 
 pub use create_tag::create_tag;
+pub use tag_ban::ban_user_from_editing_tags;
 use model::TagChannel;
 use regex::Regex;
 pub use remove_tag::remove_tag;
@@ -341,4 +343,17 @@ fn stop_pinging_me_button(tag_response: CreateMessage) -> CreateMessage {
                 .style(ButtonStyle::Primary),
         ])),
     )]))
+}
+
+pub async fn user_banned_response(command: &CommandInteraction, ctx: &Context) {
+    command
+        .create_response(
+            &ctx.http,
+            CreateInteractionResponse::Message(
+                CreateInteractionResponseMessage::new().content("You're not allowed to edit tags"),
+            ),
+        )
+        .instrument(info_span!("Sending message"))
+        .await
+        .expect("Error creating interaction response");
 }

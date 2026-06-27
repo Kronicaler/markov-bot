@@ -1,6 +1,8 @@
 use sqlx::PgPool;
 use thiserror::Error;
 
+use crate::client::tags::model::TagBannedUser;
+
 use super::{
     Tag,
     model::{TagBlacklistedUser, TagChannel},
@@ -37,7 +39,9 @@ pub async fn create_tag(
     .or(Err(CreateTagError::TagWithSameListenerExists))?
     .id;
 
-    Ok(get_tag_by_id(created_tag_id, pool).await.unwrap())
+    Ok(get_tag_by_id(created_tag_id, server_id, pool)
+        .await
+        .unwrap())
 }
 
 pub async fn delete_tag(id: i32, pool: &PgPool) -> u64 {
@@ -69,14 +73,15 @@ pub async fn get_tag_by_listener(listener: &str, server_id: i64, pool: &PgPool) 
     .unwrap()
 }
 
-pub async fn get_tag_by_id(id: i32, pool: &PgPool) -> Option<Tag> {
+pub async fn get_tag_by_id(id: i32, server_id: i64, pool: &PgPool) -> Option<Tag> {
     sqlx::query_as!(
         Tag,
         r#"
         SELECT * FROM tags
-        WHERE id = $1
+        WHERE id = $1 AND server_id = $2
         "#,
-        id
+        id,
+        server_id
     )
     .fetch_optional(pool)
     .await
@@ -138,6 +143,56 @@ pub async fn create_tag_blacklisted_user(user_id: i64, pool: &PgPool) -> TagBlac
     .unwrap();
 
     get_tag_blacklisted_user(user_id, pool).await.unwrap()
+}
+
+pub async fn get_tag_banned_user(
+    user_id: i64,
+    server_id: i64,
+    pool: &PgPool,
+) -> Option<TagBannedUser> {
+    sqlx::query_as!(
+        TagBannedUser,
+        r#"
+        SELECT * FROM tag_bans
+        WHERE user_id = $1 AND server_id = $2
+        "#,
+        user_id,
+        server_id
+    )
+    .fetch_optional(pool)
+    .await
+    .unwrap()
+}
+
+pub async fn delete_tag_banned_user(user_id: i64, server_id: i64, pool: &PgPool) -> u64 {
+    sqlx::query!(
+        r#"
+        DELETE FROM tag_bans
+        WHERE user_id= $1 AND server_id = $2
+        "#,
+        user_id,
+        server_id
+    )
+    .execute(pool)
+    .await
+    .unwrap()
+    .rows_affected()
+}
+
+pub async fn create_tag_banned_user(user_id: i64, server_id: i64, pool: &PgPool) -> TagBannedUser {
+    sqlx::query!(
+        r#"
+		INSERT INTO tag_bans ( user_id, server_id )
+		VALUES ( $1, $2 )
+		"#,
+        user_id,
+        server_id
+    )
+    .execute(pool)
+    .await
+    .unwrap();
+
+    get_tag_banned_user(user_id, server_id, pool).await.unwrap()
 }
 
 pub async fn get_tag_channel(server_id: i64, pool: &PgPool) -> Option<TagChannel> {

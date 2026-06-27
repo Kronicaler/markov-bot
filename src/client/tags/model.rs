@@ -15,6 +15,14 @@ pub struct TagBlacklistedUser {
     pub user_id: i64,
 }
 
+/// A user banned from editing tags in a server
+pub struct TagBannedUser {
+    #[allow(dead_code)]
+    pub user_id: i64,
+    #[allow(dead_code)]
+    pub server_id: i64,
+}
+
 ///Guild, Channel
 pub struct TagChannel {
     pub server_id: i64,

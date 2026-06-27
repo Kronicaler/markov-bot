@@ -7,7 +7,7 @@ use strum::EnumProperty;
 use crate::client::slash_commands::UserCommand;
 
 pub fn create_tag_commands() -> CreateCommand<'static> {
-    let command = CreateCommand::new("tag");
+    let command = CreateCommand::new("tag").add_context(InteractionContext::Guild);
 
     command
         .add_context(InteractionContext::Guild)
@@ -33,6 +33,7 @@ pub fn create_tag_commands() -> CreateCommand<'static> {
                 .unwrap(),
             "Set this channel as the channel where i will reply to tags",
         ))
+        .add_option(create_tag_ban_option())
 }
 
 fn create_tag_creation_option() -> CreateCommandOption<'static> {
@@ -64,5 +65,21 @@ fn create_tag_removal_option() -> CreateCommandOption<'static> {
     .add_sub_option(
         CreateCommandOption::new(CommandOptionType::String, "tag", "The tag to remove")
             .required(true),
+    )
+}
+
+fn create_tag_ban_option() -> CreateCommandOption<'static> {
+    CreateCommandOption::new(
+        CommandOptionType::SubCommand,
+        UserCommand::tag_ban.get_str("SubCommand").unwrap(),
+        "Ban a user from editing tags",
+    )
+    .add_sub_option(
+        CreateCommandOption::new(
+            CommandOptionType::User,
+            "user",
+            "The user to ban from editing tags",
+        )
+        .required(true),
     )
 }

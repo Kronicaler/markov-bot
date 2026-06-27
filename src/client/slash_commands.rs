@@ -11,12 +11,10 @@ use super::{
 };
 use crate::{
     client::{
-        download::{download_command, download_from_message_command},
-        memes::{
+        download::{download_command, download_from_message_command}, memes::{
             commands::create_memes_commands, meme_categories_command, meme_upload_command,
             post_meme_command, upload_meme_command,
-        },
-        voice::{
+        }, tags::ban_user_from_editing_tags, voice::{
             loop_song::loop_song,
             play::play,
             play_from_attachment::play_from_attachment,
@@ -26,8 +24,7 @@ use crate::{
             stop::stop,
             swap::swap,
         },
-    },
-    global_data, markov,
+    }, global_data, markov,
 };
 use serenity::{
     all::Context,
@@ -79,6 +76,8 @@ pub enum UserCommand {
         serialize = "tag response-channel"
     )]
     tag_response_channel,
+    #[strum(props(SubCommand = "ban"), serialize = "tag ban")]
+    tag_ban,
 
     // =====VOICE=====
     play,
@@ -139,6 +138,9 @@ pub async fn command_responses(command: &CommandInteraction, ctx: &Context, pool
             }
             UserCommand::tag_response_channel => {
                 set_tag_response_channel(ctx, command, pool).await;
+            }
+            UserCommand::tag_ban => {
+                ban_user_from_editing_tags(ctx, command, pool).await;
             }
             UserCommand::help => command
                 .create_response(
@@ -241,13 +243,11 @@ fn create_download_commands() -> Vec<CreateCommand<'static>> {
                 )
                 .required(true),
             )
-            .add_option(
-                CreateCommandOption::new(
-                    CommandOptionType::Boolean,
-                    "ephemeral",
-                    "Whether the command will only be visible to you. Default: True",
-                ),
-            )
+            .add_option(CreateCommandOption::new(
+                CommandOptionType::Boolean,
+                "ephemeral",
+                "Whether the command will only be visible to you. Default: True",
+            ))
             .add_integration_type(InstallationContext::User)
             .add_integration_type(InstallationContext::Guild)
             .add_context(InteractionContext::Guild)

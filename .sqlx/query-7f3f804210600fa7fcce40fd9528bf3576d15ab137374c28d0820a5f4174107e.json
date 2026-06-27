@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT * FROM tags\n        WHERE id = $1\n        ",
+  "query": "\n        SELECT * FROM tags\n        WHERE id = $1 AND server_id = $2\n        ",
   "describe": {
     "columns": [
       {
@@ -36,7 +36,8 @@
     ],
     "parameters": {
       "Left": [
-        "Int4"
+        "Int4",
+        "Int8"
       ]
     },
     "nullable": [
@@ -48,5 +49,5 @@
       false
     ]
   },
-  "hash": "12660ca1811c72987bbc1a6b37d180e719856bf996c7580b02231908c4885981"
+  "hash": "7f3f804210600fa7fcce40fd9528bf3576d15ab137374c28d0820a5f4174107e"
 }

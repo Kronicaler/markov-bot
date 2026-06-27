@@ -6,6 +6,8 @@ use serenity::{
 use sqlx::{Pool, Postgres};
 use tracing::{Instrument, info_span};
 
+use crate::client::tags::{data_access::get_tag_banned_user, user_banned_response};
+
 use super::data_access;
 
 #[tracing::instrument(skip(ctx))]
@@ -21,6 +23,21 @@ pub async fn remove_tag(ctx: &Context, command: &CommandInteraction, pool: &Pool
         pool,
     )
     .await;
+
+    if get_tag_banned_user(
+        command.user.id.get() as i64,
+        command
+            .guild_id
+            .expect("This command can't be called outside guilds")
+            .get() as i64,
+        pool,
+    )
+    .await
+    .is_some()
+    {
+        user_banned_response(command, ctx).await;
+        return;
+    }
 
     match tag {
         Some(tag) => {

@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        DELETE FROM tag_bans\n        WHERE user_id= $1 AND server_id = $2\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "4b7a0ceab44e310d4e40a3e2542b8f93d86f49125bb13497eb4f4f1fd265f79a"
+}

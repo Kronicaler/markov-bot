@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n\t\tINSERT INTO tag_bans ( user_id, server_id )\n\t\tVALUES ( $1, $2 )\n\t\t",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "100194fa3681996ed4b070486ce41d67f595de784917cec546617b5d128df9af"
+}

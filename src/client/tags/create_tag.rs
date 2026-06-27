@@ -7,6 +7,8 @@ use serenity::{
 use sqlx::{Pool, Postgres};
 use tracing::{Instrument, info_span};
 
+use crate::client::tags::{data_access::get_tag_banned_user, user_banned_response};
+
 #[tracing::instrument(skip(ctx))]
 pub async fn create_tag(ctx: &Context, command: &CommandInteraction, pool: &Pool<Postgres>) {
     let Some(guild_id) = command.guild_id else {
@@ -18,6 +20,14 @@ pub async fn create_tag(ctx: &Context, command: &CommandInteraction, pool: &Pool
 
     if !is_tag_valid(&response, &listener) {
         invalid_tag_response(command, ctx).await;
+        return;
+    }
+
+    if get_tag_banned_user(command.user.id.get() as i64, guild_id.get() as i64, pool)
+        .await
+        .is_some()
+    {
+        user_banned_response(command, ctx).await;
         return;
     }
 
