@@ -90,7 +90,7 @@ async fn create_playing_embed<'a>(queue: &songbird::tracks::TrackQueue) -> Creat
     }
 
     if let Some(thumbnail) = thumbnail_option {
-        embed = embed.thumbnail(thumbnail);
+        embed = embed.thumbnail(thumbnail, None);
     }
 
     embed

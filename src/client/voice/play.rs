@@ -734,6 +734,6 @@ pub fn create_track_embed(metadata: &AuxMetadata) -> CreateEmbed<'_> {
         .colour(colour)
         .description(channel)
         .field("Duration: ", duration, true)
-        .thumbnail(thumbnail)
+        .thumbnail(thumbnail,None)
         .url(url)
 }
