@@ -42,7 +42,7 @@ serenity = { git = "https://github.com/serenity-rs/serenity.git", branch = "next
 	"model",
 	"voice",
 	"collector",
-	"unstable"
+	"unstable",
 ] }
 # requires yt-dlp and opus in order for voice commands to work
 songbird = { git = "https://github.com/Kronicaler/songbird.git", branch = "serenity-next", features = [
@@ -53,9 +53,10 @@ file-format = "0.28"
 uuid = "1.16"
 markov_str = { version = "0.3.0", features = ["serde", "serialize"] }
 chrono = "0.4.40"
-rspotify = { version = "0.15", features = ["env-file"] }
+rspotify = { version = "0.16", features = ["env-file"] }
 url = "2.5.4"
 alphanumeric-sort = "1.5.3"
+rustls = { version = "0.23", features = ["aws-lc-rs"] }
 
 [dependencies.symphonia]
 version = "0.5"

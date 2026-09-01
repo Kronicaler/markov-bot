@@ -267,6 +267,7 @@ pub async fn download_file_from_message(
     download_file_from_link(max_filesize_mb, query.as_str()).await
 }
 
+#[tracing::instrument]
 pub async fn download_file_from_link(
     max_filesize_mb: usize,
     link: &str,

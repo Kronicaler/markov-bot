@@ -1,4 +1,4 @@
-FROM rust:slim-bookworm AS builder
+FROM rust:slim-trixie AS builder
 WORKDIR /app
 
 RUN apt-get update && apt-get install -y cmake pkg-config openssl libssl-dev build-essential wget && rm -rf /var/lib/apt/lists/*;
@@ -21,13 +21,17 @@ RUN --mount=type=bind,source=src,target=src \
 cargo build --locked --release && \
 cp ./target/release/markov_bot /markov_bot
 
-FROM debian:bookworm-slim AS release
+FROM debian:trixie-slim AS release
 
-RUN apt-get update && apt-get install -y unzip ffmpeg libssl3 libopus-dev curl ca-certificates python3 python3-pip python3-brotli python3-websockets python3-mutagen python3-certifi && rm -rf /var/lib/apt/lists/*;
+RUN apt-get update && apt-get install -y unzip ffmpeg libssl3 libopus-dev curl ca-certificates python3 python3-venv && rm -rf /var/lib/apt/lists/*;
 
-RUN curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp;
-RUN chmod a+rx /usr/local/bin/yt-dlp;
-RUN echo "--remote-components ejs:npm" > /usr/local/bin/yt-dlp.conf
+RUN python3 -m venv /opt/yt-dlp && \
+    /opt/yt-dlp/bin/python -m pip install --upgrade pip && \
+    /opt/yt-dlp/bin/python -m pip install \
+        "yt-dlp[default,curl-cffi]" \
+        yt-dlp-ejs
+
+ENV PATH="/opt/yt-dlp/bin:$PATH"
 
 RUN curl -L https://deno.land/install.sh -o denoinstall.sh;
 RUN chmod a+rx ./denoinstall.sh;

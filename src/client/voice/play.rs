@@ -19,7 +19,7 @@ use reqwest::Client;
 use rspotify::{
     ClientCredsSpotify, ClientError, Credentials,
     http::HttpError,
-    model::{AlbumId, Country, Market, PlaylistId},
+    model::{AlbumId, Country, Market, PlaylistId, TrackId},
     prelude::BaseClient,
 };
 use serenity::{
@@ -443,6 +443,7 @@ async fn get_source(query: String) -> Option<SourceType> {
     regex::Regex::new(r#"(?:(?:https?|ftp)://|\b(?:[a-z\d]+\.))(?:(?:[^\s()<>]+|\((?:[^\s()<>]+|(?:\([^\s()<>]+\)))?\))+(?:\((?:[^\s()<>]+|(?:\(?:[^\s()<>]+\)))?\)|[^\s`!()\[\]{};:'".,<>?«»“”‘’]))?"#)
     .expect("Invalid regular expression");
     let spot_regex = regex::Regex::new(r"spotify.com").unwrap();
+    let spot_track_regex = regex::Regex::new(r"spotify.com/track").unwrap();
     let spot_playlist_regex = regex::Regex::new(r"spotify.com/playlist").unwrap();
     let spot_album_regex = regex::Regex::new(r"spotify.com/album").unwrap();
     let yt_regex = regex::Regex::new(r"^((?:https?:)?\/\/)?((?:www|m)\.)?((?:youtube(?:-nocookie)?\.com|youtu.be))(\/(?:[\w\-]+\?v=|embed\/|live\/|v\/)?)([\w\-]+)(\S+)?$").unwrap();
@@ -466,8 +467,12 @@ async fn get_source(query: String) -> Option<SourceType> {
         let spotify = ClientCredsSpotify::new(creds);
         spotify.request_token().await.unwrap();
 
+        if spot_track_regex.is_match(&query) {
+            return Some(get_spotify_track_input(&query, spotify).await);
+        }
+
         if spot_playlist_regex.is_match(&query) {
-            return Some(get_spotify_playlist_inputs(&query, &spotify).await);
+            return Some(get_spotify_playlist_inputs(&query, spotify).await);
         }
 
         if spot_album_regex.is_match(&query) {
@@ -486,6 +491,7 @@ async fn get_source(query: String) -> Option<SourceType> {
     Some(SourceType::Video(input, metadata))
 }
 
+#[tracing::instrument]
 async fn try_get_link_input(query: &str) -> Option<SourceType> {
     let video_stream_bytes = tokio::process::Command::new("yt-dlp")
         .args(["yt-dlp", "-q", "-o", "-", query, "2>/dev/null"])
@@ -511,6 +517,41 @@ async fn try_get_link_input(query: &str) -> Option<SourceType> {
     Some(SourceType::Video(input, metadata))
 }
 
+#[tracing::instrument(skip(spotify))]
+async fn get_spotify_track_input(query: &str, spotify: ClientCredsSpotify) -> SourceType {
+    let url = Url::parse(query).unwrap();
+    let path_segments = url.path_segments().unwrap().collect_vec();
+    let track_id = path_segments.get(1).unwrap();
+    let track_id = TrackId::from_id(
+        track_id
+            .chars()
+            .take_while(|c| *c != '?')
+            .join("")
+            .trim()
+            .to_string(),
+    )
+    .unwrap();
+    let track = spotify
+        .track(track_id, Some(Market::Country(Country::Croatia)))
+        .await
+        .unwrap();
+    let client = Client::new();
+
+    let song_name = track.name;
+    let artists = track.artists.into_iter().map(|a| a.name).join(" ");
+    let query = format!("ytsearch:{song_name} {artists}");
+    let mut input: Input = YoutubeDl::new(client.clone(), query.clone()).into();
+    let metadata = input.aux_metadata().await.unwrap_or_else(|_| AuxMetadata {
+        source_url: Some(query.to_string()),
+        track: Some(query.to_string()),
+        title: Some(query.to_string()),
+        ..Default::default()
+    });
+
+    SourceType::Video(input, metadata)
+}
+
+#[tracing::instrument(skip(spotify))]
 async fn get_spotify_album_inputs(query: &str, spotify: ClientCredsSpotify) -> SourceType {
     let url = Url::parse(query).unwrap();
     let path_segments = url.path_segments().unwrap().collect_vec();
@@ -552,7 +593,8 @@ async fn get_spotify_album_inputs(query: &str, spotify: ClientCredsSpotify) -> S
     SourceType::Playlist(tracks)
 }
 
-async fn get_spotify_playlist_inputs(query: &str, spotify: &ClientCredsSpotify) -> SourceType {
+#[tracing::instrument(skip(spotify))]
+async fn get_spotify_playlist_inputs(query: &str, spotify: ClientCredsSpotify) -> SourceType {
     let url = Url::parse(query).unwrap();
     let path_segments = url.path_segments().unwrap().collect_vec();
     let playlist_id = path_segments.get(1).unwrap();
@@ -573,7 +615,7 @@ async fn get_spotify_playlist_inputs(query: &str, spotify: &ClientCredsSpotify) 
     let client = Client::new();
 
     while let Some(item) = playlist_items.next().await {
-        let item = match item {
+        let playlist_item = match item {
             Ok(item) => item,
             Err(err) => {
                 error!("{:?}", err);
@@ -587,7 +629,7 @@ async fn get_spotify_playlist_inputs(query: &str, spotify: &ClientCredsSpotify) 
             }
         };
 
-        let track = match item.track.unwrap() {
+        let track = match playlist_item.item.unwrap() {
             rspotify::model::PlayableItem::Track(full_track) => full_track,
             rspotify::model::PlayableItem::Episode(_) => {
                 panic!("episodes arent supported")
@@ -734,6 +776,6 @@ pub fn create_track_embed(metadata: &AuxMetadata) -> CreateEmbed<'_> {
         .colour(colour)
         .description(channel)
         .field("Duration: ", duration, true)
-        .thumbnail(thumbnail,None)
+        .thumbnail(thumbnail, None)
         .url(url)
 }

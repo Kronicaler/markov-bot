@@ -10,11 +10,13 @@ use std::process::Command;
 use chrono::Duration;
 use client::{file_operations, global_data, markov, start, tags};
 use logging::setup_logging;
+use rustls::crypto::{CryptoProvider, aws_lc_rs};
 use tokio::{spawn, time::interval};
 use tracing::{error, info, info_span};
 
 #[tokio::main(flavor = "multi_thread")]
 async fn main() {
+    CryptoProvider::install_default(aws_lc_rs::default_provider()).unwrap();
     _ = dotenvy::dotenv();
     setup_logging();
     file_operations::create_data_folders();
