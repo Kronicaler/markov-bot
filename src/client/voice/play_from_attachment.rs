@@ -127,7 +127,7 @@ pub async fn play_from_attachment(ctx: &Context, command: &CommandInteraction) {
         let track = Track::new_with_data(
             attachment.download().await.unwrap().into(),
             Arc::new(my_metadata),
-        );
+        ).volume(0.3);
         call.enqueue(track).await;
 
         command

@@ -132,7 +132,7 @@ pub async fn handle_video(
         aux_metadata: metadata.clone(),
         queued_by: command.user.name.to_string(),
     };
-    let track = Track::new_with_data(input, Arc::new(my_metadata));
+    let track = Track::new_with_data(input, Arc::new(my_metadata)).volume(0.3);
     call.enqueue(track).await;
 
     return_response(&metadata, call.queue(), command, ctx, false).await;
@@ -163,7 +163,7 @@ async fn handle_playlist(
                 aux_metadata: metadata.clone(),
                 queued_by: command.user.name.to_string(),
             };
-            let track = Track::new_with_data(input, Arc::new(my_metadata));
+            let track = Track::new_with_data(input, Arc::new(my_metadata)).volume(0.3);
             call.enqueue(track).await;
 
             return_response(&metadata, call.queue(), command, ctx, true).await;
@@ -352,7 +352,7 @@ async fn fill_queue(
                     aux_metadata: metadata,
                     queued_by: queued_by.clone(),
                 };
-                let track = Track::new_with_data(input, Arc::new(my_metadata));
+                let track = Track::new_with_data(input, Arc::new(my_metadata)).volume(0.3);
                 call_lock.lock().await.enqueue(track).await;
             }
 
